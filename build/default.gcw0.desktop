@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=GCW Connect
-Comment=Manage wireless settings
+Comment=Manage wireless networks and settings
 Exec=python wificonfig.py
 Categories=settings;
 Icon=icon
