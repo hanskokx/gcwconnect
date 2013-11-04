@@ -23,8 +23,17 @@ import sys, time, os, shutil
 import pygame
 from pygame.locals import *
 
+## TEMPORARY ##
+passphrase = "im not telling you"
+
 # What is our wireless interface?
 wlan = "wlan0"
+
+# How many times do you want to try to
+# connect to a network before we give up?
+timeout = 3
+
+## That's it for options. Everything else below shouldn't be edited.
 
 # Create paths, if necessary
 confdir = "/boot/local/home/.gcwconnect/"
@@ -50,9 +59,17 @@ def ifdown():
 	command = ['ifdown', wlan]
 	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 def ifup():
-	while checkinterfacestatus() == '':
+	counter = 0
+
+	while checkinterfacestatus() == '' and counter < timeout:
+		if counter > 0:
+			modal('Connection failed. Retrying...'+str(counter),"false")
 		command = ['ifup', wlan]
 		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+		counter += 1
+
+		if counter >= timeout:
+			modal('Connection failed!',wait="true")
 
 	wlanstatus = ""
 	currentssid = getcurrentssid()
@@ -107,16 +124,16 @@ def getnetworks(): # Run iwlist to get a list of networks in range
 	redraw()
 	return networks
 def listuniqssids():
-	menu_position = 0
+	menuposition = 0
 	uniqssid = {}
 	uniqssids = {}
 
 	for network, detail in networks.iteritems():
-			if detail['ESSID'] not in uniqssids and detail['ESSID'] and detail['ESSID']:
-				uniqssid = uniqssids.setdefault(menu_position, {})
+			if detail['ESSID'] not in uniqssids and detail['ESSID']:
+				uniqssid = uniqssids.setdefault(detail['ESSID'], {})
 				uniqssid["Network"] = detail
-				menu_position += 1
-
+				uniqssid["Network"]["menu"] = menuposition
+				menuposition += 1
 	return uniqssids
 
 ## Parsing iwlist output for various components
@@ -136,8 +153,8 @@ def parseencryption(encryption):
 	 	encryption = "none"
 
 	elif encryption.startswith('Encryption key:on'):
-		encryption = "Encrypted (unknown)"
-
+		#encryption = "Encrypted (unknown)"
+		encryption = "wpa2"
 	elif encryption.startswith("IE: WPA"):
 		encryption = "wpa"
 
@@ -226,31 +243,48 @@ def redraw():
 	drawinterfacestatus()
 	pygame.display.update()
 def modal(text,wait="true",timeout="false"): # Draw a modal
-	dialog = pygame.draw.rect(surface, (84,84,84), (96,88,128,64))
-	pygame.draw.rect(surface, (255,255,255), (94,86,130,66), 2)
+	dialog = pygame.draw.rect(surface, (84,84,84), (64,88,192,72))
+	pygame.draw.rect(surface, (255,255,255), (62,86,194,74), 2)
 
 	text = pygame.font.SysFont(None, 16).render(text, True, (255, 255, 255), (84,84,84))
 	modal_text = text.get_rect()
 	modal_text.center = dialog.center
 
+	def drawcontinue():
+		abutton = pygame.draw.circle(surface, (0, 0, 128), (208,151), 5) # (x, y)
+		a = pygame.font.SysFont(None, 10).render("A", True, (255, 255, 255), (0,0,128))
+		atext = a.get_rect()
+		atext.center = abutton.center
+		surface.blit(a, atext)
+
+		labelblock = pygame.draw.rect(surface, (84,84,84), (218,144,32,14))
+		labeltext = pygame.font.SysFont(None, 12).render("Continue", True, (255, 255, 255), (84,84,84))
+		label = labeltext.get_rect()
+		label.center = labelblock.center
+		surface.blit(labeltext, label)
+		pygame.display.update()
+
 	surface.blit(text, modal_text)
 	pygame.display.update()
 
 	if not wait == "true" and timeout == "true":
-		time.sleep(2)
+		time.sleep(2.5)
 		redraw()
 
 	while wait == "true":
+		drawcontinue()
 		for event in pygame.event.get():
-			if event.key == K_LCTRL:
-				redraw()
-				wait = "false"
+			if event.type == KEYDOWN:
+				if event.key == K_LCTRL:
+					redraw()
+					wait = "false"
+
 def writeconfig(): # Write wireless configuration to disk
 	f = open(ssidconfig, "a")
-	f.write('WLAN_ESSID="'+uniq[wirelessmenu.get_position()]['Network']['ESSID']+'"\n')
+	f.write('WLAN_ESSID="'+ssid+'"\n')
 	f.write('WLAN_MODE="managed"\n')
-	f.write('WLAN_ENCRYPTION="'+uniq[wirelessmenu.get_position()]['Network']['Encryption']+'"\n')
-	f.write('WLAN_PASSPHRASE="WPA2-key"\n') # TODO: on-screen keyboard for manual key entry
+	f.write('WLAN_ENCRYPTION="'+uniq[ssid]['Network']['Encryption']+'"\n')
+	f.write('WLAN_PASSPHRASE="'+passphrase+'"\n') # TODO: on-screen keyboard for manual key entry
 	f.write('WLAN_DRIVER="wext"\n')
 	f.write('WLAN_DHCP_RETRIES=20\n')
 	f.close()
@@ -260,6 +294,11 @@ def connect(): # Connect to a network
 	shutil.copy2(ssidconfig, newconf)
 	ifdown()
 	ifup()
+
+## Keyboard
+def keyboard():
+	pass
+
 class Menu:
 	font_size = 24
 	font = pygame.font.SysFont
@@ -376,7 +415,6 @@ def mainmenu():
 	menu.draw()
 
 if __name__ == "__main__":
-	import sys
 	surface = pygame.display.set_mode((320,240))
 	surface.fill((41,41,41))
 	pygame.mouse.set_visible(False)
@@ -424,14 +462,12 @@ if __name__ == "__main__":
 						if menu.get_position() == 0: # Scan menu
 							getnetworks()
 							uniq = listuniqssids()
-							counter = 0
 
 							wirelessitems = []
 							wirelessmenu.set_fontsize(14)
 
-							for x, y in uniq.iteritems():
-								for label, network in y.iteritems():
-									wirelessitems.append(network['ESSID'])
+							for key in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
+								wirelessitems.append(key)
 
 							wirelessmenu.init(wirelessitems, surface)
 							wirelessmenu.move_menu(128, 36)
@@ -454,10 +490,17 @@ if __name__ == "__main__":
 
 					# SSID menu		
 					elif active_menu == "ssid":
+						ssid = ""
 						netconfdir = confdir+"networks/"
 						if not os.path.exists(netconfdir):
 							os.makedirs(netconfdir)
-						ssidconfig = netconfdir +uniq[wirelessmenu.get_position()]['Network']['ESSID'] +".conf"
+
+						for network, detail in uniq.iteritems():
+							position = str(wirelessmenu.get_position())
+							if str(detail['Network']['menu']) == position:
+								ssid = network
+
+						ssidconfig = netconfdir +ssid +".conf"
 						if not os.path.exists(ssidconfig):
 							writeconfig()
 						modal("Connecting...","false")
