@@ -34,20 +34,25 @@ wlan = "wlan0"
 timeout = 3
 
 ## That's it for options. Everything else below shouldn't be edited.
+
+# Create paths, if necessary
 confdir = "/boot/local/home/.gcwconnect/"
+if not os.path.exists(confdir):
+	os.makedirs(confdir)
+
 sysconfdir = "/usr/local/etc/network/"
+if not os.path.exists(sysconfdir):
+	os.makedirs(sysconfdir)
 
-def createpaths(): # Create paths, if necessary
-	if not os.path.exists(confdir):
-		os.makedirs(confdir)
-	if not os.path.exists(sysconfdir):
-		os.makedirs(sysconfdir)
-def initpygame(): # init pygame display
-	if not pygame.display.get_init():
-		pygame.display.init()
+if not pygame.display.get_init():
+	pygame.display.init()
 
-	if not pygame.font.get_init():
-		pygame.font.init()
+if not pygame.font.get_init():
+	pygame.font.init()
+
+networks = {}
+uniqssids = {}
+currentssid = ""
 
 ## Interface management
 def ifdown():
@@ -292,54 +297,7 @@ def connect(): # Connect to a network
 
 ## Keyboard
 def keyboard():
-	def getkeys():
-		keyarray = {}
-		keyboard = {}
-		keys = 	'`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',\
-				'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\',\
-				'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', 'Enter', 'Shift',\
-				'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '', '', '',\
-				'~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',\
-				'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|',\
-				'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', 'Enter', 'Shift',\
-				'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '', '', ''
-
-
-
-		row = 0
-		column = 0
-		keyid = 0
-		deck = 0
-		for k in keys:
-			keyarray = keyboard.setdefault(keyid, {})
-			keyarray["key"] = k
-			
-			if keyid < 52:
-				keyarray["deck"] = '0'
-			else:
-				row = 0
-				keyarray["deck"] = '1'
-
-			if column <= 12:
-				keyarray["column"] = column
-				keyarray["row"] = row
-				column += 1
-			else:
-				row += 1
-				column = 0
-				keyarray["column"] = column
-				keyarray["row"] = row
-				column += 1
-			
-			keyid += 1
-		return keyboard
-	k = getkeys()
-	for key in k.iteritems():
-
-		print key
-	return k
-	
-	exit()
+	pass
 
 class Menu:
 	font_size = 24
@@ -457,21 +415,12 @@ def mainmenu():
 	menu.draw()
 
 if __name__ == "__main__":
-	# Persistent variables
-	networks = {}
-	uniqssids = {}
-	currentssid = ""
-	createpaths()
-	initpygame()
 	surface = pygame.display.set_mode((320,240))
 	surface.fill((41,41,41))
 	pygame.mouse.set_visible(False)
 	pygame.key.set_repeat(199,69) #(delay,interval)
 	redraw()
 	active_menu = "main"
-
-	keyboard()
-
 
 	while 1:
 		for event in pygame.event.get():
