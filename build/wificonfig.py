@@ -346,12 +346,40 @@ def getkeys(board):
 				column += 1
 			
 			keyid += 1
+
+	def boardWEP():
+		keyarray = {}
+		keyboard = {}
+		keys = 	'0', '1', '2', '3', '4',\
+				'5', '6', '7', '8', '9', \
+				'A', 'B', 'C', 'D', 'E', 'F'
+		row = 0
+		column = 0
+		keyid = 0
+		for k in keys:
+			keyarray = keyboard.setdefault(keyid, {})
+			keyarray["key"] = k
+
+			if column <= 5:
+				keyarray["column"] = column
+				keyarray["row"] = row
+				column += 1
+			else:
+				row += 1
+				column = 0
+				keyarray["column"] = column
+				keyarray["row"] = row
+				column += 1
+			
+			keyid += 1
 		return keyboard
 	
 	if board == "A":
 		k = boardA()
 	elif board == "B":
 		k = boardB()
+	elif board == "WEP":
+		k = boardWEP()
 	return k
 
 class key:
@@ -547,10 +575,7 @@ if __name__ == "__main__":
 	# for x, y in k.iteritems():
 	# 	print y['key']
 
-	drawkeyboard("A")
-
-	while 1:
-		pass
+	# drawkeyboard("A")
 
 	while 1:
 		for event in pygame.event.get():
