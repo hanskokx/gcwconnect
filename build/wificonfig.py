@@ -44,6 +44,8 @@ def createpaths(): # Create paths, if necessary
 		os.makedirs(confdir)
 	if not os.path.exists(sysconfdir):
 		os.makedirs(sysconfdir)
+
+# Initialize the dispaly, for pygame
 if not pygame.display.get_init():
 	pygame.display.init()
 
@@ -172,7 +174,7 @@ def drawlogo():
 	# wireless = "Wireless"
 	# configuration = "configuration"
 
-	gcw_font = pygame.font.Font('data/gcwzero.ttf', 24)
+	gcw_font = pygame.font.Font('./data/gcwzero.ttf', 24)
 
 	text1 = gcw_font.render(gcw, True, (255, 255, 255), (84,84,84))
 	text2 = gcw_font.render(zero, True, (153, 0, 0), (84,84,84))
@@ -298,8 +300,8 @@ def getkeys(board):
 		keyboard = {}
 		keys = 	'`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',\
 				'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\',\
-				'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', 'Enter', 'Shift',\
-				'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '', '', ''
+				'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', 'Shift', '',\
+				'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '', 'Enter', ''
 		row = 0
 		column = 0
 		keyid = 0
@@ -320,13 +322,14 @@ def getkeys(board):
 			
 			keyid += 1
 		return keyboard
+
 	def boardB():
 		keyarray = {}
 		keyboard = {}
 		keys = 	'~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',\
 				'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|',\
-				'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', 'Enter', 'Shift',\
-				'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '', '', ''
+				'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', 'Shift', '',\
+				'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '', 'Enter', ''
 		row = 0
 		column = 0
 		keyid = 0
@@ -346,13 +349,16 @@ def getkeys(board):
 				column += 1
 			
 			keyid += 1
+		return keyboard
 
 	def boardWEP():
 		keyarray = {}
 		keyboard = {}
-		keys = 	'0', '1', '2', '3', '4',\
-				'5', '6', '7', '8', '9', \
-				'A', 'B', 'C', 'D', 'E', 'F'
+		keys = 	'1', '2', '3', '4', \
+				'5', '6', '7', '8', \
+				'9', '0', 'A', 'B', \
+				'C', 'D', 'E', 'F', \
+				'Enter'
 		row = 0
 		column = 0
 		keyid = 0
@@ -360,7 +366,7 @@ def getkeys(board):
 			keyarray = keyboard.setdefault(keyid, {})
 			keyarray["key"] = k
 
-			if column <= 5:
+			if column <= 3:
 				keyarray["column"] = column
 				keyarray["row"] = row
 				column += 1
@@ -394,14 +400,58 @@ class key:
 		self.key = key
 		self.row = row
 		self.column = column
-		self.getkey()
+		self.drawkey()
 
-	def getkey(self):
-		print self.key
-		keyarea = pygame.Surface([16,16])
-		pygame.draw.rect(keyarea, (255,255,255), (0,0,16,16)) # (left, top, width, height)
+	def drawkey(self):
+		key_width = 16
+		key_height = 16
+		top = 110
+		left = 10
+
+		if self.row == 0:
+			top = 110
+		elif self.row == 1:
+			top = 130
+		elif self.row == 2:
+			top = 150
+		elif self.row == 3:
+			top = 170
+		elif self.row == 4:
+			top = 190
+
+		if self.column == 0:
+			left = 10
+		elif self.column == 1:
+			left = 30
+		elif self.column == 2:
+			left = 50
+		elif self.column == 3:
+			left = 70
+		elif self.column == 4:
+			left = 90
+		elif self.column == 5:
+			left = 110
+		elif self.column == 6:
+			left = 130
+		elif self.column == 7:
+			left = 150
+		elif self.column == 8:
+			left = 170
+		elif self.column == 9:
+			left = 190
+		elif self.column == 10:
+			left = 210
+		elif self.column == 11:
+			left = 230
+		elif self.column == 12:
+			left = 250
+
+		if len(self.key) > 1:
+			key_width = 36
+		keybox = pygame.draw.rect(surface, (50,50,50), (left,top,key_width,key_height)) # (left, top, width, height)
 		text = pygame.font.SysFont(None, 16).render(self.key, True, (255, 255, 255), (50,50,50))
 		label = text.get_rect()
+		label.center = keybox.center
 		surface.blit(text, label)
 
 def drawkeyboard(board):
@@ -409,10 +459,10 @@ def drawkeyboard(board):
 
 	k = getkeys(board)
 	z = key()
-	for x, y in k.iteritems():
-		z.init(y['key'],y['row'],y['column'])
 
-	#text = pygame.font.SysFont(None, 16).render(text, True, (255, 255, 255), (84,84,84))
+	for x, y in k.iteritems():
+		if y['key']:
+			z.init(y['key'],y['row'],y['column'])
 
 	pygame.display.update()
 
@@ -570,6 +620,7 @@ if __name__ == "__main__":
 	pygame.key.set_repeat(199,69) #(delay,interval)
 	redraw()
 	active_menu = "main"
+	drawkeyboard("A")
 
 	# k = keyboard("A")
 	# for x, y in k.iteritems():
