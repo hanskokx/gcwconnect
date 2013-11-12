@@ -24,7 +24,7 @@ import pygame
 from pygame.locals import *
 
 ## TEMPORARY ##
-passphrase = "im not telling you"
+passphrase = ''
 
 # What is our wireless interface?
 wlan = "wlan0"
@@ -309,7 +309,7 @@ def getkeys(board):
 		keys = 	'`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',\
 				'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\',\
 				'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', 'Shift', '',\
-				'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '', 'Enter', ''
+				'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '', 'Space', ''
 		row = 0
 		column = 0
 		keyid = 0
@@ -341,7 +341,7 @@ def getkeys(board):
 		keys = 	'~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',\
 				'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|',\
 				'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', 'Shift', '',\
-				'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '', 'Enter', ''
+				'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '', 'Space', ''
 		row = 0
 		column = 0
 		keyid = 0
@@ -368,13 +368,12 @@ def getkeys(board):
 		keyboard = {}
 		global maxrows
 		global maxcolumns
-		maxrows = 5
+		maxrows = 4
 		maxcolumns = 4
 		keys = 	'1', '2', '3', '4', \
 				'5', '6', '7', '8', \
 				'9', '0', 'A', 'B', \
-				'C', 'D', 'E', 'F', \
-				'Enter', '', '', ''
+				'C', 'D', 'E', 'F'
 		row = 0
 		column = 0
 		keyid = 0
@@ -493,6 +492,7 @@ def softkeyinput(keyboard):
 
 			if event.type == KEYDOWN:
 				if event.key == K_RETURN:		# finish input
+					selectkey(keyboard, "enter")
 					wait = "false"
 
 				if event.key == K_UP:		# Move cursor up
@@ -504,7 +504,7 @@ def softkeyinput(keyboard):
 				if event.key == K_RIGHT:	# Move cursor right
 					selectkey(keyboard, "right")
 				if event.key == K_LCTRL:	# select character
-					pass
+					selectkey(keyboard, "select")
 				if event.key == K_LALT:		# go back
 					pass
 				if event.key == K_SPACE:	# shift
@@ -516,7 +516,13 @@ def softkeyinput(keyboard):
 	redraw()
 	return security
 def selectkey(keyboard, direction="none"):
-	def highlightkey(pos):
+	def getcurrentkey(keyboard, pos):
+		keys = getkeys(keyboard)
+		for item in keys.iteritems():
+			if item[1]['row'] == pos[1] and item[1]['column'] == pos[0]:
+				currentkey = item[1]['key']
+		return currentkey
+	def highlightkey(keyboard, pos):
 		drawkeyboard(keyboard)
 		pygame.display.update()
 
@@ -541,51 +547,48 @@ def selectkey(keyboard, direction="none"):
 					(x, y + 16), \
 					(x, y) \
 				]
-		lol = pygame.draw.lines(surface, (255,255,255), True, list, 1)
+		lines = pygame.draw.lines(surface, (255,255,255), True, list, 1)
 		pygame.display.update()
-	def draw_selected_key(keyboard, pos):
-
-		if keyboard == "qwertyNormal":
-			pass
-		elif keyboard == "qwertyShift":
-			pass
-		elif keyboard == "wep":
-			pass
 
 	global maxrows
 	global maxcolumns
 	global selected_key
+	global passphrase
 
 	if not selected_key:
 		selected_key = [0,0]
-		highlightkey(selected_key)
+		highlightkey(keyboard, selected_key)
 	else:
 		if direction == "up":
 			if selected_key[1] <= 0:
 				selected_key[1] = 0
 			else:
 				selected_key[1] -= 1
-			highlightkey(selected_key)
+			highlightkey(keyboard, selected_key)
 		elif direction == "down":
 			if selected_key[1] >= maxrows - 1:
 				selected_key[1] = maxrows - 1
 			else:
 				selected_key[1] = selected_key[1] + 1
-			highlightkey(selected_key)
+			highlightkey(keyboard, selected_key)
 		elif direction == "left":
 			if selected_key[0] <= 0:
 				selected_key[0] = 0
 			else:
 				selected_key[0] = selected_key[0] - 1
-			highlightkey(selected_key)
+			highlightkey(keyboard, selected_key)
 		elif direction == "right":
 			if selected_key[0] >= maxcolumns - 1:
 				selected_key[0] = maxcolumns - 1
 			else:
 				selected_key[0] = selected_key[0] + 1
-			highlightkey(selected_key)
+			highlightkey(keyboard, selected_key)
+		elif direction == "select":
+			passphrase += getcurrentkey(keyboard, selected_key)
+		elif direction == "enter":
+			print passphrase
 
-	draw_selected_key(keyboard, selected_key)
+	#draw_selected_key(keyboard, selected_key)
 class Menu:
 	font_size = 24
 	font = pygame.font.SysFont
