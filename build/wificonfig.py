@@ -231,6 +231,42 @@ def getcurrentssid(): # What network are we connected to?
 			ssid = str.strip(line[line.find('ESSID')+len('ESSID:"'):line.find('Nickname:')+len('Nickname:')].rstrip(' Nickname:').rstrip('"'))
 
 	return ssid
+def wifilistedit():
+	yellow = (128, 128, 0)
+	blue = (0, 0, 128)
+	red = (128, 0, 0)
+	green = (0, 128, 0)
+	black = (0, 0, 0)
+
+	# Draw the edit icon
+	labelblock = pygame.draw.rect(surface, (41,41,41), (35,207,25,14))
+	labeltext = pygame.font.SysFont(None, 12).render("Edit", True, (255, 255, 255), (41,41,41))
+	label = labeltext.get_rect()
+	label.center = labelblock.center
+	surface.blit(labeltext, label)
+
+	pygame.draw.rect(surface, black, (4, 209, 34, 5))
+	pygame.draw.circle(surface, black, (9, 214), 5)
+	pygame.draw.circle(surface, black, (33, 214), 5)
+
+	startbutton = pygame.draw.rect(surface, black, (9, 209, 25, 10))
+	start = pygame.font.SysFont(None, 10).render("SELECT", True, (255, 255, 255), black)
+	starttext = start.get_rect()
+	starttext.center = startbutton.center
+	surface.blit(start, starttext)
+
+	# Draw the connect icon
+	labelblock = pygame.draw.rect(surface, (41,41,41), (80,207,35,14))
+	labeltext = pygame.font.SysFont(None, 12).render("Connect", True, (255, 255, 255), (41,41,41))
+	label = labeltext.get_rect()
+	label.center = labelblock.center
+	surface.blit(labeltext, label)
+
+	abutton = pygame.draw.circle(surface, green, (70,214), 5) # (x, y)
+	a = pygame.font.SysFont(None, 10).render("A", True, (255, 255, 255), green)
+	atext = a.get_rect()
+	atext.center = abutton.center
+	surface.blit(a, atext)
 
 def redraw():
 	surface.fill((41,41,41))
@@ -239,6 +275,8 @@ def redraw():
 	mainmenu()
 	if wirelessmenuexists == "true":
 		wirelessmenu.draw()
+		wifilistedit()
+
 	drawstatusbar()
 	drawinterfacestatus()
 	pygame.display.update()
@@ -834,6 +872,7 @@ def swapmenu(active_menu):
 		menu.set_colors((255,255,255), (153,0,0), (41,41,41))
 		wirelessmenu.set_colors((255,255,255), (84,84,84), (41,41,41))
 		redraw()
+		pygame.draw.rect(surface, (41,41,41), (0,207,120,14))
 	return active_menu
 
 wirelessmenu = Menu()
@@ -905,6 +944,7 @@ if __name__ == "__main__":
 							wirelessmenu.init(wirelessitems, surface)
 							wirelessmenu.move_menu(128, 36)
 							wirelessmenu.draw()
+
 							if not wirelessmenuexists == "true":
 								wirelessmenuexists = "true"
 							active_menu = swapmenu('main')
