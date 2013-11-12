@@ -59,8 +59,9 @@ def ifdown():
 	command = ['ifdown', wlan]
 	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 def ifup():
+	if getcurrentssid():
+		oldssid = getcurrentssid()
 	counter = 0
-
 	while checkinterfacestatus() == '' and counter < timeout:
 		if counter > 0:
 			modal('Connection failed. Retrying...'+str(counter),"false")
@@ -74,9 +75,8 @@ def ifup():
 	wlanstatus = ""
 	currentssid = getcurrentssid()
 	if not checkinterfacestatus() == "offline":
-		if not currentssid == "unassociated":
+		if not currentssid == "unassociated" and not oldssid == currentssid:
 			modal("Connected!","false","true")
-	
 def getwlanip():
 	ip = ""
 	command = ['ifconfig', wlan]
@@ -104,6 +104,7 @@ def getnetworks(): # Run iwlist to get a list of networks in range
 	modal("Scanning...","false")
 	command = ['ifconfig', wlan, 'up']
 	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	drawinterfacestatus()
 	command = ['iwlist', wlan, 'scan']
 	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 	for item in output:
@@ -279,21 +280,20 @@ def modal(text,wait="true",timeout="false"): # Draw a modal
 					wait = "false"
 
 def writeconfig(mode="a"): # Write wireless configuration to disk
+	global passphrase
 	if passphrase:
+		if passphrase == "none":
+			passphrase = ""
 		f = open(ssidconfig, mode)
 		f.write('WLAN_ESSID="'+ssid+'"\n')
 		f.write('WLAN_MODE="managed"\n')
 		f.write('WLAN_ENCRYPTION="'+uniq[ssid]['Network']['Encryption']+'"\n')
-		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n') # TODO: on-screen keyboard for manual key entry
+		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
 		f.write('WLAN_DRIVER="wext"\n')
-		f.write('WLAN_DHCP_RETRIES=10\n')
+		f.write('WLAN_DHCP_RETRIES=20\n')
 		f.close()
-		modal("Connecting...","false")
-		connect()
-		drawinterfacestatus()
 
 def connect(): # Connect to a network
-	global passphrase
 	oldconf = ssidconfig
 	newconf = sysconfdir +"config-wlan0.conf"
 	shutil.copy2(ssidconfig, newconf)
@@ -528,18 +528,19 @@ def drawkeyboard(board):
 	label.center = labelblock.center
 	surface.blit(labeltext, label)
 
-	# Draw the shift icon
-	ybutton = pygame.draw.circle(surface, yellow, (205,230), 5) # (x, y)
-	y = pygame.font.SysFont(None, 10).render("Y", True, (255, 255, 255), yellow)
-	ytext = y.get_rect()
-	ytext.center = ybutton.center
-	surface.blit(y, ytext)
+	if not board == "wep":
+		# Draw the shift icon
+		ybutton = pygame.draw.circle(surface, yellow, (205,230), 5) # (x, y)
+		y = pygame.font.SysFont(None, 10).render("Y", True, (255, 255, 255), yellow)
+		ytext = y.get_rect()
+		ytext.center = ybutton.center
+		surface.blit(y, ytext)
 
-	labelblock = pygame.draw.rect(surface, (84,84,84), (210,223,25,14))
-	labeltext = pygame.font.SysFont(None, 12).render("Shift", True, (255, 255, 255), (84,84,84))
-	label = labeltext.get_rect()
-	label.center = labelblock.center
-	surface.blit(labeltext, label)
+		labelblock = pygame.draw.rect(surface, (84,84,84), (210,223,25,14))
+		labeltext = pygame.font.SysFont(None, 12).render("Shift", True, (255, 255, 255), (84,84,84))
+		label = labeltext.get_rect()
+		label.center = labelblock.center
+		surface.blit(labeltext, label)
 
 	# Draw the space icon
 	labelblock = pygame.draw.rect(surface, (84,84,84), (245,223,35,14))
@@ -935,7 +936,7 @@ if __name__ == "__main__":
 								ssidconfig = netconfdir +ssid +".conf"	
 								if not os.path.exists(ssidconfig):
 									if detail['Network']['Encryption'] == "none":
-										pass
+										passphrase = "none"
 									elif detail['Network']['Encryption'] == "wep":
 										displaypassphrase(passphrase)
 										drawkeyboard("wep")
@@ -944,10 +945,13 @@ if __name__ == "__main__":
 										displaypassphrase(passphrase)
 										drawkeyboard("qwertyNormal")
 										getinput("qwertyNormal")
+									
 									writeconfig()
+								modal("Connecting...","false")
+								connect()
+								drawinterfacestatus()
 				if event.key == K_ESCAPE and active_menu == "ssid": # Allow us to edit the existing key
 					ssid = ""
-					go = 'false'
 					netconfdir = confdir+"networks/"
 					if not os.path.exists(netconfdir):
 						os.makedirs(netconfdir)
@@ -962,13 +966,12 @@ if __name__ == "__main__":
 							elif detail['Network']['Encryption'] == "wep":
 								displaypassphrase(passphrase)
 								drawkeyboard("wep")
-								wait = getinput("wep")
+								getinput("wep")
 							else:
 								displaypassphrase(passphrase)
 								drawkeyboard("qwertyNormal")
-								go = getinput("qwertyNormal")
-							if not go == "false":
-								writeconfig("w")
+								getinput("qwertyNormal")
+							writeconfig("w")
 
 
 		pygame.display.update()
