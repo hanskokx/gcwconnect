@@ -510,17 +510,17 @@ def drawkeyboard(board):
 	label.center = labelblock.center
 	surface.blit(labeltext, label)
 
-	abutton = pygame.draw.circle(surface, green, (242,230), 5) # (x, y)
-	a = pygame.font.SysFont(None, 10).render("A", True, (255, 255, 255), green)
-	atext = a.get_rect()
-	atext.center = abutton.center
-	surface.blit(a, atext)
-
-	bbutton = pygame.draw.circle(surface, blue, (255,230), 5) # (x, y)
+	bbutton = pygame.draw.circle(surface, blue, (242,230), 5) # (x, y)
 	b = pygame.font.SysFont(None, 10).render("B", True, (255, 255, 255), blue)
 	btext = b.get_rect()
 	btext.center = bbutton.center
 	surface.blit(b, btext)
+
+	abutton = pygame.draw.circle(surface, green, (255,230), 5) # (x, y)
+	a = pygame.font.SysFont(None, 10).render("A", True, (255, 255, 255), green)
+	atext = a.get_rect()
+	atext.center = abutton.center
+	surface.blit(a, atext)
 
 	# Draw the finish icon
 	pygame.draw.rect(surface, black, (32, 225, 35, 5))
@@ -538,8 +538,6 @@ def drawkeyboard(board):
 	label = labeltext.get_rect()
 	label.center = labelblock.center
 	surface.blit(labeltext, label)
-
-
 
 	
 	# Draw the keys
@@ -592,6 +590,7 @@ def softkeyinput(keyboard):
 					pass
 	redraw()
 	return security
+
 def selectkey(keyboard, direction="none"):
 	def getcurrentkey(keyboard, pos):
 		keys = getkeys(keyboard)
@@ -648,6 +647,8 @@ def selectkey(keyboard, direction="none"):
 		elif direction == "down":
 			if selected_key[1] >= maxrows - 1:
 				selected_key[1] = maxrows - 1
+			elif not getcurrentkey(keyboard, (selected_key[0], selected_key[1] + 1)):
+				selected_key[1] = selected_key[1]
 			else:
 				selected_key[1] = selected_key[1] + 1
 			highlightkey(keyboard, selected_key)
@@ -660,6 +661,8 @@ def selectkey(keyboard, direction="none"):
 		elif direction == "right":
 			if selected_key[0] >= maxcolumns - 1:
 				selected_key[0] = maxcolumns - 1
+			elif not getcurrentkey(keyboard, (selected_key[0] + 1, selected_key[1])):
+				selected_key[0] = selected_key[0]
 			else:
 				selected_key[0] = selected_key[0] + 1
 			highlightkey(keyboard, selected_key)
