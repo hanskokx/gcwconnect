@@ -79,12 +79,13 @@ def ifup():
 
 		if counter >= timeout:
 			modal('Connection failed!',wait="true")
+		else:
+			wlanstatus = ""
+			currentssid = getcurrentssid()
+			if not checkinterfacestatus() == "offline":
+				if not currentssid == "unassociated" and not oldssid == currentssid:
+					modal("Connected!","false","true")
 
-	wlanstatus = ""
-	currentssid = getcurrentssid()
-	if not checkinterfacestatus() == "offline":
-		if not currentssid == "unassociated" and not oldssid == currentssid:
-			modal("Connected!","false","true")
 def getwlanip():
 	ip = ""
 	command = ['ifconfig', wlan]
