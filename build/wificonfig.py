@@ -308,8 +308,8 @@ def getkeys(board):
 		maxcolumns = 13
 		keys = 	'`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',\
 				'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\',\
-				'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', 'Shift', '',\
-				'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '', 'Space', ''
+				'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '', '',\
+				'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '', '', ''
 		row = 0
 		column = 0
 		keyid = 0
@@ -340,8 +340,8 @@ def getkeys(board):
 		maxcolumns = 13
 		keys = 	'~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',\
 				'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|',\
-				'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', 'Shift', '',\
-				'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '', 'Space', ''
+				'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '', '',\
+				'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '', '', ''
 		row = 0
 		column = 0
 		keyid = 0
@@ -468,8 +468,81 @@ class key:
 		label.center = keybox.center
 		surface.blit(text, label)
 def drawkeyboard(board):
-	pygame.draw.rect(surface, (84,84,84), (0,100,320,140)) # (left, top, width, height)
+	yellow = (128, 128, 0)
+	blue = (0, 0, 128)
+	red = (128, 0, 0)
+	green = (0, 128, 0)
+	black = (0, 0, 0)
 
+	# Draw keyboard background 
+	pygame.draw.rect(surface, (84,84,84), (0,100,320,140))
+
+	# Draw the delete icon
+	xbutton = pygame.draw.circle(surface, red, (160,230), 5) # (x, y)
+	x = pygame.font.SysFont(None, 10).render("X", True, (255, 255, 255), red)
+	xtext = x.get_rect()
+	xtext.center = xbutton.center
+	surface.blit(x, xtext)
+
+	labelblock = pygame.draw.rect(surface, (84,84,84), (170,223,20,14))
+	labeltext = pygame.font.SysFont(None, 12).render("Delete", True, (255, 255, 255), (84,84,84))
+	label = labeltext.get_rect()
+	label.center = labelblock.center
+	surface.blit(labeltext, label)
+
+	# Draw the shift icon
+	ybutton = pygame.draw.circle(surface, yellow, (205,230), 5) # (x, y)
+	y = pygame.font.SysFont(None, 10).render("Y", True, (255, 255, 255), yellow)
+	ytext = y.get_rect()
+	ytext.center = ybutton.center
+	surface.blit(y, ytext)
+
+	labelblock = pygame.draw.rect(surface, (84,84,84), (210,223,25,14))
+	labeltext = pygame.font.SysFont(None, 12).render("Shift", True, (255, 255, 255), (84,84,84))
+	label = labeltext.get_rect()
+	label.center = labelblock.center
+	surface.blit(labeltext, label)
+
+	# Draw the enter icon(s)
+	labelblock = pygame.draw.rect(surface, (84,84,84), (248,223,35,14))
+	labeltext = pygame.font.SysFont(None, 12).render("/       Enter", True, (255, 255, 255), (84,84,84))
+	label = labeltext.get_rect()
+	label.center = labelblock.center
+	surface.blit(labeltext, label)
+
+	abutton = pygame.draw.circle(surface, green, (242,230), 5) # (x, y)
+	a = pygame.font.SysFont(None, 10).render("A", True, (255, 255, 255), green)
+	atext = a.get_rect()
+	atext.center = abutton.center
+	surface.blit(a, atext)
+
+	bbutton = pygame.draw.circle(surface, blue, (255,230), 5) # (x, y)
+	b = pygame.font.SysFont(None, 10).render("B", True, (255, 255, 255), blue)
+	btext = b.get_rect()
+	btext.center = bbutton.center
+	surface.blit(b, btext)
+
+	# Draw the finish icon
+	pygame.draw.rect(surface, black, (32, 225, 35, 5))
+	pygame.draw.circle(surface, black, (37, 230), 5)
+	pygame.draw.circle(surface, black, (62, 230), 5)
+
+	startbutton = pygame.draw.rect(surface, black, (37, 225, 25, 10))
+	start = pygame.font.SysFont(None, 10).render("START", True, (255, 255, 255), black)
+	starttext = start.get_rect()
+	starttext.center = startbutton.center
+	surface.blit(start, starttext)
+
+	labelblock = pygame.draw.rect(surface, (84,84,84), (70,223,25,14))
+	labeltext = pygame.font.SysFont(None, 12).render("Finish", True, (255, 255, 255), (84,84,84))
+	label = labeltext.get_rect()
+	label.center = labelblock.center
+	surface.blit(labeltext, label)
+
+
+
+	
+	# Draw the keys
 	k = getkeys(board)
 	z = key()
 
