@@ -37,7 +37,10 @@ timeout = 3
 confdir = "/boot/local/home/.gcwconnect/"
 sysconfdir = "/usr/local/etc/network/"
 surface = pygame.display.set_mode((320,240))
-
+keyboard = ''
+selected_key = ''
+maxrows = ''
+maxcolumns = ''
 
 def createpaths(): # Create paths, if necessary
 	if not os.path.exists(confdir):
@@ -295,9 +298,14 @@ def connect(): # Connect to a network
 
 ## Keyboard
 def getkeys(board):
-	def boardA():
+
+	def qwertyNormal():
 		keyarray = {}
 		keyboard = {}
+		global maxrows
+		global maxcolumns
+		maxrows = 4
+		maxcolumns = 13
 		keys = 	'`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',\
 				'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\',\
 				'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', 'Shift', '',\
@@ -323,9 +331,13 @@ def getkeys(board):
 			keyid += 1
 		return keyboard
 
-	def boardB():
+	def qwertyShift():
 		keyarray = {}
 		keyboard = {}
+		global maxrows
+		global maxcolumns
+		maxrows = 4
+		maxcolumns = 13
 		keys = 	'~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',\
 				'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|',\
 				'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', 'Shift', '',\
@@ -351,14 +363,18 @@ def getkeys(board):
 			keyid += 1
 		return keyboard
 
-	def boardWEP():
+	def wep():
 		keyarray = {}
 		keyboard = {}
+		global maxrows
+		global maxcolumns
+		maxrows = 5
+		maxcolumns = 4
 		keys = 	'1', '2', '3', '4', \
 				'5', '6', '7', '8', \
 				'9', '0', 'A', 'B', \
 				'C', 'D', 'E', 'F', \
-				'Enter'
+				'Enter', '', '', ''
 		row = 0
 		column = 0
 		keyid = 0
@@ -380,14 +396,13 @@ def getkeys(board):
 			keyid += 1
 		return keyboard
 	
-	if board == "A":
-		k = boardA()
-	elif board == "B":
-		k = boardB()
-	elif board == "WEP":
-		k = boardWEP()
+	if board == "qwertyNormal":
+		k = qwertyNormal()
+	elif board == "qwertyShift":
+		k = qwertyShift()
+	elif board == "wep":
+		k = wep()
 	return k
-
 class key:
 	def __init__(self):
 		self.key = []
@@ -405,55 +420,54 @@ class key:
 	def drawkey(self):
 		key_width = 16
 		key_height = 16
-		top = 110
-		left = 10
+		top = ''
+		left = ''
 
 		if self.row == 0:
-			top = 110
+			top = 136
 		elif self.row == 1:
-			top = 130
+			top = 156
 		elif self.row == 2:
-			top = 150
+			top = 176
 		elif self.row == 3:
-			top = 170
+			top = 196
 		elif self.row == 4:
-			top = 190
+			top = 216
 
 		if self.column == 0:
-			left = 10
+			left = 32
 		elif self.column == 1:
-			left = 30
+			left = 52
 		elif self.column == 2:
-			left = 50
+			left = 72
 		elif self.column == 3:
-			left = 70
+			left = 92
 		elif self.column == 4:
-			left = 90
+			left = 112
 		elif self.column == 5:
-			left = 110
+			left = 132
 		elif self.column == 6:
-			left = 130
+			left = 152
 		elif self.column == 7:
-			left = 150
+			left = 172
 		elif self.column == 8:
-			left = 170
+			left = 192
 		elif self.column == 9:
-			left = 190
+			left = 212
 		elif self.column == 10:
-			left = 210
+			left = 232
 		elif self.column == 11:
-			left = 230
+			left = 252
 		elif self.column == 12:
-			left = 250
+			left = 272
 
 		if len(self.key) > 1:
 			key_width = 36
-		keybox = pygame.draw.rect(surface, (50,50,50), (left,top,key_width,key_height)) # (left, top, width, height)
+		keybox = pygame.draw.rect(surface, (50,50,50), (left,top,key_width,key_height))
 		text = pygame.font.SysFont(None, 16).render(self.key, True, (255, 255, 255), (50,50,50))
 		label = text.get_rect()
 		label.center = keybox.center
 		surface.blit(text, label)
-
 def drawkeyboard(board):
 	pygame.draw.rect(surface, (84,84,84), (0,100,320,140)) # (left, top, width, height)
 
@@ -466,23 +480,29 @@ def drawkeyboard(board):
 
 	pygame.display.update()
 
-def softkeyinput():
+	return keyboard
+def input(board):
+	selectkey(board)
+	security = softkeyinput(board)
+	return security
+def softkeyinput(keyboard):
+	security = ''
 	wait = "true"
 	while wait == "true":
 		for event in pygame.event.get():
 
 			if event.type == KEYDOWN:
-				if event.type == K_RETURN:		# finish input
+				if event.key == K_RETURN:		# finish input
 					wait = "false"
 
 				if event.key == K_UP:		# Move cursor up
-					pass
+					selectkey(keyboard, "up")
 				if event.key == K_DOWN:		# Move cursor down
-					pass
+					selectkey(keyboard, "down")
 				if event.key == K_LEFT:		# Move cursor left
-					pass
+					selectkey(keyboard, "left")
 				if event.key == K_RIGHT:	# Move cursor right
-					pass
+					selectkey(keyboard, "right")
 				if event.key == K_LCTRL:	# select character
 					pass
 				if event.key == K_LALT:		# go back
@@ -493,7 +513,79 @@ def softkeyinput():
 					pass
 				if event.key == K_BACKSPACE:	# move cursor right
 					pass
+	redraw()
+	return security
+def selectkey(keyboard, direction="none"):
+	def highlightkey(pos):
+		drawkeyboard(keyboard)
+		pygame.display.update()
 
+		left_margin = 32
+		top_margin = 136
+
+		if pos[0] > left_margin:
+			x = left_margin + (16 * (pos[0]))
+		else:
+			x = left_margin + (16 * pos[0]) + (pos[0] * 4)
+			
+
+		if pos[1] > top_margin:
+			y = top_margin + (16 * (pos[1]))
+		else:
+			y = top_margin + (16 * pos[1]) + (pos[1] * 4)
+
+		list = [ \
+					(x, y), \
+					(x + 16, y), \
+					(x + 16, y + 16), \
+					(x, y + 16), \
+					(x, y) \
+				]
+		lol = pygame.draw.lines(surface, (255,255,255), True, list, 1)
+		pygame.display.update()
+	def draw_selected_key(keyboard, pos):
+
+		if keyboard == "qwertyNormal":
+			pass
+		elif keyboard == "qwertyShift":
+			pass
+		elif keyboard == "wep":
+			pass
+
+	global maxrows
+	global maxcolumns
+	global selected_key
+
+	if not selected_key:
+		selected_key = [0,0]
+		highlightkey(selected_key)
+	else:
+		if direction == "up":
+			if selected_key[1] <= 0:
+				selected_key[1] = 0
+			else:
+				selected_key[1] -= 1
+			highlightkey(selected_key)
+		elif direction == "down":
+			if selected_key[1] >= maxrows - 1:
+				selected_key[1] = maxrows - 1
+			else:
+				selected_key[1] = selected_key[1] + 1
+			highlightkey(selected_key)
+		elif direction == "left":
+			if selected_key[0] <= 0:
+				selected_key[0] = 0
+			else:
+				selected_key[0] = selected_key[0] - 1
+			highlightkey(selected_key)
+		elif direction == "right":
+			if selected_key[0] >= maxcolumns - 1:
+				selected_key[0] = maxcolumns - 1
+			else:
+				selected_key[0] = selected_key[0] + 1
+			highlightkey(selected_key)
+
+	draw_selected_key(keyboard, selected_key)
 class Menu:
 	font_size = 24
 	font = pygame.font.SysFont
@@ -620,13 +712,11 @@ if __name__ == "__main__":
 	pygame.key.set_repeat(199,69) #(delay,interval)
 	redraw()
 	active_menu = "main"
-	drawkeyboard("A")
 
-	# k = keyboard("A")
-	# for x, y in k.iteritems():
-	# 	print y['key']
-
-	# drawkeyboard("A")
+	# Define which keyboard to draw, then output the key entered as a variable
+	keyboard = "qwertyNormal"
+	drawkeyboard(keyboard)
+	passphrase = input(keyboard)
 
 	while 1:
 		for event in pygame.event.get():
