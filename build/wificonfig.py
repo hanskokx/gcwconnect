@@ -584,6 +584,8 @@ def softkeyinput(keyboard):
 						keyboard = "qwertyNormal"
 					drawkeyboard(keyboard)
 					selectkey(keyboard, "swap")
+				if event.key == K_LSHIFT:	# X button
+					selectkey(keyboard, "delete")
 				if event.key == K_TAB:		# move cursor left
 					pass
 				if event.key == K_BACKSPACE:	# move cursor right
@@ -592,6 +594,12 @@ def softkeyinput(keyboard):
 	return security
 
 def selectkey(keyboard, direction="none"):
+	def displaypassphrase(passphrase, size=24):
+		# Display passphrase already typed on screen
+		pw = pygame.font.SysFont(None, size).render(passphrase, True, (255, 255, 255), (0, 0, 0))
+		pwtext = pw.get_rect()
+		surface.blit(pw, pwtext)
+		pygame.display.update()
 	def getcurrentkey(keyboard, pos):
 		keys = getkeys(keyboard)
 		for item in keys.iteritems():
@@ -668,6 +676,21 @@ def selectkey(keyboard, direction="none"):
 			highlightkey(keyboard, selected_key)
 		elif direction == "select":
 			passphrase += getcurrentkey(keyboard, selected_key)
+			if len(passphrase) > 20:
+				drawlogobar()
+				drawlogo()
+				displaypassphrase(passphrase, 12)
+			else:
+				displaypassphrase(passphrase)
+		elif direction == "delete":
+			if len(passphrase) > 0:
+				passphrase = passphrase[:-1]
+				drawlogobar()
+				drawlogo()
+				if len(passphrase) > 20:
+					displaypassphrase(passphrase, 12)
+				else:
+					displaypassphrase(passphrase)
 		elif direction == "enter":
 			print passphrase
 
