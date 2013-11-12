@@ -46,7 +46,8 @@ def createpaths(): # Create paths, if necessary
 		os.makedirs(confdir)
 	if not os.path.exists(sysconfdir):
 		os.makedirs(sysconfdir)
-
+def shellquote(s):
+    return "'" + s.replace("'", "'\\''") + "'"
 # Initialize the dispaly, for pygame
 if not pygame.display.get_init():
 	pygame.display.init()
@@ -332,7 +333,7 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 		f.close()
 
 def connect(): # Connect to a network
-	oldconf = ssidconfig
+	oldconf = shellquote(ssidconfig)
 	newconf = sysconfdir +"config-wlan0.conf"
 	shutil.copy2(ssidconfig, newconf)
 	ifdown()
