@@ -19,7 +19,7 @@
 #	limitations under the License.
 
 import subprocess as SU
-import sys, time, os, shutil
+import sys, time, os, shutil, re
 import pygame
 from pygame.locals import *
 
@@ -59,8 +59,6 @@ def createpaths(): # Create paths, if necessary
 		os.makedirs(confdir)
 	if not os.path.exists(sysconfdir):
 		os.makedirs(sysconfdir)
-def shellquote(s):
-    return "'" + s.replace("'", "'\\''") + "'"
 
 ## Interface management
 def ifdown():
@@ -340,7 +338,7 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 		f.write('WLAN_DHCP_RETRIES=20\n')
 		f.close()
 def connect(): # Connect to a network
-	oldconf = shellquote(ssidconfig)
+	oldconf = re.escape(ssidconfig)
 	newconf = sysconfdir +"config-wlan0.conf"
 	shutil.copy2(ssidconfig, newconf)
 	ifdown()
@@ -1015,7 +1013,7 @@ if __name__ == "__main__":
 						position = str(wirelessmenu.get_position())
 						if str(detail['Network']['menu']) == position:
 							ssid = network
-							ssidconfig = netconfdir +ssid +".conf"	
+							ssidconfig = netconfdir +ssid +".conf"
 							if detail['Network']['Encryption'] == "none":
 								pass
 							elif detail['Network']['Encryption'] == "wep":
