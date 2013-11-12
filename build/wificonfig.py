@@ -478,7 +478,6 @@ def drawkeyboard(board):
 			z.init(y['key'],y['row'],y['column'])
 
 	pygame.display.update()
-
 	return keyboard
 def input(board):
 	selectkey(board)
@@ -503,12 +502,17 @@ def softkeyinput(keyboard):
 					selectkey(keyboard, "left")
 				if event.key == K_RIGHT:	# Move cursor right
 					selectkey(keyboard, "right")
-				if event.key == K_LCTRL:	# select character
+				if event.key == K_LCTRL:	# A button
 					selectkey(keyboard, "select")
-				if event.key == K_LALT:		# go back
-					pass
+				if event.key == K_LALT:		# B button
+					selectkey(keyboard, "select")
 				if event.key == K_SPACE:	# shift
-					pass
+					if keyboard == "qwertyNormal":
+						keyboard = "qwertyShift"
+					elif keyboard == "qwertyShift":
+						keyboard = "qwertyNormal"
+					drawkeyboard(keyboard)
+					selectkey(keyboard, "swap")
 				if event.key == K_TAB:		# move cursor left
 					pass
 				if event.key == K_BACKSPACE:	# move cursor right
@@ -557,6 +561,9 @@ def selectkey(keyboard, direction="none"):
 
 	if not selected_key:
 		selected_key = [0,0]
+		highlightkey(keyboard, selected_key)
+
+	if direction == "swap":
 		highlightkey(keyboard, selected_key)
 	else:
 		if direction == "up":
