@@ -33,14 +33,27 @@ timeout = 3
 ## That's it for options. Everything else below shouldn't be edited.
 confdir = "/boot/local/home/.gcwconnect/"
 sysconfdir = "/usr/local/etc/network/"
-wirelessmenuexists = ""
+
 surface = pygame.display.set_mode((320,240))
 keyboard = ''
 selected_key = ''
 maxrows = ''
 maxcolumns = ''
 passphrase = ''
+wirelessmenuexists = ''
 
+## Initialize the dispaly, for pygame
+if not pygame.display.get_init():
+	pygame.display.init()
+
+if not pygame.font.get_init():
+	pygame.font.init()
+
+surface.fill((41,41,41))
+pygame.mouse.set_visible(False)
+pygame.key.set_repeat(199,69) #(delay,interval)
+
+## File management
 def createpaths(): # Create paths, if necessary
 	if not os.path.exists(confdir):
 		os.makedirs(confdir)
@@ -48,12 +61,6 @@ def createpaths(): # Create paths, if necessary
 		os.makedirs(sysconfdir)
 def shellquote(s):
     return "'" + s.replace("'", "'\\''") + "'"
-# Initialize the dispaly, for pygame
-if not pygame.display.get_init():
-	pygame.display.init()
-
-if not pygame.font.get_init():
-	pygame.font.init()
 
 ## Interface management
 def ifdown():
@@ -268,7 +275,6 @@ def wifilistedit():
 	atext = a.get_rect()
 	atext.center = abutton.center
 	surface.blit(a, atext)
-
 def redraw():
 	surface.fill((41,41,41))
 	drawlogobar()
@@ -318,6 +324,7 @@ def modal(text,wait="true",timeout="false"): # Draw a modal
 					redraw()
 					wait = "false"
 
+## Connect to a network
 def writeconfig(mode="a"): # Write wireless configuration to disk
 	global passphrase
 	if passphrase:
@@ -331,7 +338,6 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 		f.write('WLAN_DRIVER="wext"\n')
 		f.write('WLAN_DHCP_RETRIES=20\n')
 		f.close()
-
 def connect(): # Connect to a network
 	oldconf = shellquote(ssidconfig)
 	newconf = sysconfdir +"config-wlan0.conf"
@@ -879,7 +885,17 @@ def swapmenu(active_menu):
 wirelessmenu = Menu()
 menu = Menu()
 def mainmenu():
-	menu.init(['Scan', 'Toggle Wifi', 'Quit'], surface)
+	def wlan():
+		wlanstatus = ''
+		currentssid = getcurrentssid()
+		if not checkinterfacestatus() == '':
+			if currentssid:
+				wlanstatus = "Turn off wifi"
+		else:
+			wlanstatus = "Reconnect"
+		return wlanstatus
+	wlan = wlan()		
+	menu.init(['Scan for APs', wlan, 'Quit'], surface)
 	menu.move_menu(16, 96)
 	menu.draw()
 
@@ -889,9 +905,6 @@ if __name__ == "__main__":
 	uniqssids = {}
 	currentssid = ""
 	createpaths()
-	surface.fill((41,41,41))
-	pygame.mouse.set_visible(False)
-	pygame.key.set_repeat(199,69) #(delay,interval)
 	redraw()
 	active_menu = "main"
 	while 1:
