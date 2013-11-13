@@ -666,6 +666,14 @@ def softkeyinput(keyboard):
 					passphrase = ''
 					wait = "false"
 					go = "false"
+				if event.key == K_RETURN:	# Start key
+					redraw()
+					writeconfig("w")
+					modal("Connecting...","false")
+					connect()
+					drawinterfacestatus()
+					wait = "false"
+					passphrase = ''
 	redraw()
 	return go
 
@@ -1024,7 +1032,5 @@ if __name__ == "__main__":
 								displaypassphrase(passphrase)
 								drawkeyboard("qwertyNormal")
 								getinput("qwertyNormal")
-							writeconfig("w")
-
 
 		pygame.display.update()
