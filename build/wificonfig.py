@@ -913,9 +913,9 @@ def mainmenu():
 		return wlanstatus
 	wlan = wlan()
 	if wlan:
-		menu.init(['Scan for APs', wlan], surface)
+		menu.init(['Scan for APs', wlan, "Quit"], surface)
 	else:
-		menu.init(['Scan for APs'], surface)
+		menu.init(['Scan for APs', "It's a secret.", "Quit"], surface)
 	menu.move_menu(16, 96)
 	menu.draw()
 
@@ -938,14 +938,17 @@ if __name__ == "__main__":
 			# R = K_BACKSPACE
 			# start = K_RETURN
 			# select = K_ESCAPE
-			# power up = KEY_POWER
-			# power down = KEY_PAUSE
+			# power up = K_KP0
+			# power down = K_PAUSE
 
 			if event.type == QUIT:
 				pygame.display.quit()
 				sys.exit()
 
 			elif event.type == KEYDOWN:
+				print event.key
+				if event.key == K_KP0:
+					print "power"
 				if event.key == K_UP: # Arrow up the menu
 					if active_menu == "main":
 						menu.draw(-1)
@@ -1000,6 +1003,10 @@ if __name__ == "__main__":
 								wirelessmenuexists = "false"
 								ifdown()
 								redraw()
+
+						if menu.get_position() == 2: # Quit menu
+							pygame.display.quit()
+							sys.exit()
 
 					# SSID menu		
 					elif active_menu == "ssid":
