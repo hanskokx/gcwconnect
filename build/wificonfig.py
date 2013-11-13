@@ -129,7 +129,7 @@ def ifup():
 				modal('Connection failed. Retrying...'+str(counter),"false")
 			command = ['ifup', wlan]
 			with open(os.devnull, "w") as fnull:
-				output = SU.Popen(command, stderr = fnull)
+				output = SU.Popen(command, stdout=SU.PIPE, stderr = fnull).stdout.readlines()
 			counter += 1
 			drawinterfacestatus()
 			pygame.display.update()
@@ -412,7 +412,8 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 	if passphrase:
 		if passphrase == "none":
 			passphrase = ""
-		f = open(ssidconfig, mode)
+		conf = netconfdir+re.escape(ssidconfig)+".conf"
+		f = open(conf, mode)
 		f.write('WLAN_ESSID="'+ssid+'"\n')
 		f.write('WLAN_ENCRYPTION="'+uniq[ssid]['Network']['Encryption']+'"\n')
 		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
@@ -421,9 +422,10 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 def connect(): # Connect to a network
 	global go
 	if go == "true":
-		oldconf = re.escape(ssidconfig)
+		oldconf = netconfdir+re.escape(ssidconfig)+".conf"
 		newconf = sysconfdir +"config-wlan0.conf"
-		shutil.copy2(ssidconfig, newconf)
+		os.environ['CONFIG_FILE'] = netconfdir+ssidconfig+".conf"
+		shutil.copy2(oldconf, newconf)
 		ifup()
 
 ## Keyboard
@@ -1101,7 +1103,7 @@ if __name__ == "__main__":
 							position = str(wirelessmenu.get_position())
 							if str(detail['Network']['menu']) == position:
 								ssid = network
-								ssidconfig = re.escape(ssid) +".conf"	
+								ssidconfig = re.escape(ssid)	
 								if not os.path.exists(ssidconfig):
 									if detail['Network']['Encryption'] == "none":
 										passphrase = "none"
@@ -1126,7 +1128,7 @@ if __name__ == "__main__":
 						position = str(wirelessmenu.get_position())
 						if str(detail['Network']['menu']) == position:
 							ssid = network
-							ssidconfig = re.escape(ssid) +".conf"
+							ssidconfig = re.escape(ssid)
 							if detail['Network']['Encryption'] == "none":
 								pass
 							elif detail['Network']['Encryption'] == "wep":
