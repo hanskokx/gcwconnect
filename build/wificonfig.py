@@ -18,6 +18,20 @@
 #	See the License for the specific language governing permissions and
 #	limitations under the License.
 
+
+'''
+
+TODO list:
+
+* Add in hostapd/ap configuration options for device to device connections
+* Add manual network configuration option
+* Rewrite menus to give better scrolling options, and not have to do logic by menu position instead of content
+* Allow viewing/deleting saved networks
+* Show signal strength of scanned SSIDs
+
+'''
+
+
 import subprocess as SU
 import sys, time, os, shutil, re
 import pygame
@@ -32,6 +46,7 @@ timeout = 3
 
 ## That's it for options. Everything else below shouldn't be edited.
 confdir = os.environ['HOME'] + "/.gcwconnect/"
+netconfdir = confdir+"networks/"
 sysconfdir = "/usr/local/etc/network/"
 
 surface = pygame.display.set_mode((320,240))
@@ -63,44 +78,73 @@ def createpaths(): # Create paths, if necessary
 
 ## Interface management
 def ifdown():
+	modal("Disabling wifi...","false")
 	command = ['ifdown', wlan]
-	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	command = ['rfkill', 'block', 'wlan']
+	SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	time.sleep(1)
+def enablewifi():
+	check = checkinterfacestatus()
+	if not check:
+		modal("Enabling wifi...","false")
+		command = ['rfkill', 'unblock', 'wlan']
+		SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+
+		command = ['ifconfig']
+		with open(os.devnull, "w") as fnull:
+			output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+		drawinterfacestatus()
+		pygame.display.update()
+		good = ''
+		while not good:
+			for line in output:
+				if line.strip().startswith("wlan"):
+					good = "ok"
+				else:
+					command = ['ifconfig', wlan, 'up']
+					with open(os.devnull, "w") as fnull:
+						SU.Popen(command, stdout = fnull, stderr = fnull)
+					command = ['ifconfig']
+					output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 def ifup():
-	def fixmetrics(): # This is stupid and I shouldn't have to do this.
-		command = ['route', 'del', 'default', 'gw', '10.1.1.1', 'netmask', '0.0.0.0']
-		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
-		command = ['route', 'add', '-net', 'default', 'gw', '10.1.1.1', 'netmask', '0.0.0.0', 'dev', 'usb0', 'metric', '2']
-		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
-	fixmetrics()
 	oldssid = ''
 	if getcurrentssid():
 		oldssid = getcurrentssid()
 	counter = 0
-	while checkinterfacestatus() == '' and counter < timeout:
-		if counter > 0:
-			modal('Connection failed. Retrying...'+str(counter),"false")
-		command = ['ifup', wlan]
-		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
-		counter += 1
-
-		if counter >= timeout:
-			modal('Connection failed!',wait="true")
-		else:
-			wlanstatus = ""
-			currentssid = getcurrentssid()
-			if not checkinterfacestatus() == "offline":
-				if not currentssid == "unassociated" and not oldssid == currentssid:
-					modal("Connected!","false","true")
-
+	check = checkinterfacestatus()
+	if not check:
+		enablewifi()
+	else:
+		modal("Connecting...","false")
+		check = ''
+		while not check and counter < timeout:
+			if counter > 0:
+				modal('Connection failed. Retrying...'+str(counter),"false")
+			command = ['ifup', wlan]
+			output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+			counter += 1
+			drawinterfacestatus()
+			pygame.display.update()
+			if counter >= timeout:
+				modal('Connection failed!',wait="true")
+			else:
+				wlanstatus = ""
+				currentssid = getcurrentssid()
+				if not checkinterfacestatus() == "offline":
+					if not currentssid == "unassociated" and not oldssid == currentssid:
+						modal("Connected!","false","true")
+			check = checkinterfacestatus()
 def getwlanip():
 	ip = ""
-	command = ['ifconfig', wlan]
+	command = ['ifconfig']
 	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 
 	for line in output:
 		if line.strip().startswith("inet addr"):
 			ip = str.strip(line[line.find('inet addr')+len('inet addr"'):line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
-
+			if ip == "10.1.1.2" or ip == "127.0.0.1":
+				ip = ''
 	return ip
 def checkinterfacestatus():
 	interface = "" # set default assumption of interface status
@@ -113,13 +157,15 @@ def checkinterfacestatus():
 			ip = getwlanip()
 			if ip:
 				interface = ip
-
+			else:
+				currentssid = getcurrentssid()
+				if currentssid == "unassociated":
+					interface = "disconnected"
+			
 	return interface
 def getnetworks(): # Run iwlist to get a list of networks in range
+	enablewifi()
 	modal("Scanning...","false")
-	command = ['ifconfig', wlan, 'up']
-	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
-	drawinterfacestatus()
 	command = ['iwlist', wlan, 'scan']
 	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 	for item in output:
@@ -151,6 +197,16 @@ def listuniqssids():
 				uniqssid["Network"]["Encryption"] = detail['Encryption']
 				menuposition += 1
 	return uniqssids
+def getwlanstatus():
+	global wlan
+	wlanstatus = ''
+	command = ['ifconfig']
+	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+
+	for line in output:
+		if line.strip().startswith(wlan):
+			wlanstatus = "ok"
+	return wlanstatus
 
 ## Parsing iwlist output for various components
 def parsemac(macin):
@@ -217,28 +273,34 @@ def drawlogo():
 def drawstatusbar(): # Set up the status bar
 	pygame.draw.rect(surface, (84,84,84), (0,224,320,16))
 	pygame.draw.line(surface, (255, 255, 255), (0, 223), (320, 223))
+	wlantext = pygame.font.SysFont(None, 16).render("...", True, (255, 255, 255), (84,84,84))
+	wlan_text = wlantext.get_rect()
+	wlan_text.topleft = (4, 227)
+	surface.blit(wlantext, wlan_text)
 def drawinterfacestatus(): # Interface status badge
-	wlanstatus = ""
-	currentssid = getcurrentssid()
-	if not checkinterfacestatus() == '':
+	wlanstatus = getwlanstatus()
+	if not wlanstatus: 
+		wlanstatus = wlan+" is off."
+	else:
+		currentssid = getcurrentssid()
 		if currentssid == "unassociated":
 			wlanstatus = wlan+" is disconnected."
 		elif not currentssid == "unassociated":
 			wlanstatus = currentssid
-	else:
-		wlanstatus = wlan+" is off."
+	
 
 	wlantext = pygame.font.SysFont(None, 16).render(wlanstatus, True, (255, 255, 255), (84,84,84))
 	wlan_text = wlantext.get_rect()
 	wlan_text.topleft = (4, 227)
 	surface.blit(wlantext, wlan_text)
 
-	if not checkinterfacestatus() == "not connected":
+	if not checkinterfacestatus() == "not connected" and not checkinterfacestatus() == "disconnected":
 		text = pygame.font.SysFont(None, 16).render(checkinterfacestatus(), True, (153, 0, 0), (84,84,84))
 		interfacestatus_text = text.get_rect()
 		interfacestatus_text.topright = (315, 227)
 		surface.blit(text, interfacestatus_text)
 def getcurrentssid(): # What network are we connected to?
+	ssid = ''
 	command = ['iwconfig', wlan]
 	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 
@@ -340,20 +402,16 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 			passphrase = ""
 		f = open(ssidconfig, mode)
 		f.write('WLAN_ESSID="'+ssid+'"\n')
-		f.write('WLAN_MODE="managed"\n')
 		f.write('WLAN_ENCRYPTION="'+uniq[ssid]['Network']['Encryption']+'"\n')
 		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
-		f.write('WLAN_DRIVER="wext"\n')
 		f.write('WLAN_DHCP_RETRIES=20\n')
 		f.close()
 def connect(): # Connect to a network
 	global go
 	if go == "true":
-		modal("Connecting...","false")
 		oldconf = re.escape(ssidconfig)
 		newconf = sysconfdir +"config-wlan0.conf"
 		shutil.copy2(ssidconfig, newconf)
-		ifdown()
 		ifup()
 
 ## Keyboard
@@ -904,24 +962,11 @@ def swapmenu(active_menu):
 wirelessmenu = Menu()
 menu = Menu()
 def mainmenu():
-	def wlan():
-		wlanstatus = ''
-		try:
-			with open('/media/data/local/etc/network/config-wlan0.conf'):
-				currentssid = getcurrentssid()
-				if not checkinterfacestatus() == '':
-					if currentssid:
-						wlanstatus = "Turn off wifi"
-				else:
-					wlanstatus = "Reconnect"
-		except IOError:
-			pass
-		return wlanstatus
-	wlan = wlan()
-	if wlan:
-		menu.init(['Scan for APs', wlan, "Quit"], surface)
+	status = getwlanstatus()
+	if not status == "ok":
+		menu.init(['Scan for APs', "Enable wifi", "Quit"], surface)
 	else:
-		menu.init(['Scan for APs', "It's a secret.", "Quit"], surface)
+		menu.init(['Scan for APs', "Disable Wifi", "Quit"], surface)
 	menu.move_menu(16, 96)
 	menu.draw()
 
@@ -931,7 +976,18 @@ if __name__ == "__main__":
 	uniqssids = {}
 	currentssid = ""
 	createpaths()
-	redraw()
+	surface.fill((41,41,41))
+	drawlogobar()
+	drawlogo()
+	mainmenu()
+	if wirelessmenuexists == "true":
+		wirelessmenu.draw()
+		wifilistedit()
+
+	drawstatusbar()
+	pygame.display.update()
+	drawinterfacestatus()
+	pygame.display.update()
 	active_menu = "main"
 	while 1:
 		for event in pygame.event.get():
@@ -1008,14 +1064,16 @@ if __name__ == "__main__":
 							redraw()
 
 						if menu.get_position() == 1: # Toggle wifi
-							if not checkinterfacestatus():
-								modal("Connecting...","false")
+							status = getwlanstatus()
+							if not status == "ok":
 								ifup()
 								redraw()
+								status = ''
 							else:
 								wirelessmenuexists = "false"
 								ifdown()
 								redraw()
+								status = ''
 
 						if menu.get_position() == 2: # Quit menu
 							pygame.display.quit()
@@ -1024,7 +1082,6 @@ if __name__ == "__main__":
 					# SSID menu		
 					elif active_menu == "ssid":
 						ssid = ""
-						netconfdir = confdir+"networks/"
 						if not os.path.exists(netconfdir):
 							os.makedirs(netconfdir)
 
@@ -1032,7 +1089,7 @@ if __name__ == "__main__":
 							position = str(wirelessmenu.get_position())
 							if str(detail['Network']['menu']) == position:
 								ssid = network
-								ssidconfig = netconfdir +ssid +".conf"	
+								ssidconfig = re.escape(ssid) +".conf"	
 								if not os.path.exists(ssidconfig):
 									if detail['Network']['Encryption'] == "none":
 										passphrase = "none"
@@ -1050,7 +1107,6 @@ if __name__ == "__main__":
 								redraw()
 				if event.key == K_ESCAPE and active_menu == "ssid": # Allow us to edit the existing key
 					ssid = ""
-					netconfdir = confdir+"networks/"
 					if not os.path.exists(netconfdir):
 						os.makedirs(netconfdir)
 
@@ -1058,7 +1114,7 @@ if __name__ == "__main__":
 						position = str(wirelessmenu.get_position())
 						if str(detail['Network']['menu']) == position:
 							ssid = network
-							ssidconfig = netconfdir +ssid +".conf"
+							ssidconfig = re.escape(ssid) +".conf"
 							if detail['Network']['Encryption'] == "none":
 								pass
 							elif detail['Network']['Encryption'] == "wep":
