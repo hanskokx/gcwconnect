@@ -65,6 +65,7 @@ def ifdown():
 	command = ['ifdown', wlan]
 	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 def ifup():
+	oldssid = ''
 	if getcurrentssid():
 		oldssid = getcurrentssid()
 	counter = 0
@@ -894,15 +895,22 @@ menu = Menu()
 def mainmenu():
 	def wlan():
 		wlanstatus = ''
-		currentssid = getcurrentssid()
-		if not checkinterfacestatus() == '':
-			if currentssid:
-				wlanstatus = "Turn off wifi"
-		else:
-			wlanstatus = "Reconnect"
+		try:
+			with open('/media/data/local/etc/network/config-wlan0.conf'):
+				currentssid = getcurrentssid()
+				if not checkinterfacestatus() == '':
+					if currentssid:
+						wlanstatus = "Turn off wifi"
+				else:
+					wlanstatus = "Reconnect"
+		except IOError:
+			pass
 		return wlanstatus
-	wlan = wlan()		
-	menu.init(['Scan for APs', wlan, 'Quit'], surface)
+	wlan = wlan()
+	if wlan:
+		menu.init(['Scan for APs', wlan], surface)
+	else:
+		menu.init(['Scan for APs'], surface)
 	menu.move_menu(16, 96)
 	menu.draw()
 
@@ -969,6 +977,7 @@ if __name__ == "__main__":
 							if not wirelessmenuexists == "true":
 								wirelessmenuexists = "true"
 							active_menu = swapmenu('main')
+							redraw()
 
 						if menu.get_position() == 1: # Toggle wifi
 							if not checkinterfacestatus():
@@ -976,12 +985,9 @@ if __name__ == "__main__":
 								ifup()
 								redraw()
 							else:
+								wirelessmenuexists = "false"
 								ifdown()
 								redraw()
-
-						if menu.get_position() == 2: # Quit menu
-							pygame.display.quit()
-							sys.exit()
 
 					# SSID menu		
 					elif active_menu == "ssid":
