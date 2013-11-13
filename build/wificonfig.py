@@ -66,6 +66,12 @@ def ifdown():
 	command = ['ifdown', wlan]
 	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 def ifup():
+	def fixmetrics(): # This is stupid and I shouldn't have to do this.
+		command = ['route', 'del', 'default', 'gw', '10.1.1.1', 'netmask', '0.0.0.0']
+		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+		command = ['route', 'add', '-net', 'default', 'gw', '10.1.1.1', 'netmask', '0.0.0.0', 'dev', 'usb0', 'metric', '2']
+		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	fixmetrics()
 	oldssid = ''
 	if getcurrentssid():
 		oldssid = getcurrentssid()
@@ -940,15 +946,22 @@ if __name__ == "__main__":
 			# select = K_ESCAPE
 			# power up = K_KP0
 			# power down = K_PAUSE
+			# left shoulder = K_TAB
+			# right shoulder = K_BACKSPACE
 
 			if event.type == QUIT:
 				pygame.display.quit()
 				sys.exit()
 
 			elif event.type == KEYDOWN:
-				print event.key
-				if event.key == K_KP0:
-					print "power"
+				if event.key == K_PAUSE: # Power down
+					pass
+				if event.key == K_TAB: # Left shoulder button
+					pass
+				if event.key == K_BACKSPACE: # Right shoulder button
+					pass
+				if event.key == K_KP0:	# Power up
+					pass
 				if event.key == K_UP: # Arrow up the menu
 					if active_menu == "main":
 						menu.draw(-1)
