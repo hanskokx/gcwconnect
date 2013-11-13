@@ -80,20 +80,26 @@ def createpaths(): # Create paths, if necessary
 def ifdown():
 	modal("Disabling wifi...","false")
 	command = ['ifdown', wlan]
-	SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	with open(os.devnull, "w") as fnull:
+		SU.Popen(command, stderr = fnull)
 	command = ['rfkill', 'block', 'wlan']
-	SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	with open(os.devnull, "w") as fnull:
+		SU.Popen(command, stderr = fnull)
+	try:
+		os.remove(sysconfdir+"config-"+wlan+".conf")
+	except:
+		pass
 	time.sleep(1)
 def enablewifi():
 	check = checkinterfacestatus()
 	if not check:
 		modal("Enabling wifi...","false")
 		command = ['rfkill', 'unblock', 'wlan']
-		SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+		with open(os.devnull, "w") as fnull:
+			SU.Popen(command, stderr = fnull)
 
 		command = ['ifconfig']
-		with open(os.devnull, "w") as fnull:
-			output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 		drawinterfacestatus()
 		pygame.display.update()
 		good = ''
@@ -122,7 +128,8 @@ def ifup():
 			if counter > 0:
 				modal('Connection failed. Retrying...'+str(counter),"false")
 			command = ['ifup', wlan]
-			output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+			with open(os.devnull, "w") as fnull:
+				output = SU.Popen(command, stderr = fnull)
 			counter += 1
 			drawinterfacestatus()
 			pygame.display.update()
@@ -138,7 +145,8 @@ def ifup():
 def getwlanip():
 	ip = ""
 	command = ['ifconfig']
-	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	with open(os.devnull, "w") as fnull:
+		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 
 	for line in output:
 		if line.strip().startswith("inet addr"):
@@ -150,7 +158,8 @@ def checkinterfacestatus():
 	interface = "" # set default assumption of interface status
 	ip = ""
 	command = ['ifconfig']
-	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	with open(os.devnull, "w") as fnull:
+		output = SU.Popen(command, stdout=SU.PIPE, stderr = fnull).stdout.readlines()
 
 	for line in output:
 		if line.strip().startswith(wlan):
@@ -167,7 +176,8 @@ def getnetworks(): # Run iwlist to get a list of networks in range
 	enablewifi()
 	modal("Scanning...","false")
 	command = ['iwlist', wlan, 'scan']
-	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	with open(os.devnull, "w") as fnull:
+		output = SU.Popen(command, stdout=SU.PIPE, stderr = fnull).stdout.readlines()
 	for item in output:
 		if item.strip().startswith('Cell'):
 			# network is the current list corresponding to a MAC address {MAC:[]}
@@ -201,7 +211,8 @@ def getwlanstatus():
 	global wlan
 	wlanstatus = ''
 	command = ['ifconfig']
-	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	with open(os.devnull, "w") as fnull:
+		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
 
 	for line in output:
 		if line.strip().startswith(wlan):
@@ -302,7 +313,8 @@ def drawinterfacestatus(): # Interface status badge
 def getcurrentssid(): # What network are we connected to?
 	ssid = ''
 	command = ['iwconfig', wlan]
-	output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+	with open(os.devnull, "w") as fnull:
+		output = SU.Popen(command, stdout=SU.PIPE, stderr = fnull).stdout.readlines()
 
 	for line in output:
 		if line.strip().startswith(wlan):
