@@ -41,6 +41,7 @@ maxrows = ''
 maxcolumns = ''
 passphrase = ''
 wirelessmenuexists = ''
+go = ''
 
 ## Initialize the dispaly, for pygame
 if not pygame.display.get_init():
@@ -141,6 +142,7 @@ def listuniqssids():
 				uniqssid = uniqssids.setdefault(detail['ESSID'], {})
 				uniqssid["Network"] = detail
 				uniqssid["Network"]["menu"] = menuposition
+				uniqssid["Network"]["Encryption"] = detail['Encryption']
 				menuposition += 1
 	return uniqssids
 
@@ -161,8 +163,8 @@ def parseencryption(encryption):
 	 	encryption = "none"
 
 	elif encryption.startswith('Encryption key:on'):
-		#encryption = "Encrypted (unknown)"
-		encryption = "wpa2"
+		encryption = "wep"
+
 	elif encryption.startswith("IE: WPA"):
 		encryption = "wpa"
 
@@ -170,7 +172,7 @@ def parseencryption(encryption):
 		encryption = "wpa2"
 
 	else:
-		encryption = "wep"
+		encryption = "Encrypted (unknown)"
 
 	return encryption
 
@@ -339,11 +341,14 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 		f.write('WLAN_DHCP_RETRIES=20\n')
 		f.close()
 def connect(): # Connect to a network
-	oldconf = re.escape(ssidconfig)
-	newconf = sysconfdir +"config-wlan0.conf"
-	shutil.copy2(ssidconfig, newconf)
-	ifdown()
-	ifup()
+	global go
+	if go == "true":
+		modal("Connecting...","false")
+		oldconf = re.escape(ssidconfig)
+		newconf = sysconfdir +"config-wlan0.conf"
+		shutil.copy2(ssidconfig, newconf)
+		ifdown()
+		ifup()
 
 ## Keyboard
 def getkeys(board):
@@ -632,7 +637,7 @@ def getinput(board):
 	return security
 def softkeyinput(keyboard):
 	global passphrase
-	go = ''
+	global go
 	wait = "true"
 	while wait == "true":
 		for event in pygame.event.get():
@@ -666,10 +671,10 @@ def softkeyinput(keyboard):
 				if event.key == K_ESCAPE:	# Select key
 					passphrase = ''
 					wait = "false"
-					go = "false"
 				if event.key == K_RETURN:	# Start key
 					redraw()
 					writeconfig("w")
+					go = "true"
 					modal("Connecting...","false")
 					connect()
 					drawinterfacestatus()
@@ -968,7 +973,14 @@ if __name__ == "__main__":
 							wirelessmenu.set_fontsize(14)
 
 							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
-								wirelessitems.append(item)
+								for network, detail in uniq.iteritems():
+									if network == item:
+										menuitem = "["
+										menuitem += str(detail['Network']['Encryption'])
+										menuitem += "] "
+										menuitem += str(detail['Network']['ESSID'])
+										wirelessitems.append(menuitem)
+
 
 							wirelessmenu.init(wirelessitems, surface)
 							wirelessmenu.move_menu(128, 36)
@@ -1012,11 +1024,10 @@ if __name__ == "__main__":
 										displaypassphrase(passphrase)
 										drawkeyboard("qwertyNormal")
 										getinput("qwertyNormal")
-									
 									writeconfig()
-								modal("Connecting...","false")
+								go = "true"
 								connect()
-								drawinterfacestatus()
+								redraw()
 				if event.key == K_ESCAPE and active_menu == "ssid": # Allow us to edit the existing key
 					ssid = ""
 					netconfdir = confdir+"networks/"
