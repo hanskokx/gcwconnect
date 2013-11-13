@@ -31,7 +31,7 @@ wlan = "wlan0"
 timeout = 3
 
 ## That's it for options. Everything else below shouldn't be edited.
-confdir = "/boot/local/home/.gcwconnect/"
+confdir = os.environ['HOME'] + "/.gcwconnect/"
 sysconfdir = "/usr/local/etc/network/"
 
 surface = pygame.display.set_mode((320,240))
