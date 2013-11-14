@@ -412,7 +412,7 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 	if passphrase:
 		if passphrase == "none":
 			passphrase = ""
-		conf = netconfdir+re.escape(ssidconfig)+".conf"
+		conf = netconfdir+ssidconfig+".conf"
 		f = open(conf, mode)
 		f.write('WLAN_ESSID="'+ssid+'"\n')
 		f.write('WLAN_ENCRYPTION="'+uniq[ssid]['Network']['Encryption']+'"\n')
@@ -695,13 +695,6 @@ def drawkeyboard(board, ssid):
 	atext = a.get_rect()
 	atext.center = abutton.center
 	surface.blit(a, atext)
-
-	# Draw SSID and encryption type labels
-	labelblock = pygame.draw.rect(surface, (255,255,255), (0,35,320,20))
-	labeltext = pygame.font.SysFont(None, 18).render("Enter key for "+ssid, True, (84, 84, 84), (255,255,255))
-	label = labeltext.get_rect()
-	label.center = labelblock.center
-	surface.blit(labeltext, label)
 	
 	# Draw the keys
 
@@ -767,6 +760,15 @@ def softkeyinput(keyboard, ssid):
 	return go
 
 def displaypassphrase(passphrase, size=24): # Display passphrase on screen
+
+	# Draw SSID and encryption type labels
+	labelblock = pygame.draw.rect(surface, (255,255,255), (0,35,320,20))
+	labeltext = pygame.font.SysFont(None, 18).render("Enter key for "+ssid, True, (84, 84, 84), (255,255,255))
+	label = labeltext.get_rect()
+	label.center = labelblock.center
+	surface.blit(labeltext, label)
+
+	# Passphrase area
 	bg = pygame.draw.rect(surface, (255, 255, 255), (0, 55, 320, 45))
 	text = "[ "
 	text += passphrase
@@ -1106,8 +1108,9 @@ if __name__ == "__main__":
 							position = str(wirelessmenu.get_position())
 							if str(detail['Network']['menu']) == position:
 								ssid = network
-								ssidconfig = re.escape(ssid)	
-								if not os.path.exists(ssidconfig):
+								ssidconfig = re.escape(ssid)
+								conf = netconfdir+ssidconfig+".conf"
+								if not os.path.exists(conf):
 									if detail['Network']['Encryption'] == "none":
 										passphrase = "none"
 										writeconfig()
@@ -1122,6 +1125,10 @@ if __name__ == "__main__":
 										displaypassphrase(passphrase)
 										drawkeyboard("qwertyNormal", ssid)
 										getinput("qwertyNormal", ssid)
+								else:
+									go = "true"
+									connect()
+									redraw()							
 
 				if event.key == K_ESCAPE and active_menu == "ssid": # Allow us to edit the existing key
 					ssid = ""
