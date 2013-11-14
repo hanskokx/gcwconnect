@@ -131,6 +131,7 @@ def ifup():
 			with open(os.devnull, "w") as fnull:
 				output = SU.Popen(command, stdout=SU.PIPE, stderr = fnull).stdout.readlines()
 			counter += 1
+			drawstatusbar()
 			drawinterfacestatus()
 			pygame.display.update()
 			if counter >= timeout:
@@ -139,7 +140,7 @@ def ifup():
 				wlanstatus = ""
 				currentssid = getcurrentssid()
 				if not checkinterfacestatus() == "offline":
-					if not currentssid == "unassociated" and not oldssid == currentssid:
+					if not currentssid == "unassociated":
 						modal("Connected!","false","true")
 			check = checkinterfacestatus()
 def getwlanip():
@@ -758,7 +759,6 @@ def softkeyinput(keyboard, ssid):
 					passphrase = ''
 	redraw()
 	return go
-
 def displaypassphrase(passphrase, size=24): # Display passphrase on screen
 
 	# Draw SSID and encryption type labels
@@ -985,9 +985,9 @@ menu = Menu()
 def mainmenu():
 	status = getwlanstatus()
 	if not status == "ok":
-		menu.init(['Scan for APs', "Enable wifi", "Quit"], surface)
+		menu.init(['Scan for APs', "Turn wifi on", "Quit"], surface)
 	else:
-		menu.init(['Scan for APs', "Disable Wifi", "Quit"], surface)
+		menu.init(['Scan for APs', "Turn wifi off", "Quit"], surface)
 	menu.move_menu(16, 96)
 	menu.draw()
 
@@ -1068,10 +1068,8 @@ if __name__ == "__main__":
 							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
 								for network, detail in uniq.iteritems():
 									if network == item:
-										menuitem = "["
-										menuitem += str(detail['Network']['Encryption'])
-										menuitem += "] "
-										menuitem += str(detail['Network']['ESSID'])
+										print network, detail
+										menuitem = str(detail['Network']['ESSID'])
 										wirelessitems.append(menuitem)
 
 
