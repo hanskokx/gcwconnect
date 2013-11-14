@@ -599,7 +599,7 @@ class key:
 		label = text.get_rect()
 		label.center = keybox.center
 		surface.blit(text, label)
-def drawkeyboard(board):
+def drawkeyboard(board, ssid):
 	yellow = (128, 128, 0)
 	blue = (0, 0, 128)
 	red = (128, 0, 0)
@@ -696,7 +696,12 @@ def drawkeyboard(board):
 	atext.center = abutton.center
 	surface.blit(a, atext)
 
-
+	# Draw SSID and encryption type labels
+	labelblock = pygame.draw.rect(surface, (255,255,255), (0,35,320,20))
+	labeltext = pygame.font.SysFont(None, 18).render("Enter key for "+ssid, True, (84, 84, 84), (255,255,255))
+	label = labeltext.get_rect()
+	label.center = labelblock.center
+	surface.blit(labeltext, label)
 	
 	# Draw the keys
 
@@ -709,11 +714,11 @@ def drawkeyboard(board):
 
 	pygame.display.update()
 	return keyboard
-def getinput(board):
-	selectkey(board)
-	security = softkeyinput(board)
+def getinput(board, ssid):
+	selectkey(board, ssid)
+	security = softkeyinput(board, ssid)
 	return security
-def softkeyinput(keyboard):
+def softkeyinput(keyboard, ssid):
 	global passphrase
 	global go
 	wait = "true"
@@ -726,26 +731,26 @@ def softkeyinput(keyboard):
 					wait = "false"
 
 				if event.key == K_UP:		# Move cursor up
-					selectkey(keyboard, "up")
+					selectkey(keyboard, ssid, "up")
 				if event.key == K_DOWN:		# Move cursor down
-					selectkey(keyboard, "down")
+					selectkey(keyboard, ssid, "down")
 				if event.key == K_LEFT:		# Move cursor left
-					selectkey(keyboard, "left")
+					selectkey(keyboard, ssid, "left")
 				if event.key == K_RIGHT:	# Move cursor right
-					selectkey(keyboard, "right")
+					selectkey(keyboard, ssid, "right")
 				if event.key == K_LCTRL:	# A button
-					selectkey(keyboard, "select")
+					selectkey(keyboard, ssid, "select")
 				if event.key == K_LALT:		# B button
-					selectkey(keyboard, "space")
-				if event.key == K_SPACE:	# # B button (shift)
+					selectkey(keyboard, ssid, "space")
+				if event.key == K_SPACE:	# Y button (shift)
 					if keyboard == "qwertyNormal":
 						keyboard = "qwertyShift"
 					elif keyboard == "qwertyShift":
 						keyboard = "qwertyNormal"
-					drawkeyboard(keyboard)
-					selectkey(keyboard, "swap")
+					drawkeyboard(keyboard, ssid)
+					selectkey(keyboard, ssid, "swap")
 				if event.key == K_LSHIFT:	# X button
-					selectkey(keyboard, "delete")
+					selectkey(keyboard, ssid, "delete")
 				if event.key == K_ESCAPE:	# Select key
 					passphrase = ''
 					wait = "false"
@@ -762,7 +767,7 @@ def softkeyinput(keyboard):
 	return go
 
 def displaypassphrase(passphrase, size=24): # Display passphrase on screen
-	bg = pygame.draw.rect(surface, (255, 255, 255), (0, 35, 320, 65))
+	bg = pygame.draw.rect(surface, (255, 255, 255), (0, 55, 320, 45))
 	text = "[ "
 	text += passphrase
 	text += " ]"
@@ -771,15 +776,15 @@ def displaypassphrase(passphrase, size=24): # Display passphrase on screen
 	pwtext.center = bg.center
 	surface.blit(pw, pwtext)
 	pygame.display.update()
-def selectkey(keyboard, direction="none"):
+def selectkey(keyboard, ssid, direction="none"):
 	def getcurrentkey(keyboard, pos):
 		keys = getkeys(keyboard)
 		for item in keys.iteritems():
 			if item[1]['row'] == pos[1] and item[1]['column'] == pos[0]:
 				currentkey = item[1]['key']
 		return currentkey
-	def highlightkey(keyboard, pos):
-		drawkeyboard(keyboard)
+	def highlightkey(keyboard, pos, ssid):
+		drawkeyboard(keyboard, ssid)
 		pygame.display.update()
 
 		left_margin = 32
@@ -813,10 +818,10 @@ def selectkey(keyboard, direction="none"):
 
 	if not selected_key:
 		selected_key = [0,0]
-		highlightkey(keyboard, selected_key)
+		highlightkey(keyboard, selected_key, ssid)
 
 	if direction == "swap":
-		highlightkey(keyboard, selected_key)
+		highlightkey(keyboard, selected_key), ssid
 	else:
 		if direction == "up":
 			if selected_key[1] <= 0:
@@ -867,7 +872,7 @@ def selectkey(keyboard, direction="none"):
 					displaypassphrase(passphrase, 12)
 				else:
 					displaypassphrase(passphrase)
-	highlightkey(keyboard, selected_key)
+	highlightkey(keyboard, selected_key, ssid)
 class Menu:
 	font_size = 24
 	font = pygame.font.SysFont
@@ -1096,8 +1101,6 @@ if __name__ == "__main__":
 					# SSID menu		
 					elif active_menu == "ssid":
 						ssid = ""
-						if not os.path.exists(netconfdir):
-							os.makedirs(netconfdir)
 
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position())
@@ -1107,22 +1110,21 @@ if __name__ == "__main__":
 								if not os.path.exists(ssidconfig):
 									if detail['Network']['Encryption'] == "none":
 										passphrase = "none"
+										writeconfig()
+										go = "true"
+										connect()
+										redraw()
 									elif detail['Network']['Encryption'] == "wep":
 										displaypassphrase(passphrase)
-										drawkeyboard("wep")
-										getinput("wep")
+										drawkeyboard("wep", ssid)
+										getinput("wep", ssid)
 									else:
 										displaypassphrase(passphrase)
-										drawkeyboard("qwertyNormal")
-										getinput("qwertyNormal")
-									writeconfig()
-								go = "true"
-								connect()
-								redraw()
+										drawkeyboard("qwertyNormal", ssid)
+										getinput("qwertyNormal", ssid)
+
 				if event.key == K_ESCAPE and active_menu == "ssid": # Allow us to edit the existing key
 					ssid = ""
-					if not os.path.exists(netconfdir):
-						os.makedirs(netconfdir)
 
 					for network, detail in uniq.iteritems():
 						position = str(wirelessmenu.get_position())
@@ -1133,11 +1135,11 @@ if __name__ == "__main__":
 								pass
 							elif detail['Network']['Encryption'] == "wep":
 								displaypassphrase(passphrase)
-								drawkeyboard("wep")
-								getinput("wep")
+								drawkeyboard("wep", ssid)
+								getinput("wep", ssid)
 							else:
 								displaypassphrase(passphrase)
-								drawkeyboard("qwertyNormal")
-								getinput("qwertyNormal")
+								drawkeyboard("qwertyNormal", ssid)
+								getinput("qwertyNormal", ssid)
 
 		pygame.display.update()
