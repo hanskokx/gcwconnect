@@ -29,6 +29,9 @@ TODO list:
 * Allow viewing/deleting saved networks
 * Show signal strength of scanned SSIDs
 
+Known bugs:
+* WPA/2 networks that don't show encryption type in iwlist scan will default to WEP and write wep to the config file, even if you choose WPA/2
+
 '''
 
 
@@ -50,6 +53,7 @@ netconfdir = confdir+"networks/"
 sysconfdir = "/usr/local/etc/network/"
 
 surface = pygame.display.set_mode((320,240))
+#surface = pygame.display.set_mode((640,480)) # DEBUG
 keyboard = ''
 selected_key = ''
 maxrows = ''
@@ -423,7 +427,7 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 def connect(): # Connect to a network
 	global go
 	if go == "true":
-		oldconf = netconfdir+re.escape(ssidconfig)+".conf"
+		oldconf = netconfdir+ssidconfig+".conf"
 		newconf = sysconfdir +"config-wlan0.conf"
 		os.environ['CONFIG_FILE'] = netconfdir+ssidconfig+".conf"
 		shutil.copy2(oldconf, newconf)
@@ -670,6 +674,19 @@ def drawkeyboard(board, ssid):
 		label = labeltext.get_rect()
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
+	else:
+		# Draw the shift icon
+		ybutton = pygame.draw.circle(surface, yellow, (205,230), 5) # (x, y)
+		y = pygame.font.SysFont(None, 10).render("Y", True, (255, 255, 255), yellow)
+		ytext = y.get_rect()
+		ytext.center = ybutton.center
+		surface.blit(y, ytext)
+
+		labelblock = pygame.draw.rect(surface, (84,84,84), (210,223,25,14))
+		labeltext = pygame.font.SysFont(None, 12).render("Full KB", True, (255, 255, 255), (84,84,84))
+		label = labeltext.get_rect()
+		label.center = labelblock.center
+		surface.blit(labeltext, label)
 
 	# Draw the space icon
 	labelblock = pygame.draw.rect(surface, (84,84,84), (245,223,35,14))
@@ -736,13 +753,19 @@ def softkeyinput(keyboard, ssid):
 					selectkey(keyboard, ssid, "select")
 				if event.key == K_LALT:		# B button
 					selectkey(keyboard, ssid, "space")
-				if event.key == K_SPACE:	# Y button (shift)
+				if event.key == K_SPACE:	# Y button (swap keyboards)
 					if keyboard == "qwertyNormal":
 						keyboard = "qwertyShift"
+						drawkeyboard(keyboard, ssid)
+						selectkey(keyboard, ssid, "swap")
 					elif keyboard == "qwertyShift":
 						keyboard = "qwertyNormal"
-					drawkeyboard(keyboard, ssid)
-					selectkey(keyboard, ssid, "swap")
+						drawkeyboard(keyboard, ssid)
+						selectkey(keyboard, ssid, "swap")
+					else:
+						keyboard = "qwertyNormal"
+						drawkeyboard(keyboard, ssid)
+						selectkey(keyboard, ssid, "swap")	
 				if event.key == K_LSHIFT:	# X button
 					selectkey(keyboard, ssid, "delete")
 				if event.key == K_ESCAPE:	# Select key
@@ -785,7 +808,7 @@ def selectkey(keyboard, ssid, direction="none"):
 			if item[1]['row'] == pos[1] and item[1]['column'] == pos[0]:
 				currentkey = item[1]['key']
 		return currentkey
-	def highlightkey(keyboard, pos, ssid):
+	def highlightkey(keyboard, ssid, pos='[0,0]'):
 		drawkeyboard(keyboard, ssid)
 		pygame.display.update()
 
@@ -820,10 +843,10 @@ def selectkey(keyboard, ssid, direction="none"):
 
 	if not selected_key:
 		selected_key = [0,0]
-		highlightkey(keyboard, selected_key, ssid)
+		highlightkey(keyboard, ssid, selected_key)
 
 	if direction == "swap":
-		highlightkey(keyboard, selected_key), ssid
+		highlightkey(keyboard, ssid, selected_key)
 	else:
 		if direction == "up":
 			if selected_key[1] <= 0:
@@ -874,7 +897,7 @@ def selectkey(keyboard, ssid, direction="none"):
 					displaypassphrase(passphrase, 12)
 				else:
 					displaypassphrase(passphrase)
-	highlightkey(keyboard, selected_key, ssid)
+	highlightkey(keyboard, ssid, selected_key)
 class Menu:
 	font_size = 24
 	font = pygame.font.SysFont
@@ -949,7 +972,7 @@ class Menu:
 			self.field[i].pole_rect = self.field[i].pole.get_rect()
 			shift = int(self.font_size * 0.2)
 
-			height = self.field[i].pole_rect.height
+			height = round(self.field[i].pole_rect.height/5.)*5
 			self.field[i].pole_rect.left = shift
 			self.field[i].pole_rect.top = shift+(shift*2+height)*i
 
@@ -996,7 +1019,7 @@ if __name__ == "__main__":
 	networks = {}
 	uniqssids = {}
 	currentssid = ""
-	createpaths()
+	createpaths()	# DEBUG
 	surface.fill((41,41,41))
 	drawlogobar()
 	drawlogo()
@@ -1054,21 +1077,44 @@ if __name__ == "__main__":
 					if wirelessmenuexists == "true":
 						active_menu = swapmenu(active_menu)
 
-				if event.key == K_LCTRL:
+				if event.key == K_LCTRL or event.key == K_RETURN:
 					# Main menu
 					if active_menu == "main":
 						if menu.get_position() == 0: # Scan menu
 							wirelessmenuexists = ''
-							getnetworks()
-							uniq = listuniqssids()
-
+							####### DEBUG #######
+							# uniqssid = {}
+							# uniqssids = {}
+							# uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
+							# uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
+							# uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
+							# uniqssid=uniqssids.setdefault('BLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAH', 'menu': 3}})
+							# uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
+							# uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
+							# uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
+							# uniqssid=uniqssids.setdefault('GoBlue', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'GoBlue', 'menu': 7}})
+							# uniqssid=uniqssids.setdefault('yangji', {'Network': {'Encryption': 'wpa', 'ESSID': 'yangji', 'menu': 8}})
+							# uniqssid=uniqssids.setdefault('U+zone', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'U+zone', 'menu': 9}})
+							# uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
+							# uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
+							# uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
+							# uniqssid=uniqssids.setdefault('Abraham_Linksys', {'Network': {'Encryption': 'wpa2', 'Quality': '84/100', 'ESSID': 'Abraham_Linksys', 'menu': 13}})
+							# uniqssid=uniqssids.setdefault('The Carlton', {'Network': {'Encryption': 'wpa2', 'Quality': '95/100', 'ESSID': 'The Carlton', 'menu': 14}})
+							# uniqssid=uniqssids.setdefault('NETGEAR19', {'Network': {'Encryption': 'wpa2', 'Quality': '90/100', 'ESSID': 'NETGEAR19', 'menu': 15}})
+							# uniqssid=uniqssids.setdefault('ATT024', {'Network': {'Encryption': 'wpa2', 'Quality': '25/100', 'ESSID': 'ATT024', 'menu': 16}})
+							# uniqssid=uniqssids.setdefault('CalTre', {'Network': {'Encryption': 'wpa2', 'Quality': '87/100', 'ESSID': 'CalTre', 'menu': 17}})
+							# uniqssid=uniqssids.setdefault('Byrd', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'Byrd', 'menu': 18}})
+							# uniqssid=uniqssids.setdefault('PokeCenter', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'PokeCenter', 'menu': 19}})
+							# uniq = uniqssids
+							####### DEBUG #######	
+							getnetworks()				## TEMPORARILY DISABLED FOR TESTING WITHOUT LIVE SCANNING
+							uniq = listuniqssids()	## TEMPORARILY DISABLED FOR TESTING WITHOUT LIVE SCANNING
 							wirelessitems = []
 							wirelessmenu.set_fontsize(14)
 
 							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
 								for network, detail in uniq.iteritems():
 									if network == item:
-										print network, detail
 										menuitem = str(detail['Network']['ESSID'])
 										wirelessitems.append(menuitem)
 
