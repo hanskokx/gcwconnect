@@ -28,6 +28,10 @@ TODO list:
 * Rewrite menus to give better scrolling options, and not have to do logic by menu position instead of content
 * Allow viewing/deleting saved networks
 * Show signal strength of scanned SSIDs
+* Add indicators to swap menus
+* Add indicators to select menu items
+* Allow "B" to swap from SSID menu to main menu
+
 
 Known bugs:
 * WPA/2 networks that don't show encryption type in iwlist scan will default to WEP and write wep to the config file, even if you choose WPA/2
