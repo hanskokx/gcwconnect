@@ -676,7 +676,7 @@ def drawkeyboard(board, ssid):
 		surface.blit(labeltext, label)
 	else:
 		# Draw the shift icon
-		ybutton = pygame.draw.circle(surface, yellow, (205,230), 5) # (x, y)
+		ybutton = pygame.draw.circle(surface, yellow, (200,230), 5) # (x, y)
 		y = pygame.font.SysFont(None, 10).render("Y", True, (255, 255, 255), yellow)
 		ytext = y.get_rect()
 		ytext.center = ybutton.center
@@ -687,6 +687,8 @@ def drawkeyboard(board, ssid):
 		label = labeltext.get_rect()
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
+
+		# uniq[ssid]['Network']['Encryption'] = "wpa2" ## Will need to put this somewhere to fix the wep bug
 
 	# Draw the space icon
 	labelblock = pygame.draw.rect(surface, (84,84,84), (245,223,35,14))
