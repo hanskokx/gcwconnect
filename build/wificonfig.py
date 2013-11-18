@@ -259,6 +259,66 @@ def parseencryption(encryption):
 	return encryption
 
 ## Draw interface elements
+class hint:
+
+	def __init__(self, button, text, x, y, bg=(41,41,41)):
+		self.button = button
+		self.text = text
+		self.x = x
+		self.y = y
+		self.bg = bg
+		self.drawhint()
+
+	def drawhint(self):
+		color = (255,255,255)
+		yellow = (128, 128, 0)
+		blue = (0, 0, 128)
+		red = (128, 0, 0)
+		green = (0, 128, 0)
+		black = (0, 0, 0)
+
+		if self.button == "select" or self.button == "start":
+			if self.button == "select":
+				pygame.draw.rect(surface, black, (self.x, self.y, 34, 5))
+				pygame.draw.circle(surface, black, (self.x+5, self.y+5), 5)
+				pygame.draw.circle(surface, black, (self.x+29, self.y+5), 5)
+
+
+			elif self.button == "start":
+				pygame.draw.rect(surface, black, (self.x, self.y+5, 34, 5))
+				pygame.draw.circle(surface, black, (self.x+5, self.y+5), 5)
+				pygame.draw.circle(surface, black, (self.x+29, self.y+5), 5)
+			
+			button = pygame.draw.rect(surface, black, (self.x+5, self.y, 25, 10))
+			text = pygame.font.SysFont(None, 10).render(self.button.upper(), True, (255, 255, 255), black)
+			buttontext = text.get_rect()
+			buttontext.center = button.center
+			surface.blit(text, buttontext)
+
+			labelblock = pygame.draw.rect(surface, self.bg, (self.x+40,self.y,25,14))
+			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, (255, 255, 255), self.bg)
+			surface.blit(labeltext, labelblock)
+
+		else:
+			if self.button == "a":
+				color = green
+			elif self.button == "b":
+				color = blue
+			elif self.button == "x":
+				color = red
+			elif self.button == "y":
+				color = yellow
+
+			labelblock = pygame.draw.rect(surface, self.bg, (self.x+10,self.y,35,14))
+			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, (255, 255, 255), self.bg)
+			surface.blit(labeltext, labelblock)
+
+			button = pygame.draw.circle(surface, color, (self.x,self.y+4), 5) # (x, y)
+			text = pygame.font.SysFont(None, 10).render(self.button.upper(), True, (255, 255, 255), color)
+			buttontext = text.get_rect()
+			buttontext.center = button.center
+			surface.blit(text, buttontext)
+
 def drawlogobar(): # Set up the menu bar
 	pygame.draw.rect(surface, (84,84,84), (0,0,320,32))
 	pygame.draw.line(surface, (255, 255, 255), (0, 33), (320, 33))
@@ -330,42 +390,7 @@ def getcurrentssid(): # What network are we connected to?
 			ssid = str.strip(line[line.find('ESSID')+len('ESSID:"'):line.find('Nickname:')+len('Nickname:')].rstrip(' Nickname:').rstrip('"'))
 
 	return ssid
-def wifilistedit():
-	yellow = (128, 128, 0)
-	blue = (0, 0, 128)
-	red = (128, 0, 0)
-	green = (0, 128, 0)
-	black = (0, 0, 0)
 
-	# Draw the edit icon
-	labelblock = pygame.draw.rect(surface, (41,41,41), (35,207,25,14))
-	labeltext = pygame.font.SysFont(None, 12).render("Edit", True, (255, 255, 255), (41,41,41))
-	label = labeltext.get_rect()
-	label.center = labelblock.center
-	surface.blit(labeltext, label)
-
-	pygame.draw.rect(surface, black, (4, 209, 34, 5))
-	pygame.draw.circle(surface, black, (9, 214), 5)
-	pygame.draw.circle(surface, black, (33, 214), 5)
-
-	startbutton = pygame.draw.rect(surface, black, (9, 209, 25, 10))
-	start = pygame.font.SysFont(None, 10).render("SELECT", True, (255, 255, 255), black)
-	starttext = start.get_rect()
-	starttext.center = startbutton.center
-	surface.blit(start, starttext)
-
-	# Draw the connect icon
-	labelblock = pygame.draw.rect(surface, (41,41,41), (80,207,35,14))
-	labeltext = pygame.font.SysFont(None, 12).render("Connect", True, (255, 255, 255), (41,41,41))
-	label = labeltext.get_rect()
-	label.center = labelblock.center
-	surface.blit(labeltext, label)
-
-	abutton = pygame.draw.circle(surface, green, (70,214), 5) # (x, y)
-	a = pygame.font.SysFont(None, 10).render("A", True, (255, 255, 255), green)
-	atext = a.get_rect()
-	atext.center = abutton.center
-	surface.blit(a, atext)
 def redraw():
 	surface.fill((41,41,41))
 	drawlogobar()
@@ -373,7 +398,8 @@ def redraw():
 	mainmenu()
 	if wirelessmenuexists == "true":
 		wirelessmenu.draw()
-		wifilistedit()
+		editbutton = hint("select", "Edit", 4, 210)
+		abutton = hint("a", "Connect", 75, 210)
 
 	drawstatusbar()
 	drawinterfacestatus()
@@ -386,20 +412,6 @@ def modal(text,wait="true",timeout="false"): # Draw a modal
 	modal_text = text.get_rect()
 	modal_text.center = dialog.center
 
-	def drawcontinue():
-		abutton = pygame.draw.circle(surface, (0, 0, 128), (208,151), 5) # (x, y)
-		a = pygame.font.SysFont(None, 10).render("A", True, (255, 255, 255), (0,0,128))
-		atext = a.get_rect()
-		atext.center = abutton.center
-		surface.blit(a, atext)
-
-		labelblock = pygame.draw.rect(surface, (84,84,84), (218,144,32,14))
-		labeltext = pygame.font.SysFont(None, 12).render("Continue", True, (255, 255, 255), (84,84,84))
-		label = labeltext.get_rect()
-		label.center = labelblock.center
-		surface.blit(labeltext, label)
-		pygame.display.update()
-
 	surface.blit(text, modal_text)
 	pygame.display.update()
 
@@ -408,7 +420,8 @@ def modal(text,wait="true",timeout="false"): # Draw a modal
 		redraw()
 
 	while wait == "true":
-		drawcontinue()
+		abutton = hint("a", "Continue", 205, 145, (84,84,84))
+		pygame.display.update()
 		for event in pygame.event.get():
 			if event.type == KEYDOWN:
 				if event.key == K_LCTRL:
@@ -609,117 +622,21 @@ class key:
 		label.center = keybox.center
 		surface.blit(text, label)
 def drawkeyboard(board, ssid):
-	yellow = (128, 128, 0)
-	blue = (0, 0, 128)
-	red = (128, 0, 0)
-	green = (0, 128, 0)
-	black = (0, 0, 0)
 
 	# Draw keyboard background 
 	pygame.draw.rect(surface, (84,84,84), (0,100,320,140))
 
-	# Draw the cancel icon
-	pygame.draw.rect(surface, black, (4, 225, 34, 5))
-	pygame.draw.circle(surface, black, (9, 230), 5)
-	pygame.draw.circle(surface, black, (33, 230), 5)
-
-	startbutton = pygame.draw.rect(surface, black, (9, 225, 25, 10))
-	start = pygame.font.SysFont(None, 10).render("SELECT", True, (255, 255, 255), black)
-	starttext = start.get_rect()
-	starttext.center = startbutton.center
-	surface.blit(start, starttext)
-
-	labelblock = pygame.draw.rect(surface, (84,84,84), (42,223,25,14))
-	labeltext = pygame.font.SysFont(None, 12).render("Cancel", True, (255, 255, 255), (84,84,84))
-	label = labeltext.get_rect()
-	label.center = labelblock.center
-	surface.blit(labeltext, label)
-
-	# Draw the finish icon
-	pygame.draw.rect(surface, black, (75, 225, 35, 5))
-	pygame.draw.circle(surface, black, (80, 230), 5)
-	pygame.draw.circle(surface, black, (105, 230), 5)
-
-	startbutton = pygame.draw.rect(surface, black, (80, 225, 25, 10))
-	start = pygame.font.SysFont(None, 10).render("START", True, (255, 255, 255), black)
-	starttext = start.get_rect()
-	starttext.center = startbutton.center
-	surface.blit(start, starttext)
-
-	labelblock = pygame.draw.rect(surface, (84,84,84), (113,223,25,14))
-	labeltext = pygame.font.SysFont(None, 12).render("Finish", True, (255, 255, 255), (84,84,84))
-	label = labeltext.get_rect()
-	label.center = labelblock.center
-	surface.blit(labeltext, label)
-
-	# Draw the delete icon
-	xbutton = pygame.draw.circle(surface, red, (160,230), 5) # (x, y)
-	x = pygame.font.SysFont(None, 10).render("X", True, (255, 255, 255), red)
-	xtext = x.get_rect()
-	xtext.center = xbutton.center
-	surface.blit(x, xtext)
-
-	labelblock = pygame.draw.rect(surface, (84,84,84), (170,223,20,14))
-	labeltext = pygame.font.SysFont(None, 12).render("Delete", True, (255, 255, 255), (84,84,84))
-	label = labeltext.get_rect()
-	label.center = labelblock.center
-	surface.blit(labeltext, label)
-
+	hint("select", "Cancel", 4, 225, (84,84,84))
+	hint("start", "Finish", 75, 225, (84,84,84))
+	hint("x", "Delete", 155, 225, (84,84,84))
 	if not board == "wep":
-		# Draw the shift icon
-		ybutton = pygame.draw.circle(surface, yellow, (205,230), 5) # (x, y)
-		y = pygame.font.SysFont(None, 10).render("Y", True, (255, 255, 255), yellow)
-		ytext = y.get_rect()
-		ytext.center = ybutton.center
-		surface.blit(y, ytext)
-
-		labelblock = pygame.draw.rect(surface, (84,84,84), (210,223,25,14))
-		labeltext = pygame.font.SysFont(None, 12).render("Shift", True, (255, 255, 255), (84,84,84))
-		label = labeltext.get_rect()
-		label.center = labelblock.center
-		surface.blit(labeltext, label)
+		hint("y", "Shift", 200, 225, (84,84,84))
 	else:
-		# Draw the shift icon
-		ybutton = pygame.draw.circle(surface, yellow, (200,230), 5) # (x, y)
-		y = pygame.font.SysFont(None, 10).render("Y", True, (255, 255, 255), yellow)
-		ytext = y.get_rect()
-		ytext.center = ybutton.center
-		surface.blit(y, ytext)
+		hint("y", "Full KB", 200, 225, (84,84,84))
+		#uniq[ssid]['Network']['Encryption'] = "wpa2" ## Will need to put this somewhere to fix the wep bug
+	hint("b", "Space", 240, 225, (84,84,84))
+	hint("a", "Enter", 285, 225, (84,84,84))
 
-		labelblock = pygame.draw.rect(surface, (84,84,84), (210,223,25,14))
-		labeltext = pygame.font.SysFont(None, 12).render("Full KB", True, (255, 255, 255), (84,84,84))
-		label = labeltext.get_rect()
-		label.center = labelblock.center
-		surface.blit(labeltext, label)
-
-		# uniq[ssid]['Network']['Encryption'] = "wpa2" ## Will need to put this somewhere to fix the wep bug
-
-	# Draw the space icon
-	labelblock = pygame.draw.rect(surface, (84,84,84), (245,223,35,14))
-	labeltext = pygame.font.SysFont(None, 12).render("Space", True, (255, 255, 255), (84,84,84))
-	label = labeltext.get_rect()
-	label.center = labelblock.center
-	surface.blit(labeltext, label)
-
-	bbutton = pygame.draw.circle(surface, blue, (243,230), 5) # (x, y)
-	b = pygame.font.SysFont(None, 10).render("B", True, (255, 255, 255), blue)
-	btext = b.get_rect()
-	btext.center = bbutton.center
-	surface.blit(b, btext)
-
-	# Draw the enter icon
-	labelblock = pygame.draw.rect(surface, (84,84,84), (290,223,35,14))
-	labeltext = pygame.font.SysFont(None, 12).render("Enter", True, (255, 255, 255), (84,84,84))
-	label = labeltext.get_rect()
-	label.center = labelblock.center
-	surface.blit(labeltext, label)
-
-	abutton = pygame.draw.circle(surface, green, (285,230), 5) # (x, y)
-	a = pygame.font.SysFont(None, 10).render("A", True, (255, 255, 255), green)
-	atext = a.get_rect()
-	atext.center = abutton.center
-	surface.blit(a, atext)
-	
 	# Draw the keys
 
 	k = getkeys(board)
@@ -1026,18 +943,7 @@ if __name__ == "__main__":
 	uniqssids = {}
 	currentssid = ""
 	#createpaths()	# DEBUG
-	surface.fill((41,41,41))
-	drawlogobar()
-	drawlogo()
-	mainmenu()
-	if wirelessmenuexists == "true":
-		wirelessmenu.draw()
-		wifilistedit()
-
-	drawstatusbar()
-	pygame.display.update()
-	drawinterfacestatus()
-	pygame.display.update()
+	redraw()
 	active_menu = "main"
 	while 1:
 		for event in pygame.event.get():
