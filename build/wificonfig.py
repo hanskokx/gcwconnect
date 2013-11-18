@@ -870,7 +870,7 @@ class Menu:
 			self.field[i].pole_rect = self.field[i].pole.get_rect()
 			shift = int(self.font_size * 0.2)
 
-			height = self.field[i].pole_rect.height
+			height = round(self.field[i].pole_rect.height/5.)*5
 			self.field[i].pole_rect.left = shift
 			self.field[i].pole_rect.top = shift+(shift*2+height)*i
 
@@ -921,7 +921,7 @@ def mainmenu():
 	if wlan:
 		menu.init(['Scan for APs', wlan, "Quit"], surface)
 	else:
-		menu.init(['Scan for APs', "It's a secret.", "Quit"], surface)
+		menu.init(['Scan for APs', "Reconnect", "Quit"], surface)
 	menu.move_menu(16, 96)
 	menu.draw()
 
