@@ -57,7 +57,7 @@ netconfdir = confdir+"networks/"
 sysconfdir = "/usr/local/etc/network/"
 
 surface = pygame.display.set_mode((320,240))
-surface = pygame.display.set_mode((640,480)) # DEBUG
+#surface = pygame.display.set_mode((640,480)) # DEBUG
 keyboard = ''
 selected_key = ''
 maxrows = ''
@@ -969,7 +969,7 @@ class Menu:
 	def create_structure(self):
 		shift = 0
 		self.menu_height = 0
-		self.font = pygame.font.SysFont('Arial', self.font_size)
+		self.font = pygame.font.SysFont('', self.font_size)
 		for i in xrange(self.number_of_fields):
 			self.field.append(self.Pole())
 			self.field[i].text = self.menu[i]
@@ -1082,6 +1082,9 @@ if __name__ == "__main__":
 				if event.key == K_LEFT or event.key == K_RIGHT:
 					if wirelessmenuexists == "true":
 						active_menu = swapmenu(active_menu)
+				if event.key == K_LALT and active_menu == "ssid":
+					active_menu = swapmenu(active_menu)
+					
 
 				if event.key == K_LCTRL or event.key == K_RETURN:
 					# Main menu
