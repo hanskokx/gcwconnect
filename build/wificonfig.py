@@ -65,6 +65,7 @@ maxcolumns = ''
 passphrase = ''
 wirelessmenuexists = ''
 go = ''
+active_menu = ''
 darkbg = (41, 41, 41)
 lightbg = (84, 84, 84)
 
@@ -278,6 +279,7 @@ class hint:
 		red = (128, 0, 0)
 		green = (0, 128, 0)
 		black = (0, 0, 0)
+		white = (255, 255, 255)
 
 		if self.button == "select" or self.button == "start":
 			if self.button == "select":
@@ -324,6 +326,32 @@ class hint:
 			buttontext = text.get_rect()
 			buttontext.center = button.center
 			surface.blit(text, buttontext)
+
+		elif self.button == "left" \
+			or self.button == "right" \
+			or self.button == "up" \
+			or self.button == "down":
+
+			# Vertical
+			pygame.draw.rect(surface, black, (self.x+5, self.y-1, 4, 12))
+			pygame.draw.rect(surface, black, (self.x+6, self.y-2, 2, 14))
+
+			# Horizontal
+			pygame.draw.rect(surface, black, (self.x+1, self.y+3, 12, 4))
+			pygame.draw.rect(surface, black, (self.x, self.y+4, 14, 2))
+
+			if self.button == "left":
+				pygame.draw.rect(surface, white, (self.x+2, self.y+4, 3, 2))
+			elif self.button == "right":
+				pygame.draw.rect(surface, white, (self.x+9, self.y+4, 3, 2))
+			elif self.button == "up":
+				pygame.draw.rect(surface, white, (self.x+6, self.y+1, 2, 3))
+			elif self.button == "down":
+				pygame.draw.rect(surface, white, (self.x+6, self.y+7, 2, 3))
+
+			labelblock = pygame.draw.rect(surface, self.bg, (self.x+20,self.y,35,14))
+			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, (255, 255, 255), self.bg)
+			surface.blit(labeltext, labelblock)
 
 def drawlogobar(): # Set up the menu bar
 	pygame.draw.rect(surface, lightbg, (0,0,320,32))
@@ -400,10 +428,17 @@ def redraw():
 	drawlogobar()
 	drawlogo()
 	mainmenu()
+
 	if wirelessmenuexists == "true":
 		wirelessmenu.draw()
-		editbutton = hint("select", "Edit", 4, 210)
-		abutton = hint("a", "Connect", 75, 210)
+		pygame.draw.rect(surface, darkbg, (0, 208, 320, 16))
+		hint("select", "Edit", 4, 210)
+		hint("a", "Connect", 75, 210)
+		hint("b", "/", 130, 210)
+		hint("left", "Back", 145, 210)
+	if active_menu == "main":
+		pygame.draw.rect(surface, darkbg, (0, 208, 320, 16))
+		hint("a", "Select", 8, 210)
 
 	drawstatusbar()
 	drawinterfacestatus()
@@ -929,18 +964,15 @@ class Menu:
 		y = self.dest_surface.get_rect().centery - self.menu_height / 2
 		mx, my = self.selection_position
 		self.selection_position = (x+mx, y+my) 
-def swapmenu(active_menu):	
+def swapmenu(active_menu):
 	if active_menu == "main":
 		active_menu = "ssid"
 		menu.set_colors((128,128,128), lightbg, darkbg)
 		wirelessmenu.set_colors((128,128,128), (153,0,0), darkbg)
-		redraw()
 	elif active_menu == "ssid":
 		active_menu = "main"
 		menu.set_colors((255,255,255), (153,0,0), darkbg)
 		wirelessmenu.set_colors((255,255,255), lightbg, darkbg)
-		redraw()
-		pygame.draw.rect(surface, darkbg, (0,207,120,14))
 	return active_menu
 
 wirelessmenu = Menu()
@@ -959,10 +991,9 @@ if __name__ == "__main__":
 	networks = {}
 	uniqssids = {}
 	currentssid = ""
+	active_menu = "main"
 	#createpaths()	# DEBUG
 	redraw()
-	active_menu = "main"
-
 	while 1:
 		for event in pygame.event.get():
 			## GCW-Zero keycodes:
@@ -1003,11 +1034,14 @@ if __name__ == "__main__":
 					if active_menu == "ssid":
 						wirelessmenu.draw(1)
 
-				if event.key == K_LEFT or event.key == K_RIGHT:
-					if wirelessmenuexists == "true":
+				if event.key == K_RIGHT:
+					if wirelessmenuexists == "true" and active_menu == "main":
 						active_menu = swapmenu(active_menu)
-				if event.key == K_LALT and active_menu == "ssid":
-					active_menu = swapmenu(active_menu)
+						redraw()
+				if event.key == K_LALT or event.key == K_LEFT:
+					if active_menu == "ssid":
+						active_menu = swapmenu(active_menu)
+						redraw()
 					
 
 				if event.key == K_LCTRL or event.key == K_RETURN:
