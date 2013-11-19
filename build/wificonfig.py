@@ -299,7 +299,11 @@ class hint:
 			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, (255, 255, 255), self.bg)
 			surface.blit(labeltext, labelblock)
 
-		else:
+		elif self.button == "a" \
+			or self.button == "b" \
+			or self.button == "x" \
+			or self.button == "y":
+			
 			if self.button == "a":
 				color = green
 			elif self.button == "b":
@@ -418,10 +422,11 @@ def modal(text,wait="true",timeout="false"): # Draw a modal
 	if not wait == "true" and timeout == "true":
 		time.sleep(2.5)
 		redraw()
-
-	while wait == "true":
+	elif wait == "true":
 		abutton = hint("a", "Continue", 205, 145, (84,84,84))
 		pygame.display.update()
+
+	while wait == "true":
 		for event in pygame.event.get():
 			if event.type == KEYDOWN:
 				if event.key == K_LCTRL:
@@ -945,6 +950,7 @@ if __name__ == "__main__":
 	#createpaths()	# DEBUG
 	redraw()
 	active_menu = "main"
+
 	while 1:
 		for event in pygame.event.get():
 			## GCW-Zero keycodes:
