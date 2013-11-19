@@ -65,8 +65,8 @@ maxcolumns = ''
 passphrase = ''
 wirelessmenuexists = ''
 go = ''
-lightbg = (41, 41, 41)
-darkbg = (84, 84, 84)
+darkbg = (41, 41, 41)
+lightbg = (84, 84, 84)
 
 ## Initialize the dispaly, for pygame
 if not pygame.display.get_init():
@@ -621,26 +621,31 @@ class key:
 
 		if len(self.key) > 1:
 			key_width = 36
-		keybox = pygame.draw.rect(surface, (50,50,50), (left,top,key_width,key_height))
-		text = pygame.font.SysFont(None, 16).render(self.key, True, (255, 255, 255), (50,50,50))
+		keybox = pygame.draw.rect(surface, darkbg, (left,top,key_width,key_height))
+		text = pygame.font.SysFont(None, 16).render(self.key, True, (255, 255, 255), darkbg)
 		label = text.get_rect()
 		label.center = keybox.center
 		surface.blit(text, label)
 def drawkeyboard(board, ssid):
 
 	# Draw keyboard background 
-	pygame.draw.rect(surface, darkbg, (0,100,320,140))
+	pygame.draw.rect(surface, lightbg, (0,100,320,140))
 
-	hint("select", "Cancel", 4, 225, darkbg)
-	hint("start", "Finish", 75, 225, darkbg)
-	hint("x", "Delete", 155, 225, darkbg)
+
+	# Draw bottom background
+	pygame.draw.rect(surface, darkbg, (0,224,320,16))
+	pygame.draw.line(surface, (255, 255, 255), (0, 223), (320, 223))
+
+	hint("select", "Cancel", 4, 227, darkbg)
+	hint("start", "Finish", 75, 227, darkbg)
+	hint("x", "Delete", 155, 227, darkbg)
 	if not board == "wep":
-		hint("y", "Shift", 200, 225, darkbg)
+		hint("y", "Shift", 200, 227, darkbg)
 	else:
-		hint("y", "Full KB", 200, 225, darkbg)
+		hint("y", "Full KB", 200, 227, darkbg)
 		#uniq[ssid]['Network']['Encryption'] = "wpa2" ## Will need to put this somewhere to fix the wep bug
-	hint("b", "Space", 240, 225, darkbg)
-	hint("a", "Enter", 285, 225, darkbg)
+	hint("b", "Space", 240, 227, darkbg)
+	hint("a", "Enter", 285, 227, darkbg)
 
 	# Draw the keys
 
@@ -682,6 +687,13 @@ def softkeyinput(keyboard, ssid):
 				if event.key == K_LALT:		# B button
 					selectkey(keyboard, ssid, "space")
 				if event.key == K_SPACE:	# Y button (swap keyboards)
+					if not uniq[ssid]['Network']['Encryption'] == "wpa2" \
+						or not uniq[ssid]['Network']['Encryption'] == "wpa":
+						uniq[ssid]['Network']['Encryption'] = "wpa2"
+						# TESTING DEBUG
+						# This may work, or it may not. Will need to revisit it.
+						# TODO
+
 					if keyboard == "qwertyNormal":
 						keyboard = "qwertyShift"
 						drawkeyboard(keyboard, ssid)
