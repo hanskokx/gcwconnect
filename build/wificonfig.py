@@ -65,6 +65,7 @@ maxcolumns = ''
 passphrase = ''
 wirelessmenuexists = ''
 go = ''
+bgcolor = (41, 41, 41)
 
 ## Initialize the dispaly, for pygame
 if not pygame.display.get_init():
@@ -73,7 +74,7 @@ if not pygame.display.get_init():
 if not pygame.font.get_init():
 	pygame.font.init()
 
-surface.fill((41,41,41))
+surface.fill(bgcolor)
 pygame.mouse.set_visible(False)
 pygame.key.set_repeat(199,69) #(delay,interval)
 
@@ -261,7 +262,7 @@ def parseencryption(encryption):
 ## Draw interface elements
 class hint:
 
-	def __init__(self, button, text, x, y, bg=(41,41,41)):
+	def __init__(self, button, text, x, y, bg=bgcolor):
 		self.button = button
 		self.text = text
 		self.x = x
@@ -396,7 +397,7 @@ def getcurrentssid(): # What network are we connected to?
 	return ssid
 
 def redraw():
-	surface.fill((41,41,41))
+	surface.fill(bgcolor)
 	drawlogobar()
 	drawlogo()
 	mainmenu()
@@ -830,7 +831,7 @@ class Menu:
 	font_size = 24
 	font = pygame.font.SysFont
 	dest_surface = pygame.Surface
-	canvas_color = (41,41,41)
+	canvas_color = bgcolor
 
 	def __init__(self):
 		self.menu = []
@@ -920,15 +921,15 @@ class Menu:
 def swapmenu(active_menu):	
 	if active_menu == "main":
 		active_menu = "ssid"
-		menu.set_colors((128,128,128), (84,84,84), (41,41,41))
-		wirelessmenu.set_colors((128,128,128), (153,0,0), (41,41,41))
+		menu.set_colors((128,128,128), (84,84,84), bgcolor)
+		wirelessmenu.set_colors((128,128,128), (153,0,0), bgcolor)
 		redraw()
 	elif active_menu == "ssid":
 		active_menu = "main"
-		menu.set_colors((255,255,255), (153,0,0), (41,41,41))
-		wirelessmenu.set_colors((255,255,255), (84,84,84), (41,41,41))
+		menu.set_colors((255,255,255), (153,0,0), bgcolor)
+		wirelessmenu.set_colors((255,255,255), (84,84,84), bgcolor)
 		redraw()
-		pygame.draw.rect(surface, (41,41,41), (0,207,120,14))
+		pygame.draw.rect(surface, bgcolor, (0,207,120,14))
 	return active_menu
 
 wirelessmenu = Menu()
