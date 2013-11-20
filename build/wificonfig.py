@@ -28,14 +28,11 @@ TODO list:
 * Rewrite menus to give better scrolling options, and not have to do logic by menu position instead of content
 * Allow viewing/deleting saved networks
 * Show signal strength of scanned SSIDs
-* Add indicators to swap menus
-* Add indicators to select menu items
-* Allow "B" to swap from SSID menu to main menu
-
 
 Known bugs:
-* WPA/2 networks that don't show encryption type in iwlist scan will default to WEP and write wep to the config file, even if you choose WPA/2
-
+* If iwlist scan doesn't know what kind of encryption you have, it'll default to wep. You can swap to the WPA/2 menu,
+	but it won't know if your network is WPA or WPA2, and it defaults to WPA2. We might want to have a toggle between them.
+* SSID name in key entry cuts off the end of the screen if it's too long
 '''
 
 
@@ -57,7 +54,6 @@ netconfdir = confdir+"networks/"
 sysconfdir = "/usr/local/etc/network/"
 
 surface = pygame.display.set_mode((320,240))
-#surface = pygame.display.set_mode((640,480)) # DEBUG
 keyboard = ''
 selected_key = ''
 maxrows = ''
@@ -72,7 +68,6 @@ lightbg = (84, 84, 84)
 ## Initialize the dispaly, for pygame
 if not pygame.display.get_init():
 	pygame.display.init()
-
 if not pygame.font.get_init():
 	pygame.font.init()
 
@@ -352,7 +347,6 @@ class hint:
 			labelblock = pygame.draw.rect(surface, self.bg, (self.x+20,self.y,35,14))
 			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, (255, 255, 255), self.bg)
 			surface.blit(labeltext, labelblock)
-
 def drawlogobar(): # Set up the menu bar
 	pygame.draw.rect(surface, lightbg, (0,0,320,32))
 	pygame.draw.line(surface, (255, 255, 255), (0, 33), (320, 33))
@@ -422,7 +416,6 @@ def getcurrentssid(): # What network are we connected to?
 			ssid = str.strip(line[line.find('ESSID')+len('ESSID:"'):line.find('Nickname:')+len('Nickname:')].rstrip(' Nickname:').rstrip('"'))
 
 	return ssid
-
 def redraw():
 	surface.fill(darkbg)
 	drawlogobar()
@@ -873,6 +866,103 @@ def selectkey(keyboard, ssid, direction="none"):
 				else:
 					displaypassphrase(passphrase)
 	highlightkey(keyboard, ssid, selected_key)
+class SSIDMenu:
+	font_size = 18
+	font = pygame.font.SysFont
+	dest_surface = pygame.Surface
+	canvas_color = darkbg
+
+	def __init__(self):
+		self.menu = []
+		self.field = []
+		self.selected_item = 0
+		self.selection_position = (0,0)
+		self.menu_width = 0
+		self.menu_height = 0
+		self.number_of_fields = 0
+		self.selection_color = (153,0,0)
+		self.text_color =  (255,255,255)
+
+	class Pole:
+		text = ''
+		pole = pygame.Surface
+		pole_rect = pygame.Rect
+		selection_rect = pygame.Rect
+
+	def move_menu(self, top, left):
+		self.selection_position = (top,left) 
+
+	def set_colors(self, text, selection, background):
+		self.canvas_color = background
+		self.text_color =  text
+		self.selection_color = selection
+		
+	def set_fontsize(self,font_size):
+		self.font_size = font_size
+		
+	def set_font(self, path):
+		self.font_path = path
+		
+	def get_position(self):
+		return self.selected_item
+	
+	def init(self, menu, dest_surface):
+		self.menu = menu
+		self.dest_surface = dest_surface
+		self.number_of_fields = len(self.menu)
+		self.create_structure()		
+		
+	def draw(self,move=0):
+		if move:
+			self.selected_item += move 
+			if self.selected_item == -1:
+				self.selected_item = self.number_of_fields - 1
+			self.selected_item %= self.number_of_fields
+		menu = pygame.Surface((self.menu_width, self.menu_height))
+		menu.fill(self.canvas_color)
+		selection_rect = self.field[self.selected_item].selection_rect
+		pygame.draw.rect(menu,self.selection_color,selection_rect)
+
+		for i in xrange(self.number_of_fields):
+			menu.blit(self.field[i].pole,self.field[i].pole_rect)
+		self.dest_surface.blit(menu,self.selection_position)
+		return self.selected_item
+
+	def create_structure(self):
+		shift = 0
+		self.menu_height = 0
+		self.font = pygame.font.SysFont('', self.font_size)
+
+		for i in xrange(self.number_of_fields):
+			self.field.append(self.Pole())
+			self.field[i].text = self.menu[i]
+			self.field[i].pole = self.font.render(self.field[i].text, 1, self.text_color)
+
+			self.field[i].pole_rect = self.field[i].pole.get_rect()
+			if self.field[i].pole_rect.width > self.dest_surface.get_rect().width - self.field[i].pole_rect.left:
+				self.field[i].text = self.field[i].text[:16] + "..."
+				self.field[i].pole = self.font.render(self.field[i].text, 1, self.text_color)
+				self.field[i].pole_rect = self.field[i].pole.get_rect()
+
+			shift = int(self.font_size * 0.2)
+
+			height = round(self.field[i].pole_rect.height/5.)*5
+			self.field[i].pole_rect.left = shift
+			self.field[i].pole_rect.top = shift+(shift*2+height)*i
+
+			width = self.field[i].pole_rect.width+shift*2
+			height = self.field[i].pole_rect.height+shift*2			
+			left = self.field[i].pole_rect.left-shift
+			top = self.field[i].pole_rect.top-shift
+
+			self.field[i].selection_rect = (left,top ,width, height)
+			if width > self.menu_width:
+					self.menu_width = width
+			self.menu_height += height
+		x = 175
+		y = self.dest_surface.get_rect().centery - self.menu_height / 2 # 48
+		mx, my = self.selection_position
+		self.selection_position = (x+mx, y+my)
 class Menu:
 	font_size = 24
 	font = pygame.font.SysFont
@@ -975,7 +1065,8 @@ def swapmenu(active_menu):
 		wirelessmenu.set_colors((255,255,255), lightbg, darkbg)
 	return active_menu
 
-wirelessmenu = Menu()
+wirelessmenu = SSIDMenu()
+# wirelessmenu = Menu() ## DEBUG -- implementing new menu class
 menu = Menu()
 def mainmenu():
 	status = getwlanstatus()
@@ -1007,8 +1098,6 @@ if __name__ == "__main__":
 			# select = K_ESCAPE
 			# power up = K_KP0
 			# power down = K_PAUSE
-			# left shoulder = K_TAB
-			# right shoulder = K_BACKSPACE
 
 			if event.type == QUIT:
 				pygame.display.quit()
@@ -1055,7 +1144,7 @@ if __name__ == "__main__":
 							uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
 							uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
 							uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
-							uniqssid=uniqssids.setdefault('BLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAH', 'menu': 3}})
+							uniqssid=uniqssids.setdefault('BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', 'menu': 3}})
 							uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
 							uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
 							uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
@@ -1077,7 +1166,7 @@ if __name__ == "__main__":
 							# getnetworks()				## TEMPORARILY DISABLED FOR TESTING WITHOUT LIVE SCANNING
 							# uniq = listuniqssids()	## TEMPORARILY DISABLED FOR TESTING WITHOUT LIVE SCANNING
 							wirelessitems = []
-							wirelessmenu.set_fontsize(14)
+							# wirelessmenu.set_fontsize(14) ## DEBUG -- implementing new menu class
 
 							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
 								for network, detail in uniq.iteritems():
@@ -1087,7 +1176,7 @@ if __name__ == "__main__":
 
 
 							wirelessmenu.init(wirelessitems, surface)
-							wirelessmenu.move_menu(128, 36)
+							# wirelessmenu.move_menu(128, 36) ## DEBUG -- implementing new menu class
 							wirelessmenu.draw()
 
 							if not wirelessmenuexists == "true":
