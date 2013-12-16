@@ -866,103 +866,7 @@ def selectkey(keyboard, ssid, direction="none"):
 				else:
 					displaypassphrase(passphrase)
 	highlightkey(keyboard, ssid, selected_key)
-class SSIDMenu:
-	font_size = 18
-	font = pygame.font.SysFont
-	dest_surface = pygame.Surface
-	canvas_color = darkbg
 
-	def __init__(self):
-		self.menu = []
-		self.field = []
-		self.selected_item = 0
-		self.selection_position = (0,0)
-		self.menu_width = 0
-		self.menu_height = 0
-		self.number_of_fields = 0
-		self.selection_color = (153,0,0)
-		self.text_color =  (255,255,255)
-
-	class Pole:
-		text = ''
-		pole = pygame.Surface
-		pole_rect = pygame.Rect
-		selection_rect = pygame.Rect
-
-	def move_menu(self, top, left):
-		self.selection_position = (top,left) 
-
-	def set_colors(self, text, selection, background):
-		self.canvas_color = background
-		self.text_color =  text
-		self.selection_color = selection
-		
-	def set_fontsize(self,font_size):
-		self.font_size = font_size
-		
-	def set_font(self, path):
-		self.font_path = path
-		
-	def get_position(self):
-		return self.selected_item
-	
-	def init(self, menu, dest_surface):
-		self.menu = menu
-		self.dest_surface = dest_surface
-		self.number_of_fields = len(self.menu)
-		self.create_structure()		
-		
-	def draw(self,move=0):
-		if move:
-			self.selected_item += move 
-			if self.selected_item == -1:
-				self.selected_item = self.number_of_fields - 1
-			self.selected_item %= self.number_of_fields
-		menu = pygame.Surface((self.menu_width, self.menu_height))
-		menu.fill(self.canvas_color)
-		selection_rect = self.field[self.selected_item].selection_rect
-		pygame.draw.rect(menu,self.selection_color,selection_rect)
-
-		for i in xrange(self.number_of_fields):
-			menu.blit(self.field[i].pole,self.field[i].pole_rect)
-		self.dest_surface.blit(menu,self.selection_position)
-		return self.selected_item
-
-	def create_structure(self):
-		shift = 0
-		self.menu_height = 0
-		self.font = pygame.font.SysFont('', self.font_size)
-
-		for i in xrange(self.number_of_fields):
-			self.field.append(self.Pole())
-			self.field[i].text = self.menu[i]
-			self.field[i].pole = self.font.render(self.field[i].text, 1, self.text_color)
-
-			self.field[i].pole_rect = self.field[i].pole.get_rect()
-			if self.field[i].pole_rect.width > self.dest_surface.get_rect().width - self.field[i].pole_rect.left:
-				self.field[i].text = self.field[i].text[:16] + "..."
-				self.field[i].pole = self.font.render(self.field[i].text, 1, self.text_color)
-				self.field[i].pole_rect = self.field[i].pole.get_rect()
-
-			shift = int(self.font_size * 0.2)
-
-			height = round(self.field[i].pole_rect.height/5.)*5
-			self.field[i].pole_rect.left = shift
-			self.field[i].pole_rect.top = shift+(shift*2+height)*i
-
-			width = self.field[i].pole_rect.width+shift*2
-			height = self.field[i].pole_rect.height+shift*2			
-			left = self.field[i].pole_rect.left-shift
-			top = self.field[i].pole_rect.top-shift
-
-			self.field[i].selection_rect = (left,top ,width, height)
-			if width > self.menu_width:
-					self.menu_width = width
-			self.menu_height += height
-		x = 175
-		y = self.dest_surface.get_rect().centery - self.menu_height / 2 # 48
-		mx, my = self.selection_position
-		self.selection_position = (x+mx, y+my)
 class Menu:
 	font_size = 24
 	font = pygame.font.SysFont
@@ -987,7 +891,7 @@ class Menu:
 		selection_rect = pygame.Rect
 
 	def move_menu(self, top, left):
-		self.selection_position = (top,left) 
+		self.selection_position = (top,left)
 
 	def set_colors(self, text, selection, background):
 		self.canvas_color = background
@@ -1050,7 +954,7 @@ class Menu:
 			if width > self.menu_width:
 					self.menu_width = width
 			self.menu_height += height
-		x = self.dest_surface.get_rect().centerx - self.menu_width / 2
+		x = 0
 		y = self.dest_surface.get_rect().centery - self.menu_height / 2
 		mx, my = self.selection_position
 		self.selection_position = (x+mx, y+my) 
@@ -1065,7 +969,7 @@ def swapmenu(active_menu):
 		wirelessmenu.set_colors((255,255,255), lightbg, darkbg)
 	return active_menu
 
-wirelessmenu = SSIDMenu()
+wirelessmenu = Menu()
 # wirelessmenu = Menu() ## DEBUG -- implementing new menu class
 menu = Menu()
 def mainmenu():
@@ -1083,10 +987,12 @@ if __name__ == "__main__":
 	uniqssids = {}
 	currentssid = ""
 	active_menu = "main"
+	page=0
+	maxitems=10
 	# createpaths()	# DEBUG
 	redraw()
 	while 1:
-		time.sleep(0.2)
+		time.sleep(0.1)
 		for event in pygame.event.get():
 			## GCW-Zero keycodes:
 			# A = K_LCTRL
@@ -1118,12 +1024,36 @@ if __name__ == "__main__":
 						menu.draw(-1)
 					if active_menu == "ssid":
 						wirelessmenu.draw(-1)
+						if (wirelessmenu.selected_item + 1) == wirelessmenu.number_of_fields:
+							wirelessmenu = Menu()
+							wirelessmenu.set_fontsize(14)
+							wirelessmenu.move_menu(150,0)
+							page -= 1
+							wirelessitems = []
+							for item in l[(page*maxitems):((page+1) * maxitems)]:
+								wirelessitems.append(item)
+							wirelessmenu.init(wirelessitems, surface)
+							pygame.draw.rect(surface, darkbg, (150, 48, 150, 150))
+							wirelessmenu.draw(maxitems-1)
+							pygame.display.update()
 				if event.key == K_DOWN: # Arrow down the menu
 					if active_menu == "main":
 						menu.draw(1)
 					if active_menu == "ssid":
 						wirelessmenu.draw(1)
+						if (wirelessmenu.selected_item + 1) == wirelessmenu.number_of_fields:
+							wirelessmenu = Menu()
+							wirelessmenu.set_fontsize(14)
+							wirelessmenu.move_menu(150,0)
+							page += 1
+							wirelessitems = []
+							for item in l[(page*maxitems):((page+1) * maxitems)]:
+								wirelessitems.append(item)
 
+							wirelessmenu.init(wirelessitems, surface)
+							pygame.draw.rect(surface, darkbg, (150, 48, 150, 150))
+							wirelessmenu.draw()
+							pygame.display.update()
 				if event.key == K_RIGHT:
 					if wirelessmenuexists == "true" and active_menu == "main":
 						active_menu = swapmenu(active_menu)
@@ -1155,29 +1085,29 @@ if __name__ == "__main__":
 							uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
 							uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
 							uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
-							uniqssid=uniqssids.setdefault('Abraham_Linksys', {'Network': {'Encryption': 'wpa2', 'Quality': '84/100', 'ESSID': 'Abraham_Linksys', 'menu': 13}})
-							uniqssid=uniqssids.setdefault('The Carlton', {'Network': {'Encryption': 'wpa2', 'Quality': '95/100', 'ESSID': 'The Carlton', 'menu': 14}})
-							uniqssid=uniqssids.setdefault('NETGEAR19', {'Network': {'Encryption': 'wpa2', 'Quality': '90/100', 'ESSID': 'NETGEAR19', 'menu': 15}})
-							uniqssid=uniqssids.setdefault('ATT024', {'Network': {'Encryption': 'wpa2', 'Quality': '25/100', 'ESSID': 'ATT024', 'menu': 16}})
-							uniqssid=uniqssids.setdefault('CalTre', {'Network': {'Encryption': 'wpa2', 'Quality': '87/100', 'ESSID': 'CalTre', 'menu': 17}})
-							uniqssid=uniqssids.setdefault('Byrd', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'Byrd', 'menu': 18}})
-							uniqssid=uniqssids.setdefault('PokeCenter', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'PokeCenter', 'menu': 19}})
+
 							uniq = uniqssids
 							####### DEBUG #######	
 							# getnetworks()				## TEMPORARILY DISABLED FOR TESTING WITHOUT LIVE SCANNING
 							# uniq = listuniqssids()	## TEMPORARILY DISABLED FOR TESTING WITHOUT LIVE SCANNING
+							wirelessmenu.set_fontsize(14) ## DEBUG -- implementing new menu class
+							wirelessmenu.move_menu(150,0)
 							wirelessitems = []
-							# wirelessmenu.set_fontsize(14) ## DEBUG -- implementing new menu class
-
+							l = []
 							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
 								for network, detail in uniq.iteritems():
 									if network == item:
-										menuitem = str(detail['Network']['ESSID'])
-										wirelessitems.append(menuitem)
-
+										s = str(detail['Network']['ESSID'])
+										if len(str(detail['Network']['ESSID'])) > 16:
+											menuitem = "%s..."%(s[:16])
+										else:
+											menuitem = s
+										l.append(menuitem)
+						
+							for item in l[(page*maxitems):((page+1) * maxitems)]:
+								wirelessitems.append(item)
 
 							wirelessmenu.init(wirelessitems, surface)
-							# wirelessmenu.move_menu(128, 36) ## DEBUG -- implementing new menu class
 							wirelessmenu.draw()
 
 							if not wirelessmenuexists == "true":
