@@ -79,6 +79,8 @@ pygame.key.set_repeat(199,69) #(delay,interval)
 def createpaths(): # Create paths, if necessary
 	if not os.path.exists(confdir):
 		os.makedirs(confdir)
+	if not os.path.exists(netconfdir):
+		os.makedirs(netconfdir)
 	if not os.path.exists(sysconfdir):
 		os.makedirs(sysconfdir)
 
@@ -970,7 +972,6 @@ def swapmenu(active_menu):
 	return active_menu
 
 wirelessmenu = Menu()
-# wirelessmenu = Menu() ## DEBUG -- implementing new menu class
 menu = Menu()
 def mainmenu():
 	status = getwlanstatus()
@@ -989,7 +990,7 @@ if __name__ == "__main__":
 	active_menu = "main"
 	page=0
 	maxitems=10
-	# createpaths()	# DEBUG
+	createpaths()	# DEBUG
 	redraw()
 	while 1:
 		time.sleep(0.1)
@@ -1023,7 +1024,6 @@ if __name__ == "__main__":
 					if active_menu == "main":
 						menu.draw(-1)
 					if active_menu == "ssid":
-						wirelessmenu.draw(-1)
 						if (wirelessmenu.selected_item + 1) == wirelessmenu.number_of_fields:
 							wirelessmenu = Menu()
 							wirelessmenu.set_fontsize(14)
@@ -1036,11 +1036,12 @@ if __name__ == "__main__":
 							pygame.draw.rect(surface, darkbg, (150, 48, 150, 150))
 							wirelessmenu.draw(maxitems-1)
 							pygame.display.update()
+						else:
+							wirelessmenu.draw(-1)
 				if event.key == K_DOWN: # Arrow down the menu
 					if active_menu == "main":
 						menu.draw(1)
 					if active_menu == "ssid":
-						wirelessmenu.draw(1)
 						if (wirelessmenu.selected_item + 1) == wirelessmenu.number_of_fields:
 							wirelessmenu = Menu()
 							wirelessmenu.set_fontsize(14)
@@ -1054,6 +1055,8 @@ if __name__ == "__main__":
 							pygame.draw.rect(surface, darkbg, (150, 48, 150, 150))
 							wirelessmenu.draw()
 							pygame.display.update()
+						else:
+							wirelessmenu.draw(1)
 				if event.key == K_RIGHT:
 					if wirelessmenuexists == "true" and active_menu == "main":
 						active_menu = swapmenu(active_menu)
@@ -1070,27 +1073,26 @@ if __name__ == "__main__":
 						if menu.get_position() == 0: # Scan menu
 							wirelessmenuexists = ''
 							####### DEBUG #######
-							uniqssid = {}
-							uniqssids = {}
-							uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
-							uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
-							uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
-							uniqssid=uniqssids.setdefault('BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', 'menu': 3}})
-							uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
-							uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
-							uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
-							uniqssid=uniqssids.setdefault('GoBlue', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'GoBlue', 'menu': 7}})
-							uniqssid=uniqssids.setdefault('yangji', {'Network': {'Encryption': 'wpa', 'ESSID': 'yangji', 'menu': 8}})
-							uniqssid=uniqssids.setdefault('U+zone', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'U+zone', 'menu': 9}})
-							uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
-							uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
-							uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
-
-							uniq = uniqssids
+							# uniqssid = {}
+							# uniqssids = {}
+							# uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
+							# uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
+							# uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
+							# uniqssid=uniqssids.setdefault('BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', 'menu': 3}})
+							# uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
+							# uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
+							# uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
+							# uniqssid=uniqssids.setdefault('GoBlue', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'GoBlue', 'menu': 7}})
+							# uniqssid=uniqssids.setdefault('yangji', {'Network': {'Encryption': 'wpa', 'ESSID': 'yangji', 'menu': 8}})
+							# uniqssid=uniqssids.setdefault('U+zone', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'U+zone', 'menu': 9}})
+							# uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
+							# uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
+							# uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
+							# uniq = uniqssids
 							####### DEBUG #######	
-							# getnetworks()				## TEMPORARILY DISABLED FOR TESTING WITHOUT LIVE SCANNING
-							# uniq = listuniqssids()	## TEMPORARILY DISABLED FOR TESTING WITHOUT LIVE SCANNING
-							wirelessmenu.set_fontsize(14) ## DEBUG -- implementing new menu class
+							getnetworks()				## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
+							uniq = listuniqssids()		## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
+							wirelessmenu.set_fontsize(14)
 							wirelessmenu.move_menu(150,0)
 							wirelessitems = []
 							l = []
