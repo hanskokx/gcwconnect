@@ -952,9 +952,9 @@ menu.move_menu(16, 96)
 def mainmenu():
 	status = getwlanstatus()
 	if not status == "ok":
-		menu.init(['Scan for APs', "Turn WiFi on", "Quit"], surface)
+		menu.init(['Scan for APs', "Manual setup", "Turn WiFi on", "Quit"], surface)
 	else:
-		menu.init(['Scan for APs', "Turn WiFi off", "Quit"], surface)
+		menu.init(['Scan for APs', "Manual setup", "Turn WiFi off", "Quit"], surface)
 	menu.draw()
 def create_wireless_menu():
 	global wirelessmenu
@@ -1063,7 +1063,10 @@ if __name__ == "__main__":
 							active_menu = to_menu("ssid")
 							redraw()
 
-						elif menu.get_position() == 1: # Toggle wifi
+						elif menu.get_position() == 1: # Manual setup
+							modal("Manual setup")
+
+						elif menu.get_position() == 2: # Toggle wifi
 							status = getwlanstatus()
 							if not status == "ok":
 								ifup()
@@ -1074,7 +1077,7 @@ if __name__ == "__main__":
 								redraw()
 								status = ''
 
-						elif menu.get_position() == 2: # Quit menu
+						elif menu.get_position() == 3: # Quit menu
 							pygame.display.quit()
 							sys.exit()
 
