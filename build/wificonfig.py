@@ -48,6 +48,13 @@ wlan = "wlan0"
 # connect to a network before we give up?
 timeout = 3
 
+darkbg = (41, 41, 41)
+lightbg = (84, 84, 84)
+activeselbg = (153, 0, 0)
+inactiveselbg = (84, 84, 84)
+activetext = (255, 255, 255)
+inactivetext = (128, 128, 128)
+
 ## That's it for options. Everything else below shouldn't be edited.
 confdir = os.environ['HOME'] + "/.gcwconnect/"
 netconfdir = confdir+"networks/"
@@ -59,11 +66,8 @@ selected_key = ''
 maxrows = ''
 maxcolumns = ''
 passphrase = ''
-wirelessmenuexists = ''
 go = ''
 active_menu = ''
-darkbg = (41, 41, 41)
-lightbg = (84, 84, 84)
 
 ## Initialize the dispaly, for pygame
 if not pygame.display.get_init():
@@ -424,7 +428,7 @@ def redraw():
 	drawlogo()
 	mainmenu()
 
-	if wirelessmenuexists == "true":
+	if wirelessmenu is not None:
 		wirelessmenu.draw()
 		pygame.draw.rect(surface, darkbg, (0, 208, 320, 16))
 		hint("select", "Edit", 4, 210)
@@ -594,8 +598,8 @@ def getkeys(board):
 class key:
 	def __init__(self):
 		self.key = []
-		self.selection_color = (153,0,0)
-		self.text_color =  (255,255,255)
+		self.selection_color = activeselbg
+		self.text_color = activetext
 		self.selection_position = (0,0)
 		self.selected_item = 0
 
@@ -608,46 +612,9 @@ class key:
 	def drawkey(self):
 		key_width = 16
 		key_height = 16
-		top = ''
-		left = ''
 
-		if self.row == 0:
-			top = 136
-		elif self.row == 1:
-			top = 156
-		elif self.row == 2:
-			top = 176
-		elif self.row == 3:
-			top = 196
-		elif self.row == 4:
-			top = 216
-
-		if self.column == 0:
-			left = 32
-		elif self.column == 1:
-			left = 52
-		elif self.column == 2:
-			left = 72
-		elif self.column == 3:
-			left = 92
-		elif self.column == 4:
-			left = 112
-		elif self.column == 5:
-			left = 132
-		elif self.column == 6:
-			left = 152
-		elif self.column == 7:
-			left = 172
-		elif self.column == 8:
-			left = 192
-		elif self.column == 9:
-			left = 212
-		elif self.column == 10:
-			left = 232
-		elif self.column == 11:
-			left = 252
-		elif self.column == 12:
-			left = 272
+		top = 136 + self.row * 20
+		left = 32 + self.column * 20
 
 		if len(self.key) > 1:
 			key_width = 36
@@ -875,112 +842,131 @@ class Menu:
 	dest_surface = pygame.Surface
 	canvas_color = darkbg
 
+	elements = []
+
 	def __init__(self):
-		self.menu = []
-		self.field = []
+		self.set_elements([])
 		self.selected_item = 0
-		self.selection_position = (0,0)
+		self.origin = (0,0)
 		self.menu_width = 0
 		self.menu_height = 0
-		self.number_of_fields = 0
-		self.selection_color = (153,0,0)
-		self.text_color =  (255,255,255)
-
-	class Pole:
-		text = ''
-		pole = pygame.Surface
-		pole_rect = pygame.Rect
-		selection_rect = pygame.Rect
+		self.selection_color = activeselbg
+		self.text_color = activetext
 
 	def move_menu(self, top, left):
-		self.selection_position = (top,left)
+		self.origin = (top, left)
 
 	def set_colors(self, text, selection, background):
-		self.canvas_color = background
-		self.text_color =  text
+		self.text_color = text
 		self.selection_color = selection
 		
-	def set_fontsize(self,font_size):
-		self.font_size = font_size
-		
-	def set_font(self, path):
-		self.font_path = path
-		
+	def set_font(self, font):
+		self.font = font
+
+	def set_elements(self, elements):
+		self.elements = elements
+
 	def get_position(self):
 		return self.selected_item
 	
-	def init(self, menu, dest_surface):
-		self.menu = menu
+	def init(self, elements, dest_surface):
+		self.set_elements(elements)
 		self.dest_surface = dest_surface
-		self.number_of_fields = len(self.menu)
-		self.create_structure()		
 		
 	def draw(self,move=0):
-		if move:
-			self.selected_item += move 
-			if self.selected_item == -1:
-				self.selected_item = self.number_of_fields - 1
-			self.selected_item %= self.number_of_fields
-		menu = pygame.Surface((self.menu_width, self.menu_height))
-		menu.fill(self.canvas_color)
-		selection_rect = self.field[self.selected_item].selection_rect
-		pygame.draw.rect(menu,self.selection_color,selection_rect)
+		if len(self.elements) == 0:
+			return
 
-		for i in xrange(self.number_of_fields):
-			menu.blit(self.field[i].pole,self.field[i].pole_rect)
-		self.dest_surface.blit(menu,self.selection_position)
+		if move != 0:
+			self.selected_item += move
+			if self.selected_item < 0:
+				self.selected_item = 0
+			elif self.selected_item >= len(self.elements):
+				self.selected_item = len(self.elements) - 1
+
+		# Which items are to be shown?
+		if self.selected_item <= 2: # We're at the top
+			visible_elements = self.elements[0:5]
+			selected_within_visible = self.selected_item
+		elif self.selected_item >= len(self.elements) - 3: # We're at the bottom
+			visible_elements = self.elements[-5:]
+			selected_within_visible = self.selected_item - (len(self.elements) - len(visible_elements))
+		else: # The list is larger than 5 elements, and we're in the middle
+			visible_elements = self.elements[self.selected_item - 2:self.selected_item + 3]
+			selected_within_visible = 2
+
+		# What width does everything have?
+		max_width = max([self.get_item_width(visible_element) for visible_element in visible_elements])
+		# And now the height
+		heights = [self.get_item_height(visible_element) for visible_element in visible_elements]
+		total_height = sum(heights)
+
+		# Background
+		menu_surface = pygame.Surface((max_width, total_height))
+		menu_surface.fill(self.canvas_color)
+
+		# Selection
+		left = 0
+		top = sum(heights[0:selected_within_visible])
+		width = max_width
+		height = heights[selected_within_visible]
+		selection_rect = (left, top, width, height)
+		pygame.draw.rect(menu_surface,self.selection_color,selection_rect)
+
+		# Elements
+		top = 0
+		for i in xrange(len(visible_elements)):
+			self.render_element(menu_surface, visible_elements[i], 0, top)
+			top += heights[i]
+		self.dest_surface.blit(menu_surface,self.origin)
 		return self.selected_item
 
-	def create_structure(self):
-		shift = 0
-		self.menu_height = 0
-		self.font = pygame.font.Font('./data/Inconsolata.otf', self.font_size)
-		for i in xrange(self.number_of_fields):
-			self.field.append(self.Pole())
-			self.field[i].text = self.menu[i]
-			self.field[i].pole = self.font.render(self.field[i].text, 1, self.text_color)
+	def get_item_height(self, element):
+		render = self.font.render(element, 1, self.text_color)
+		spacing = 5
+		return render.get_rect().height + spacing * 2
 
-			self.field[i].pole_rect = self.field[i].pole.get_rect()
-			shift = int(self.font_size * 0.2)
+	def get_item_width(self, element):
+		render = self.font.render(element, 1, self.text_color)
+		spacing = 5
+		return render.get_rect().width + spacing * 2
 
-			height = round(self.field[i].pole_rect.height/5.)*5
-			self.field[i].pole_rect.left = shift
-			self.field[i].pole_rect.top = shift+(shift*2+height)*i
+	def render_element(self, menu_surface, element, left, top):
+		render = self.font.render(element, 1, self.text_color)
+		spacing = 5
+		menu_surface.blit(render, (left + spacing, top + spacing, render.get_rect().width, render.get_rect().height))
 
-			width = self.field[i].pole_rect.width+shift*2
-			height = self.field[i].pole_rect.height+shift*2			
-			left = self.field[i].pole_rect.left-shift
-			top = self.field[i].pole_rect.top-shift
+def to_menu(new_menu):
+	if new_menu == "main":
+		menu.set_colors(activetext, activeselbg, darkbg)
+		if wirelessmenu is not None:
+			wirelessmenu.set_colors(inactivetext, inactiveselbg, darkbg)
+	elif new_menu == "ssid":
+		menu.set_colors(inactivetext, inactiveselbg, darkbg)
+		wirelessmenu.set_colors(activetext, activeselbg, darkbg)
+	return new_menu
 
-			self.field[i].selection_rect = (left,top ,width, height)
-			if width > self.menu_width:
-					self.menu_width = width
-			self.menu_height += height
-		x = 0
-		y = self.dest_surface.get_rect().centery - self.menu_height / 2
-		mx, my = self.selection_position
-		self.selection_position = (x+mx, y+my) 
-def swapmenu(active_menu):
-	if active_menu == "main":
-		active_menu = "ssid"
-		menu.set_colors((128,128,128), lightbg, darkbg)
-		wirelessmenu.set_colors((128,128,128), (153,0,0), darkbg)
-	elif active_menu == "ssid":
-		active_menu = "main"
-		menu.set_colors((255,255,255), (153,0,0), darkbg)
-		wirelessmenu.set_colors((255,255,255), lightbg, darkbg)
-	return active_menu
-
-wirelessmenu = Menu()
+wirelessmenu = None
 menu = Menu()
+menu.set_font(pygame.font.Font('./data/Inconsolata.otf', 16))
+menu.move_menu(16, 96)
 def mainmenu():
 	status = getwlanstatus()
 	if not status == "ok":
 		menu.init(['Scan for APs', "Turn wifi on", "Quit"], surface)
 	else:
 		menu.init(['Scan for APs', "Turn wifi off", "Quit"], surface)
-	menu.move_menu(16, 96)
 	menu.draw()
+
+def create_wireless_menu():
+	global wirelessmenu
+	wirelessmenu = Menu()
+	wirelessmenu.set_font(pygame.font.Font('./data/Inconsolata.otf', 14))
+	wirelessmenu.move_menu(150,40)
+
+def destroy_wireless_menu():
+	global wirelessmenu
+	wirelessmenu = None
 
 if __name__ == "__main__":
 	# Persistent variables
@@ -988,13 +974,10 @@ if __name__ == "__main__":
 	uniqssids = {}
 	currentssid = ""
 	active_menu = "main"
-	page=0
-	curmenuitem=1
-	maxitems=8
 	# createpaths()	# DEBUG
 	redraw()
 	while 1:
-		time.sleep(0.1)
+		time.sleep(0.016)
 		for event in pygame.event.get():
 			## GCW-Zero keycodes:
 			# A = K_LCTRL
@@ -1015,78 +998,35 @@ if __name__ == "__main__":
 			elif event.type == KEYDOWN:
 				if event.key == K_PAUSE: # Power down
 					pass
-				if event.key == K_TAB: # Left shoulder button
+				elif event.key == K_TAB: # Left shoulder button
 					pass
-				if event.key == K_BACKSPACE: # Right shoulder button
+				elif event.key == K_BACKSPACE: # Right shoulder button
 					pass
-				if event.key == K_KP0:	# Power up
+				elif event.key == K_KP0:	# Power up
 					pass
-				if event.key == K_UP: # Arrow up the menu
+				elif event.key == K_UP: # Arrow up the menu
 					if active_menu == "main":
 						menu.draw(-1)
-					if active_menu == "ssid":
-						if wirelessmenu.selected_item == 0 and page > 0:
-							wirelessmenu = Menu()
-							wirelessmenu.set_fontsize(14)
-							wirelessmenu.move_menu(150,0)
-							page -= 1
-							wirelessitems = []
-							for item in l[(page*maxitems):((page+1) * maxitems)]:
-								wirelessitems.append(item)
-							wirelessmenu.init(wirelessitems, surface)
-							pygame.draw.rect(surface, darkbg, (150, 36, 150, 175))
-							wirelessmenu.selected_item = 0
-							wirelessmenu.draw()
-							pygame.display.update()
-						elif wirelessmenu.selected_item != 0:
-							wirelessmenu.draw(-1)
-							curmenuitem -= 1
-
-						print curmenuitem
-
-				if event.key == K_DOWN: # Arrow down the menu
+					elif active_menu == "ssid":
+						wirelessmenu.draw(-1)
+				elif event.key == K_DOWN: # Arrow down the menu
 					if active_menu == "main":
 						menu.draw(1)
-					if active_menu == "ssid":
-						print curmenuitem
-						if curmenuitem == wirelessmenu.number_of_fields:
-							wirelessmenu = Menu()
-							wirelessmenu.set_fontsize(14)
-							wirelessmenu.move_menu(150,0)
-							page += 1
-							curmenuitem = 0
-							wirelessitems = []
-							for item in l[(page*maxitems):((page+1) * maxitems)]:
-								wirelessitems.append(item)
-
-							wirelessmenu.init(wirelessitems, surface)
-							pygame.draw.rect(surface, darkbg, (150, 36, 150, 175))
-							wirelessmenu.draw()
-							pygame.display.update()
-						elif curmenuitem != wirelessmenu.number_of_fields and page == 0:
-							wirelessmenu.draw(1)
-							curmenuitem += 1
-						elif wirelessmenu.selected_item != wirelessmenu.number_of_fields and page != 0:
-							wirelessmenu.draw(1)
-							curmenuitem += 1
-						elif wirelessmenu.selected_item == wirelessmenu.number_of_fields and page != 0:
-							curmenuitem = wirelessmenu.number_of_fields
-
-				if event.key == K_RIGHT:
-					if wirelessmenuexists == "true" and active_menu == "main":
-						active_menu = swapmenu(active_menu)
+					elif active_menu == "ssid":
+						wirelessmenu.draw(1)
+				elif event.key == K_RIGHT:
+					if wirelessmenu is not None and active_menu == "main":
+						active_menu = to_menu("ssid")
 						redraw()
-				if event.key == K_LALT or event.key == K_LEFT:
+				elif event.key == K_LALT or event.key == K_LEFT:
 					if active_menu == "ssid":
-						active_menu = swapmenu(active_menu)
+						destroy_wireless_menu()
+						active_menu = to_menu("main")
 						redraw()
-					
-
-				if event.key == K_LCTRL or event.key == K_RETURN:
+				elif event.key == K_LCTRL or event.key == K_RETURN:
 					# Main menu
 					if active_menu == "main":
 						if menu.get_position() == 0: # Scan menu
-							wirelessmenuexists = ''
 							####### DEBUG #######
 							uniqssid = {}
 							uniqssids = {}
@@ -1107,8 +1047,6 @@ if __name__ == "__main__":
 							####### DEBUG #######	
 							# getnetworks()				## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
 							# uniq = listuniqssids()		## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
-							wirelessmenu.set_fontsize(14)
-							wirelessmenu.move_menu(150,0)
 							wirelessitems = []
 							l = []
 							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
@@ -1120,32 +1058,26 @@ if __name__ == "__main__":
 										else:
 											menuitem = s.ljust(19)
 										l.append(menuitem)
-						
-							for item in l[(page*maxitems):((page+1) * maxitems)]:
-								wirelessitems.append(item)
 
-							wirelessmenu.init(wirelessitems, surface)
-							print wirelessmenu.selected_item, "/", page
+							create_wireless_menu()
+							wirelessmenu.init(l, surface)
 							wirelessmenu.draw()
 
-							if not wirelessmenuexists == "true":
-								wirelessmenuexists = "true"
-							active_menu = swapmenu('main')
+							active_menu = to_menu("ssid")
 							redraw()
 
-						if menu.get_position() == 1: # Toggle wifi
+						elif menu.get_position() == 1: # Toggle wifi
 							status = getwlanstatus()
 							if not status == "ok":
 								ifup()
 								redraw()
 								status = ''
 							else:
-								wirelessmenuexists = "false"
 								ifdown()
 								redraw()
 								status = ''
 
-						if menu.get_position() == 2: # Quit menu
+						elif menu.get_position() == 2: # Quit menu
 							pygame.display.quit()
 							sys.exit()
 
@@ -1178,24 +1110,24 @@ if __name__ == "__main__":
 									go = "true"
 									connect()
 									redraw()							
+				elif event.key == K_ESCAPE:
+					if active_menu == "ssid": # Allow us to edit the existing key
+						ssid = ""
 
-				if event.key == K_ESCAPE and active_menu == "ssid": # Allow us to edit the existing key
-					ssid = ""
-
-					for network, detail in uniq.iteritems():
-						position = str(wirelessmenu.get_position())
-						if str(detail['Network']['menu']) == position:
-							ssid = network
-							ssidconfig = re.escape(ssid)
-							if detail['Network']['Encryption'] == "none":
-								pass
-							elif detail['Network']['Encryption'] == "wep":
-								displaypassphrase(passphrase)
-								drawkeyboard("wep", ssid)
-								getinput("wep", ssid)
-							else:
-								displaypassphrase(passphrase)
-								drawkeyboard("qwertyNormal", ssid)
-								getinput("qwertyNormal", ssid)
+						for network, detail in uniq.iteritems():
+							position = str(wirelessmenu.get_position())
+							if str(detail['Network']['menu']) == position:
+								ssid = network
+								ssidconfig = re.escape(ssid)
+								if detail['Network']['Encryption'] == "none":
+									pass
+								elif detail['Network']['Encryption'] == "wep":
+									displaypassphrase(passphrase)
+									drawkeyboard("wep", ssid)
+									getinput("wep", ssid)
+								else:
+									displaypassphrase(passphrase)
+									drawkeyboard("qwertyNormal", ssid)
+									getinput("qwertyNormal", ssid)
 
 		pygame.display.update()
