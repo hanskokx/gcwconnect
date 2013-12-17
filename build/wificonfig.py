@@ -971,7 +971,7 @@ if __name__ == "__main__":
 	uniqssids = {}
 	currentssid = ""
 	active_menu = "main"
-	# createpaths()	# DEBUG
+	createpaths()	# DEBUG
 	redraw()
 	while 1:
 		time.sleep(0.016)
@@ -1025,25 +1025,25 @@ if __name__ == "__main__":
 					if active_menu == "main":
 						if menu.get_position() == 0: # Scan menu
 							####### DEBUG #######
-							uniqssid = {}
-							uniqssids = {}
-							uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
-							uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
-							uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
-							uniqssid=uniqssids.setdefault('BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', 'menu': 3}})
-							uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
-							uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
-							uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
-							uniqssid=uniqssids.setdefault('GoBlue', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'GoBlue', 'menu': 7}})
-							uniqssid=uniqssids.setdefault('yangji', {'Network': {'Encryption': 'wpa', 'ESSID': 'yangji', 'menu': 8}})
-							uniqssid=uniqssids.setdefault('U+zone', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'U+zone', 'menu': 9}})
-							uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
-							uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
-							uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
-							uniq = uniqssids
+							# uniqssid = {}
+							# uniqssids = {}
+							# uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
+							# uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
+							# uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
+							# uniqssid=uniqssids.setdefault('BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', 'menu': 3}})
+							# uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
+							# uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
+							# uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
+							# uniqssid=uniqssids.setdefault('GoBlue', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'GoBlue', 'menu': 7}})
+							# uniqssid=uniqssids.setdefault('yangji', {'Network': {'Encryption': 'wpa', 'ESSID': 'yangji', 'menu': 8}})
+							# uniqssid=uniqssids.setdefault('U+zone', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'U+zone', 'menu': 9}})
+							# uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
+							# uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
+							# uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
+							# uniq = uniqssids
 							####### DEBUG #######	
-							# getnetworks()				## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
-							# uniq = listuniqssids()		## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
+							getnetworks()				## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
+							uniq = listuniqssids()		## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
 							wirelessitems = []
 							l = []
 							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
