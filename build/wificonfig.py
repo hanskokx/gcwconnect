@@ -90,7 +90,7 @@ def createpaths(): # Create paths, if necessary
 
 ## Interface management
 def ifdown():
-	modal("Disabling wifi...","false")
+	modal("Disabling WiFi...","false")
 	command = ['ifdown', wlan]
 	with open(os.devnull, "w") as fnull:
 		SU.Popen(command, stderr = fnull)
@@ -105,7 +105,7 @@ def ifdown():
 def enablewifi():
 	check = checkinterfacestatus()
 	if not check:
-		modal("Enabling wifi...","false")
+		modal("Enabling WiFi...","false")
 		command = ['rfkill', 'unblock', 'wlan']
 		with open(os.devnull, "w") as fnull:
 			SU.Popen(command, stderr = fnull)
@@ -935,7 +935,6 @@ class Menu:
 		render = self.font.render(element, 1, self.text_color)
 		spacing = 5
 		menu_surface.blit(render, (left + spacing, top + spacing, render.get_rect().width, render.get_rect().height))
-
 def to_menu(new_menu):
 	if new_menu == "main":
 		menu.set_colors(activetext, activeselbg, darkbg)
@@ -953,17 +952,15 @@ menu.move_menu(16, 96)
 def mainmenu():
 	status = getwlanstatus()
 	if not status == "ok":
-		menu.init(['Scan for APs', "Turn wifi on", "Quit"], surface)
+		menu.init(['Scan for APs', "Turn WiFi on", "Quit"], surface)
 	else:
-		menu.init(['Scan for APs', "Turn wifi off", "Quit"], surface)
+		menu.init(['Scan for APs', "Turn WiFi off", "Quit"], surface)
 	menu.draw()
-
 def create_wireless_menu():
 	global wirelessmenu
 	wirelessmenu = Menu()
 	wirelessmenu.set_font(pygame.font.Font('./data/Inconsolata.otf', 14))
 	wirelessmenu.move_menu(150,40)
-
 def destroy_wireless_menu():
 	global wirelessmenu
 	wirelessmenu = None
