@@ -29,10 +29,6 @@ TODO list:
 * Allow viewing/deleting saved networks
 * Show signal strength of scanned SSIDs
 
-Known bugs:
-
-* Scrolling around the ssid menu will crash it if you try to go past the end or beginning
-* Scrolling down a page of SSIDs in the menu, then going back up, and back down causes the cursor to jump to the top
 '''
 
 
