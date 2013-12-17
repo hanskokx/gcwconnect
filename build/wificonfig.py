@@ -30,9 +30,9 @@ TODO list:
 * Show signal strength of scanned SSIDs
 
 Known bugs:
-* If iwlist scan doesn't know what kind of encryption you have, it'll default to wep. You can swap to the WPA/2 menu,
-	but it won't know if your network is WPA or WPA2, and it defaults to WPA2. We might want to have a toggle between them.
-* SSID name in key entry cuts off the end of the screen if it's too long
+
+* Scrolling around the ssid menu will crash it if you try to go past the end or beginning
+* Scrolling down a page of SSIDs in the menu, then going back up, and back down causes the cursor to jump to the top
 '''
 
 
@@ -291,7 +291,7 @@ class hint:
 				pygame.draw.circle(surface, black, (self.x+29, self.y+5), 5)
 			
 			button = pygame.draw.rect(surface, black, (self.x+5, self.y, 25, 10))
-			text = pygame.font.SysFont(None, 10).render(self.button.upper(), True, (255, 255, 255), black)
+			text = pygame.font.Font(None, 10).render(self.button.upper(), True, (255, 255, 255), black)
 			buttontext = text.get_rect()
 			buttontext.center = button.center
 			surface.blit(text, buttontext)
@@ -870,7 +870,7 @@ def selectkey(keyboard, ssid, direction="none"):
 	highlightkey(keyboard, ssid, selected_key)
 
 class Menu:
-	font_size = 24
+	font_size = 16
 	font = pygame.font.SysFont
 	dest_surface = pygame.Surface
 	canvas_color = darkbg
@@ -934,7 +934,7 @@ class Menu:
 	def create_structure(self):
 		shift = 0
 		self.menu_height = 0
-		self.font = pygame.font.SysFont('', self.font_size)
+		self.font = pygame.font.Font('./data/Inconsolata.otf', self.font_size)
 		for i in xrange(self.number_of_fields):
 			self.field.append(self.Pole())
 			self.field[i].text = self.menu[i]
@@ -989,8 +989,9 @@ if __name__ == "__main__":
 	currentssid = ""
 	active_menu = "main"
 	page=0
-	maxitems=10
-	createpaths()	# DEBUG
+	curmenuitem=1
+	maxitems=8
+	# createpaths()	# DEBUG
 	redraw()
 	while 1:
 		time.sleep(0.1)
@@ -1024,7 +1025,7 @@ if __name__ == "__main__":
 					if active_menu == "main":
 						menu.draw(-1)
 					if active_menu == "ssid":
-						if (wirelessmenu.selected_item + 1) == wirelessmenu.number_of_fields:
+						if wirelessmenu.selected_item == 0 and page > 0:
 							wirelessmenu = Menu()
 							wirelessmenu.set_fontsize(14)
 							wirelessmenu.move_menu(150,0)
@@ -1033,30 +1034,44 @@ if __name__ == "__main__":
 							for item in l[(page*maxitems):((page+1) * maxitems)]:
 								wirelessitems.append(item)
 							wirelessmenu.init(wirelessitems, surface)
-							pygame.draw.rect(surface, darkbg, (150, 48, 150, 150))
-							wirelessmenu.draw(maxitems-1)
+							pygame.draw.rect(surface, darkbg, (150, 36, 150, 175))
+							wirelessmenu.selected_item = 0
+							wirelessmenu.draw()
 							pygame.display.update()
-						else:
+						elif wirelessmenu.selected_item != 0:
 							wirelessmenu.draw(-1)
+							curmenuitem -= 1
+
+						print curmenuitem
+
 				if event.key == K_DOWN: # Arrow down the menu
 					if active_menu == "main":
 						menu.draw(1)
 					if active_menu == "ssid":
-						if (wirelessmenu.selected_item + 1) == wirelessmenu.number_of_fields:
+						print curmenuitem
+						if curmenuitem == wirelessmenu.number_of_fields:
 							wirelessmenu = Menu()
 							wirelessmenu.set_fontsize(14)
 							wirelessmenu.move_menu(150,0)
 							page += 1
+							curmenuitem = 0
 							wirelessitems = []
 							for item in l[(page*maxitems):((page+1) * maxitems)]:
 								wirelessitems.append(item)
 
 							wirelessmenu.init(wirelessitems, surface)
-							pygame.draw.rect(surface, darkbg, (150, 48, 150, 150))
+							pygame.draw.rect(surface, darkbg, (150, 36, 150, 175))
 							wirelessmenu.draw()
 							pygame.display.update()
-						else:
+						elif curmenuitem != wirelessmenu.number_of_fields and page == 0:
 							wirelessmenu.draw(1)
+							curmenuitem += 1
+						elif wirelessmenu.selected_item != wirelessmenu.number_of_fields and page != 0:
+							wirelessmenu.draw(1)
+							curmenuitem += 1
+						elif wirelessmenu.selected_item == wirelessmenu.number_of_fields and page != 0:
+							curmenuitem = wirelessmenu.number_of_fields
+
 				if event.key == K_RIGHT:
 					if wirelessmenuexists == "true" and active_menu == "main":
 						active_menu = swapmenu(active_menu)
@@ -1073,25 +1088,25 @@ if __name__ == "__main__":
 						if menu.get_position() == 0: # Scan menu
 							wirelessmenuexists = ''
 							####### DEBUG #######
-							# uniqssid = {}
-							# uniqssids = {}
-							# uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
-							# uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
-							# uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
-							# uniqssid=uniqssids.setdefault('BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', 'menu': 3}})
-							# uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
-							# uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
-							# uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
-							# uniqssid=uniqssids.setdefault('GoBlue', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'GoBlue', 'menu': 7}})
-							# uniqssid=uniqssids.setdefault('yangji', {'Network': {'Encryption': 'wpa', 'ESSID': 'yangji', 'menu': 8}})
-							# uniqssid=uniqssids.setdefault('U+zone', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'U+zone', 'menu': 9}})
-							# uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
-							# uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
-							# uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
-							# uniq = uniqssids
+							uniqssid = {}
+							uniqssids = {}
+							uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
+							uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
+							uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
+							uniqssid=uniqssids.setdefault('BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', 'menu': 3}})
+							uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
+							uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
+							uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
+							uniqssid=uniqssids.setdefault('GoBlue', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'GoBlue', 'menu': 7}})
+							uniqssid=uniqssids.setdefault('yangji', {'Network': {'Encryption': 'wpa', 'ESSID': 'yangji', 'menu': 8}})
+							uniqssid=uniqssids.setdefault('U+zone', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'U+zone', 'menu': 9}})
+							uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
+							uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
+							uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
+							uniq = uniqssids
 							####### DEBUG #######	
-							getnetworks()				## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
-							uniq = listuniqssids()		## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
+							# getnetworks()				## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
+							# uniq = listuniqssids()		## TEMPORARILY DISABLE FOR TESTING WITHOUT LIVE SCANNING
 							wirelessmenu.set_fontsize(14)
 							wirelessmenu.move_menu(150,0)
 							wirelessitems = []
@@ -1103,13 +1118,14 @@ if __name__ == "__main__":
 										if len(str(detail['Network']['ESSID'])) > 16:
 											menuitem = "%s..."%(s[:16])
 										else:
-											menuitem = s
+											menuitem = s.ljust(19)
 										l.append(menuitem)
 						
 							for item in l[(page*maxitems):((page+1) * maxitems)]:
 								wirelessitems.append(item)
 
 							wirelessmenu.init(wirelessitems, surface)
+							print wirelessmenu.selected_item, "/", page
 							wirelessmenu.draw()
 
 							if not wirelessmenuexists == "true":
