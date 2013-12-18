@@ -651,34 +651,35 @@ def drawkeyboard(board):
 
 	pygame.display.update()
 	return keyboard
-def getinput(board, ssid=""):
-	selectkey(board)
-	typed = softkeyinput(board, ssid)
+def getinput(board, kind, ssid=""):
+	selectkey(board, kind)
+	typed = softkeyinput(board, kind, ssid)
 	return typed
-def softkeyinput(keyboard, ssid):
+def softkeyinput(keyboard, kind, ssid):
 	global passphrase
 	global go
+
 	wait = "true"
 	while wait == "true":
 		for event in pygame.event.get():
 
 			if event.type == KEYDOWN:
 				if event.key == K_RETURN:		# finish input
-					selectkey(keyboard, "enter")
+					selectkey(keyboard, kind, "enter")
 					wait = "false"
 
 				if event.key == K_UP:		# Move cursor up
-					selectkey(keyboard, "up")
+					selectkey(keyboard, kind, "up")
 				if event.key == K_DOWN:		# Move cursor down
-					selectkey(keyboard, "down")
+					selectkey(keyboard, kind, "down")
 				if event.key == K_LEFT:		# Move cursor left
-					selectkey(keyboard, "left")
+					selectkey(keyboard, kind, "left")
 				if event.key == K_RIGHT:	# Move cursor right
-					selectkey(keyboard, "right")
+					selectkey(keyboard, kind, "right")
 				if event.key == K_LCTRL:	# A button
-					selectkey(keyboard, "select")
+					selectkey(keyboard, kind, "select")
 				if event.key == K_LALT:		# B button
-					selectkey(keyboard, "space")
+					selectkey(keyboard, kind, "space")
 				if event.key == K_SPACE:	# Y button (swap keyboards)
 					if not uniq[ssid]['Network']['Encryption'] == "wpa2" \
 						or not uniq[ssid]['Network']['Encryption'] == "wpa":
@@ -690,21 +691,22 @@ def softkeyinput(keyboard, ssid):
 					if keyboard == "qwertyNormal":
 						keyboard = "qwertyShift"
 						drawkeyboard(keyboard)
-						selectkey(keyboard, "swap")
+						selectkey(keyboard, kind, "swap")
 					elif keyboard == "qwertyShift":
 						keyboard = "qwertyNormal"
 						drawkeyboard(keyboard)
-						selectkey(keyboard, "swap")
+						selectkey(keyboard, kind, "swap")
 					else:
 						keyboard = "qwertyNormal"
 						drawkeyboard(keyboard)
-						selectkey(keyboard, "swap")	
+						selectkey(keyboard, kind, "swap")	
 				if event.key == K_LSHIFT:	# X button
-					selectkey(keyboard, "delete")
+					selectkey(keyboard, kind, "delete")
 				if event.key == K_ESCAPE:	# Select key
 					passphrase = ''
 					wait = "false"
 				if event.key == K_RETURN:	# Start key
+				## Need to handle ssid vs key logic here
 					redraw()
 					writeconfig("w")
 					go = "true"
@@ -715,7 +717,8 @@ def softkeyinput(keyboard, ssid):
 					passphrase = ''
 	redraw()
 	return go
-def displayinputlabel(label, kind, size=24): # Display passphrase on screen
+
+def displayinputlabel(kind, size=24): # Display passphrase on screen
 
 	if kind == "ssid":
 		# Draw SSID and encryption type labels
@@ -743,8 +746,7 @@ def displayinputlabel(label, kind, size=24): # Display passphrase on screen
 	pwtext.center = bg.center
 	surface.blit(pw, pwtext)
 	pygame.display.update()
-
-def selectkey(keyboard, direction="none"):
+def selectkey(keyboard, kind, direction=""):
 	def getcurrentkey(keyboard, pos):
 		keys = getkeys(keyboard)
 		for item in keys.iteritems():
@@ -820,28 +822,28 @@ def selectkey(keyboard, direction="none"):
 			if len(passphrase) > 20:
 				drawlogobar()
 				drawlogo()
-				displayinputlabel(passphrase, "key", 12)
+				displayinputlabel(kind, 12)
 			else:
-				displayinputlabel(passphrase, "key")
+				displayinputlabel(kind)
 		elif direction == "space":
 			passphrase += ' '
 			if len(passphrase) > 20:
 				drawlogobar()
 				drawlogo()
-				displayinputlabel(passphrase, "key", 12)
+				displayinputlabel(kind, 12)
 			else:
-				displayinputlabel(passphrase, "key")
+				displayinputlabel(kind)
 		elif direction == "delete":
 			if len(passphrase) > 0:
 				passphrase = passphrase[:-1]
 				drawlogobar()
 				drawlogo()
 				if len(passphrase) > 20:
-					displayinputlabel(passphrase, "key", 12)
+					displayinputlabel(kind, 12)
 				else:
-					displayinputlabel(passphrase, "key")
-	highlightkey(keyboard, selected_key)
+					displayinputlabel(kind)
 
+	highlightkey(keyboard, selected_key)
 class Menu:
 	font_size = 16
 	font = pygame.font.SysFont
@@ -1078,7 +1080,17 @@ if __name__ == "__main__":
 							redraw()
 
 						elif menu.get_position() == 1: # Manual setup
-							modal("Manual setup")
+							# Get SSID from the user
+							displayinputlabel("ssid")
+							drawkeyboard("qwertyNormal")
+							ssid = getinput("qwertyNormal", "ssid")
+							## TODO add logic to determine encryption type of network
+							## and prompt for a key *only* if necessary.
+							# Get key from the user
+							displayinputlabel("key")
+							drawkeyboard("qwertyNormal")
+							key = getinput("qwertyNormal", "key")
+
 						elif menu.get_position() == 2: # Toggle wifi
 							status = getwlanstatus()
 							if not status == "ok":
@@ -1111,13 +1123,13 @@ if __name__ == "__main__":
 										connect()
 										redraw()
 									elif detail['Network']['Encryption'] == "wep":
-										displayinputlabel(passphrase, "key")
+										displayinputlabel("key")
 										drawkeyboard("wep")
-										getinput("wep", ssid)
+										getinput("wep", "key", ssid)
 									else:
-										displayinputlabel(passphrase, "key")
+										displayinputlabel("key")
 										drawkeyboard("qwertyNormal")
-										getinput("qwertyNormal", ssid)
+										getinput("qwertyNormal", "key", ssid)
 								else:
 									go = "true"
 									connect()
@@ -1134,12 +1146,12 @@ if __name__ == "__main__":
 								if detail['Network']['Encryption'] == "none":
 									pass
 								elif detail['Network']['Encryption'] == "wep":
-									displayinputlabel(passphrase, "key")
+									displayinputlabel("key")
 									drawkeyboard("wep")
-									getinput("wep", ssid)
+									getinput("wep", "key", ssid)
 								else:
-									displayinputlabel(passphrase, "key")
+									displayinputlabel("key")
 									drawkeyboard("qwertyNormal")
-									getinput("qwertyNormal", ssid)
+									getinput("qwertyNormal", "key", ssid)
 
 		pygame.display.update()
