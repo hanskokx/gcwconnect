@@ -493,7 +493,6 @@ def disconnect():
 
 ## Keyboard
 def getkeys(board):
-
 	def qwertyNormal():
 		keyarray = {}
 		keyboard = {}
@@ -525,7 +524,6 @@ def getkeys(board):
 			
 			keyid += 1
 		return keyboard
-
 	def qwertyShift():
 		keyarray = {}
 		keyboard = {}
@@ -557,7 +555,6 @@ def getkeys(board):
 			
 			keyid += 1
 		return keyboard
-
 	def wep():
 		keyarray = {}
 		keyboard = {}
@@ -589,14 +586,13 @@ def getkeys(board):
 			
 			keyid += 1
 		return keyboard
-
 	def encryption():
 		keyarray = {}
 		keyboard = {}
 		global maxrows
 		global maxcolumns
-		maxrows = 4
-		maxcolumns = 4
+		maxrows = 1
+		maxcolumns = 3
 		keys = 	'None', 'WEP', 'WPA/WPA2'
 		row = 0
 		column = 0
@@ -713,24 +709,42 @@ def drawEncryptionType():
 			z.init(y['key'],y['row'],y['column'])
 
 	pygame.display.update()
-def chooseencryption(direction):
-
+def chooseencryption(keyboard, direction):
 	def getcurrentkey(keyboard, pos):
 		keys = getkeys(keyboard)
 		for item in keys.iteritems():
-			if item[1]['row'] == pos[1] and item[1]['column'] == pos[0]:
+			if item[1]['column'] == pos[1]:
 				currentkey = item[1]['key']
 		return currentkey
 
-	global maxrows
+	def highlightradio(keyboard, pos='[0,0]'):
+		drawEncryptionType()
+		pygame.display.update()
+
+		x = 32 + (pos[0] * 100)
+		y = 136
+
+		list = [ \
+					(x, y), \
+					(x + 16, y), \
+					(x + 16, y + 16), \
+					(x, y + 16), \
+					(x, y) \
+				]
+
+		pygame.draw.circle(surface, activeselbg, (x, y), 6)
+		pygame.display.update()
+
 	global maxcolumns
 	global selected_key
+	encryption = ''
 
 	if direction == "left":
 		if selected_key[0] <= 0:
 			selected_key[0] = 0
 		else:
 			selected_key[0] = selected_key[0] - 1
+
 	elif direction == "right":
 		if selected_key[0] >= maxcolumns - 1:
 			selected_key[0] = maxcolumns - 1
@@ -738,39 +752,37 @@ def chooseencryption(direction):
 			selected_key[0] = selected_key[0]
 		else:
 			selected_key[0] = selected_key[0] + 1
+
 	elif direction == "select":
-		passphrase += getcurrentkey(keyboard, selected_key)
-		if len(passphrase) > 20:
-			drawlogobar()
-			drawlogo()
-			displayinputlabel(kind, 12)
-		else:
-			displayinputlabel(kind)
+		encryption = getcurrentkey(keyboard, selected_key)
+	
+	elif direction == "init":
+		if not selected_key:
+			selected_key = [0,0]
+			highlightradio(keyboard, selected_key)
+
+	highlightradio(keyboard, selected_key)
+	return encryption
 
 def getEncryptionType():
 	global encryptiontype
 	wait = "true"
+	chooseencryption("encryption", "init")
 	while wait == "true":
 		for event in pygame.event.get():
 			if event.type == KEYDOWN:
 				if event.key == K_LEFT:		# Move cursor left
-					chooseencryption("left")
+					chooseencryption("encryption", "left")
 				if event.key == K_RIGHT:	# Move cursor right
-					chooseencryption("right")
+					chooseencryption("encryption", "right")
 				if event.key == K_LCTRL:	# A button
-					chooseencryption("select")
+					chooseencryption("encryption", "select")
 
 				if event.key == K_ESCAPE:	# Select key
 					encryptiontype = 'cancel'
 					wait = "false"
 				if event.key == K_RETURN:	# Start key
-					print "cancel"
 					wait = "false"
-			print wait	
-	return encryptiontype
-def askEncryptionType(ssid):
-
-	encryptiontype = '' ## debug
 	return encryptiontype
 def drawkeyboard(board):
 
@@ -1242,6 +1254,7 @@ if __name__ == "__main__":
 							# Get SSID from the user
 							ssid = ''
 							while ssid == '':
+								time.sleep(0.2)
 								ssid = getSSID()
 
 							## TODO add logic to determine encryption type of network
@@ -1249,7 +1262,8 @@ if __name__ == "__main__":
 							encryptiontype = ''
 							drawEncryptionType()
 							while encryptiontype == '':
-								encryptiontype = askEncryptionType(ssid)
+								time.sleep(0.2)
+								encryptiontype = getEncryptionType()
 
 							# Get key from the user
 							if not encryptiontype == '':
