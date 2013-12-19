@@ -697,7 +697,6 @@ def drawEncryptionType():
 	pygame.draw.rect(surface, lightbg, (0,224,320,16))
 	pygame.draw.line(surface, (255, 255, 255), (0, 223), (320, 223))
 	hint("select", "Cancel", 4, 227, lightbg)
-	hint("start", "Finish", 75, 227, lightbg)
 	hint("a", "Enter", 285, 227, lightbg)
 
 	# Draw the keys
@@ -712,9 +711,10 @@ def drawEncryptionType():
 def chooseencryption(keyboard, direction):
 	def getcurrentkey(keyboard, pos):
 		keys = getkeys(keyboard)
-		for item in keys.iteritems():
-			if item[1]['column'] == pos[1]:
-				currentkey = item[1]['key']
+		for x in keys.iteritems():
+			for item in x:
+				if x[1]['column'] == pos[0]:
+					currentkey = x[1]['key']
 		return currentkey
 
 	def highlightradio(keyboard, pos='[0,0]'):
@@ -742,6 +742,8 @@ def chooseencryption(keyboard, direction):
 	if direction == "left":
 		if selected_key[0] <= 0:
 			selected_key[0] = 0
+		elif not getcurrentkey(keyboard, (selected_key[0] - 1, selected_key[1])):
+			selected_key[0] = selected_key[0]
 		else:
 			selected_key[0] = selected_key[0] - 1
 
@@ -755,15 +757,14 @@ def chooseencryption(keyboard, direction):
 
 	elif direction == "select":
 		encryption = getcurrentkey(keyboard, selected_key)
+		print encryption
 	
 	elif direction == "init":
-		if not selected_key:
-			selected_key = [0,0]
-			highlightradio(keyboard, selected_key)
+		selected_key = [0,0]
+		highlightradio(keyboard, selected_key)
 
 	highlightradio(keyboard, selected_key)
 	return encryption
-
 def getEncryptionType():
 	global encryptiontype
 	wait = "true"
@@ -776,14 +777,12 @@ def getEncryptionType():
 				if event.key == K_RIGHT:	# Move cursor right
 					chooseencryption("encryption", "right")
 				if event.key == K_LCTRL:	# A button
-					chooseencryption("encryption", "select")
-
+					encryption = chooseencryption("encryption", "select")
+					wait = "false"
 				if event.key == K_ESCAPE:	# Select key
-					encryptiontype = 'cancel'
+					encryption = 'cancel'
 					wait = "false"
-				if event.key == K_RETURN:	# Start key
-					wait = "false"
-	return encryptiontype
+	return encryption
 def drawkeyboard(board):
 
 	# Draw keyboard background 
@@ -1259,25 +1258,32 @@ if __name__ == "__main__":
 
 							## TODO add logic to determine encryption type of network
 							## and prompt for a key *only* if necessary.
-							encryptiontype = ''
+							encryption = ''
 							drawEncryptionType()
-							while encryptiontype == '':
+							while encryption == '':
 								time.sleep(0.2)
-								encryptiontype = getEncryptionType()
+								encryption = getEncryptionType()
 
 							# Get key from the user
-							if not encryptiontype == '':
-								displayinputlabel("key")
-								drawkeyboard("qwertyNormal")
-								getinput("qwertyNormal", "key")
+							if not encryption == 'None':
+								if encryption == "WPA/WPA2":
+									displayinputlabel("key")
+									drawkeyboard("qwertyNormal")
+									getinput("qwertyNormal", "key", ssid)
+								elif encryption == "WEP":
+									displayinputlabel("key")
+									drawkeyboard("wep")
+									getinput("wep", "key", ssid)
+								elif encryption == 'cancel':
+									del encryption
+									del ssid
+									redraw()
+							else:
+								encryption = "none"
 
-							if ssid and passphrase:
-								print "SSID: " + ssid + " / Key: " + passphrase + " / Encryption: " + encryptiontype
-							elif ssid:
-								print "SSID: " + ssid
-							elif passphrase:
-								print "Key: " + passphrase
+							print "SSID: '" + ssid + "' / Key: '" + passphrase + "' / Encryption: '" + encryption + "'"
 
+							redraw()
 						elif menu.get_position() == 2: # Toggle wifi
 							status = getwlanstatus()
 							if not status == "ok":
