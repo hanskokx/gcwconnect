@@ -162,11 +162,12 @@ def getwlanip():
 	for line in output:
 		if line.strip().startswith("inet addr"):
 			ip = str.strip(line[line.find('inet addr')+len('inet addr"'):line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
-			privateip = '169.254.'
-			regex = re.compile('%s\d*'%privateip)
-			regip = regex.match (privateip)
-
-			if ip == "10.1.1.2" or ip == "127.0.0.1" or regip:
+#			privateip = '169.254.'
+#			regex = re.compile('%s\d*'%privateip)
+#			regip = regex.match (privateip)
+#
+#			if ip == "10.1.1.2" or ip == "127.0.0.1" or regip:
+			if ip == "10.1.1.2" or ip == "127.0.0.1":
 				ip = ''
 	return ip
 def checkinterfacestatus():
@@ -497,10 +498,12 @@ def connect(): # Connect to a network
 		shutil.copy2(oldconf, newconf)
 		ifup()
 def disconnect():
-	modal("Disconnecting...","false")
-	command = ['ifdown', wlan]
-	with open(os.devnull, "w") as fnull:
-		SU.Popen(command, stderr = fnull)
+	interface = checkinterfacestatus()
+	if not interface == "disconnected":
+		modal("Disconnecting...","false")
+		command = ['ifdown', wlan]
+		with open(os.devnull, "w") as fnull:
+			SU.Popen(command, stderr = fnull)
 
 ## Keyboard
 def getkeys(board):
@@ -1307,9 +1310,7 @@ if __name__ == "__main__":
 									conf = netconfdir+ssidconfig+".conf"
 									writeconfig("w")
 									go = "true"
-									modal("Connecting...","false")
-									if not getwlanip() == '':
-										disconnect()
+									disconnect()
 									time.sleep(2)
 									connect()
 									redraw()
@@ -1357,9 +1358,7 @@ if __name__ == "__main__":
 										encryption = getinput("qwertyNormal", "key", ssid)
 								else:
 									go = "true"
-									modal("Connecting...","false")
-									if not getwlanip() == '':
-										disconnect()
+									disconnect()
 									time.sleep(2)
 									connect()
 									redraw()
