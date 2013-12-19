@@ -150,7 +150,8 @@ def ifup():
 				currentssid = getcurrentssid()
 				if not checkinterfacestatus() == "offline":
 					if not currentssid == "unassociated":
-						modal("Connected!","false","true")
+						pass
+						#modal("Connected!","false","true")
 			check = checkinterfacestatus()
 def getwlanip():
 	ip = ""
@@ -161,7 +162,11 @@ def getwlanip():
 	for line in output:
 		if line.strip().startswith("inet addr"):
 			ip = str.strip(line[line.find('inet addr')+len('inet addr"'):line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
-			if ip == "10.1.1.2" or ip == "127.0.0.1":
+			privateip = '169.254.'
+			regex = re.compile('%s\d*'%privateip)
+			regip = regex.match (privateip)
+
+			if ip == "10.1.1.2" or ip == "127.0.0.1" or regip:
 				ip = ''
 	return ip
 def checkinterfacestatus():
@@ -802,10 +807,11 @@ def drawkeyboard(board):
 	hint("x", "Delete", 155, 227, lightbg)
 	if not board == "wep":
 		hint("y", "Shift", 200, 227, lightbg)
+		hint("b", "Space", 240, 227, lightbg)
+
 	else:
 		hint("y", "Full KB", 200, 227, lightbg)
-		#uniq[ssid]['Network']['Encryption'] = "wpa2" ## Will need to put this somewhere to fix the wep bug
-	hint("b", "Space", 240, 227, lightbg)
+
 	hint("a", "Enter", 285, 227, lightbg)
 
 	# Draw the keys
@@ -869,7 +875,8 @@ def softkeyinput(keyboard, kind, ssid):
 					else:
 						keyboard = "qwertyNormal"
 						drawkeyboard(keyboard)
-						selectkey(keyboard, kind, "swap")	
+						selectkey(keyboard, kind, "swap")
+					encryption = "wpa"
 				if event.key == K_LSHIFT:	# X button
 					selectkey(keyboard, kind, "delete")
 				if event.key == K_ESCAPE:	# Select key
@@ -1300,7 +1307,9 @@ if __name__ == "__main__":
 									conf = netconfdir+ssidconfig+".conf"
 									writeconfig("w")
 									go = "true"
-									disconnect()
+									modal("Connecting...","false")
+									if not getwlanip() == '':
+										disconnect()
 									time.sleep(2)
 									connect()
 									redraw()
@@ -1348,10 +1357,12 @@ if __name__ == "__main__":
 										encryption = getinput("qwertyNormal", "key", ssid)
 								else:
 									go = "true"
-									disconnect()
+									modal("Connecting...","false")
+									if not getwlanip() == '':
+										disconnect()
 									time.sleep(2)
 									connect()
-									redraw()							
+									redraw()
 				elif event.key == K_ESCAPE:
 					if active_menu == "ssid": # Allow us to edit the existing key
 						ssid = ""
