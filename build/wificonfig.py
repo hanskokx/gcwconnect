@@ -140,6 +140,7 @@ def ifup():
 			with open(os.devnull, "w") as fnull:
 				output = SU.Popen(command, stdout=SU.PIPE, stderr = fnull).stdout.readlines()
 			counter += 1
+			time.sleep(3)
 			drawstatusbar()
 			drawinterfacestatus()
 			pygame.display.update()
@@ -162,12 +163,14 @@ def getwlanip():
 	for line in output:
 		if line.strip().startswith("inet addr"):
 			ip = str.strip(line[line.find('inet addr')+len('inet addr"'):line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
-#			privateip = '169.254.'
-#			regex = re.compile('%s\d*'%privateip)
-#			regip = regex.match (privateip)
-#
-#			if ip == "10.1.1.2" or ip == "127.0.0.1" or regip:
+			privateip = '169.254.'
+			regex = re.compile('%s\d*'%privateip)
+			regip = regex.match (privateip)
+			if regip:
+				pass
+			
 			if ip == "10.1.1.2" or ip == "127.0.0.1":
+			# if ip == "10.1.1.2" or ip == "127.0.0.1":
 				ip = ''
 	return ip
 def checkinterfacestatus():
@@ -186,7 +189,6 @@ def checkinterfacestatus():
 				currentssid = getcurrentssid()
 				if currentssid == "unassociated":
 					interface = "disconnected"
-			
 	return interface
 def getnetworks(): # Run iwlist to get a list of networks in range
 	enablewifi()
@@ -504,6 +506,7 @@ def disconnect():
 		command = ['ifdown', wlan]
 		with open(os.devnull, "w") as fnull:
 			SU.Popen(command, stderr = fnull)
+			time.sleep(3)
 
 ## Keyboard
 def getkeys(board):
@@ -1311,7 +1314,6 @@ if __name__ == "__main__":
 									writeconfig("w")
 									go = "true"
 									disconnect()
-									time.sleep(2)
 									connect()
 									redraw()
 
@@ -1359,7 +1361,6 @@ if __name__ == "__main__":
 								else:
 									go = "true"
 									disconnect()
-									time.sleep(2)
 									connect()
 									redraw()
 				elif event.key == K_ESCAPE:
