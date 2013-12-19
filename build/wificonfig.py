@@ -467,13 +467,19 @@ def modal(text,wait="true",timeout="false"): # Draw a modal
 ## Connect to a network
 def writeconfig(mode="a"): # Write wireless configuration to disk
 	global passphrase
+	global encryption
+	try:
+		encryption
+	except NameError:
+		encryption = uniq[ssid]['Network']['Encryption']
+
 	if passphrase:
 		if passphrase == "none":
 			passphrase = ""
 		conf = netconfdir+ssidconfig+".conf"
 		f = open(conf, mode)
 		f.write('WLAN_ESSID="'+ssid+'"\n')
-		f.write('WLAN_ENCRYPTION="'+uniq[ssid]['Network']['Encryption']+'"\n')
+		f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
 		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
 		f.write('WLAN_DHCP_RETRIES=20\n')
 		f.close()
@@ -757,7 +763,6 @@ def chooseencryption(keyboard, direction):
 
 	elif direction == "select":
 		encryption = getcurrentkey(keyboard, selected_key)
-		print encryption
 	
 	elif direction == "init":
 		selected_key = [0,0]
@@ -821,6 +826,8 @@ def getinput(board, kind, ssid=""):
 def softkeyinput(keyboard, kind, ssid):
 	global passphrase
 	global go
+	global encryption
+	global securitykey
 
 	wait = "true"
 	while wait == "true":
@@ -844,9 +851,9 @@ def softkeyinput(keyboard, kind, ssid):
 				if event.key == K_LALT:		# B button
 					selectkey(keyboard, kind, "space")
 				if event.key == K_SPACE:	# Y button (swap keyboards)
-					if not uniq[ssid]['Network']['Encryption'] == "wpa2" \
-						or not uniq[ssid]['Network']['Encryption'] == "wpa":
-						uniq[ssid]['Network']['Encryption'] = "wpa2"
+					# if not uniq[ssid]['Network']['Encryption'] == "wpa2" \
+					# 	or not uniq[ssid]['Network']['Encryption'] == "wpa":
+					# 	uniq[ssid]['Network']['Encryption'] = "wpa2"
 						# TESTING DEBUG
 						# This may work, or it may not. Will need to revisit it.
 						# TODO
@@ -867,6 +874,8 @@ def softkeyinput(keyboard, kind, ssid):
 					selectkey(keyboard, kind, "delete")
 				if event.key == K_ESCAPE:	# Select key
 					passphrase = ''
+					del encryption
+					del securitykey
 					wait = "false"
 				if event.key == K_RETURN:	# Start key
 				## Need to handle ssid vs key logic here
@@ -1250,40 +1259,53 @@ if __name__ == "__main__":
 							redraw()
 
 						elif menu.get_position() == 1: # Manual setup
-							# Get SSID from the user
 							ssid = ''
-							while ssid == '':
-								time.sleep(0.2)
-								ssid = getSSID()
-
-							## TODO add logic to determine encryption type of network
-							## and prompt for a key *only* if necessary.
 							encryption = ''
-							drawEncryptionType()
-							while encryption == '':
-								time.sleep(0.2)
+							securitykey = ''
+
+							# Get SSID from the user
+							ssid = getSSID()
+							if ssid == '':
+								pass
+							else:
+								ssidconfig = re.escape(ssid)
+
+								drawEncryptionType()
 								encryption = getEncryptionType()
 
-							# Get key from the user
-							if not encryption == 'None':
-								if encryption == "WPA/WPA2":
-									displayinputlabel("key")
-									drawkeyboard("qwertyNormal")
-									getinput("qwertyNormal", "key", ssid)
-								elif encryption == "WEP":
-									displayinputlabel("key")
-									drawkeyboard("wep")
-									getinput("wep", "key", ssid)
-								elif encryption == 'cancel':
-									del encryption
-									del ssid
+								# Get key from the user
+								if not encryption == 'None':
+									if encryption == "WPA/WPA2":
+										encryption = "wpa"
+										displayinputlabel("key")
+										drawkeyboard("qwertyNormal")
+										securitykey = getinput("qwertyNormal", "key", ssid)
+									elif encryption == "WEP":
+										encryption = "wep"
+										displayinputlabel("key")
+										drawkeyboard("wep")
+										securitykey = getinput("wep", "key", ssid)
+									elif encryption == 'cancel':
+										del encryption, ssid, ssidconfig, securitykey
+										modal("Canceled.", wait="false", timeout="true")
+										redraw()
+								else:
+									encryption = "none"
+
+								try:
+									encryption
+								except NameError:
+									modal("Canceled.", wait="false", timeout="true")
+								else:
+									conf = netconfdir+ssidconfig+".conf"
+									writeconfig("w")
+									go = "true"
+									disconnect()
+									time.sleep(2)
+									connect()
 									redraw()
-							else:
-								encryption = "none"
 
-							print "SSID: '" + ssid + "' / Key: '" + passphrase + "' / Encryption: '" + encryption + "'"
 
-							redraw()
 						elif menu.get_position() == 2: # Toggle wifi
 							status = getwlanstatus()
 							if not status == "ok":
@@ -1311,6 +1333,7 @@ if __name__ == "__main__":
 								if not os.path.exists(conf):
 									if detail['Network']['Encryption'] == "none":
 										passphrase = "none"
+										encryption = "none"
 										writeconfig()
 										go = "true"
 										connect()
@@ -1318,11 +1341,11 @@ if __name__ == "__main__":
 									elif detail['Network']['Encryption'] == "wep":
 										displayinputlabel("key")
 										drawkeyboard("wep")
-										getinput("wep", "key", ssid)
+										encryption = getinput("wep", "key", ssid)
 									else:
 										displayinputlabel("key")
 										drawkeyboard("qwertyNormal")
-										getinput("qwertyNormal", "key", ssid)
+										encryption = getinput("qwertyNormal", "key", ssid)
 								else:
 									go = "true"
 									disconnect()
