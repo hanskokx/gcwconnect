@@ -85,7 +85,8 @@ def createpaths(): # Create paths, if necessary
 		os.makedirs(sysconfdir)
 
 ## Interface management
-def ifdown():
+def ifdown(reconnect=''):
+
 	modal("Disabling WiFi...","false")
 	command = ['ifdown', wlan]
 	with open(os.devnull, "w") as fnull:
@@ -484,6 +485,11 @@ def connect(): # Connect to a network
 		os.environ['CONFIG_FILE'] = netconfdir+ssidconfig+".conf"
 		shutil.copy2(oldconf, newconf)
 		ifup()
+def disconnect():
+	modal("Disconnecting...","false")
+	command = ['ifdown', wlan]
+	with open(os.devnull, "w") as fnull:
+		SU.Popen(command, stderr = fnull)
 
 ## Keyboard
 def getkeys(board):
@@ -583,13 +589,44 @@ def getkeys(board):
 			
 			keyid += 1
 		return keyboard
-	
+
+	def encryption():
+		keyarray = {}
+		keyboard = {}
+		global maxrows
+		global maxcolumns
+		maxrows = 4
+		maxcolumns = 4
+		keys = 	'None', 'WEP', 'WPA/WPA2'
+		row = 0
+		column = 0
+		keyid = 0
+		for k in keys:
+			keyarray = keyboard.setdefault(keyid, {})
+			keyarray["key"] = k
+
+			if column <= 3:
+				keyarray["column"] = column
+				keyarray["row"] = row
+				column += 1
+			else:
+				row += 1
+				column = 0
+				keyarray["column"] = column
+				keyarray["row"] = row
+				column += 1
+			
+			keyid += 1
+		return keyboard
+
 	if board == "qwertyNormal":
 		k = qwertyNormal()
 	elif board == "qwertyShift":
 		k = qwertyShift()
 	elif board == "wep":
 		k = wep()
+	elif board == "encryption":
+		k = encryption()
 	return k
 class key:
 	def __init__(self):
@@ -619,11 +656,126 @@ class key:
 		label = text.get_rect()
 		label.center = keybox.center
 		surface.blit(text, label)
+class radio:
+	def __init__(self):
+		self.key = []
+		self.selection_color = activeselbg
+		self.text_color = activetext
+		self.selection_position = (0,0)
+		self.selected_item = 0
+
+	def init(self, key, row, column):
+		self.key = key
+		self.row = row
+		self.column = column
+		self.drawkey()
+
+	def drawkey(self):
+		key_width = 64
+		key_height = 16
+
+		top = 136 + self.row * 20
+		left = 32 + self.column * 100
+
+		if len(self.key) > 1:
+			key_width = 64
+		radiobutton = pygame.draw.circle(surface, (255,255,255), (left, top), 8, 2)
+		text = pygame.font.SysFont(None, 16).render(self.key, True, (255, 255, 255), darkbg)
+		label = text.get_rect()
+		label.left = radiobutton.right + 8
+		label.top = radiobutton.top + 4
+		surface.blit(text, label)
+def getSSID():
+	global passphrase
+	displayinputlabel("ssid")
+	drawkeyboard("qwertyNormal")
+	getinput("qwertyNormal", "ssid")
+	ssid = passphrase
+	passphrase = ''
+	return ssid
+def drawEncryptionType():
+	# Draw top background 
+	pygame.draw.rect(surface, darkbg, (0,100,320,140))
+
+	# Draw footer
+	pygame.draw.rect(surface, lightbg, (0,224,320,16))
+	pygame.draw.line(surface, (255, 255, 255), (0, 223), (320, 223))
+	hint("select", "Cancel", 4, 227, lightbg)
+	hint("start", "Finish", 75, 227, lightbg)
+	hint("a", "Enter", 285, 227, lightbg)
+
+	# Draw the keys
+	k = getkeys("encryption")
+	z = radio()
+
+	for x, y in k.iteritems():
+		if y['key']:
+			z.init(y['key'],y['row'],y['column'])
+
+	pygame.display.update()
+def chooseencryption(direction):
+
+	def getcurrentkey(keyboard, pos):
+		keys = getkeys(keyboard)
+		for item in keys.iteritems():
+			if item[1]['row'] == pos[1] and item[1]['column'] == pos[0]:
+				currentkey = item[1]['key']
+		return currentkey
+
+	global maxrows
+	global maxcolumns
+	global selected_key
+
+	if direction == "left":
+		if selected_key[0] <= 0:
+			selected_key[0] = 0
+		else:
+			selected_key[0] = selected_key[0] - 1
+	elif direction == "right":
+		if selected_key[0] >= maxcolumns - 1:
+			selected_key[0] = maxcolumns - 1
+		elif not getcurrentkey(keyboard, (selected_key[0] + 1, selected_key[1])):
+			selected_key[0] = selected_key[0]
+		else:
+			selected_key[0] = selected_key[0] + 1
+	elif direction == "select":
+		passphrase += getcurrentkey(keyboard, selected_key)
+		if len(passphrase) > 20:
+			drawlogobar()
+			drawlogo()
+			displayinputlabel(kind, 12)
+		else:
+			displayinputlabel(kind)
+
+def getEncryptionType():
+	global encryptiontype
+	wait = "true"
+	while wait == "true":
+		for event in pygame.event.get():
+			if event.type == KEYDOWN:
+				if event.key == K_LEFT:		# Move cursor left
+					chooseencryption("left")
+				if event.key == K_RIGHT:	# Move cursor right
+					chooseencryption("right")
+				if event.key == K_LCTRL:	# A button
+					chooseencryption("select")
+
+				if event.key == K_ESCAPE:	# Select key
+					encryptiontype = 'cancel'
+					wait = "false"
+				if event.key == K_RETURN:	# Start key
+					print "cancel"
+					wait = "false"
+			print wait	
+	return encryptiontype
+def askEncryptionType(ssid):
+
+	encryptiontype = '' ## debug
+	return encryptiontype
 def drawkeyboard(board):
 
 	# Draw keyboard background 
 	pygame.draw.rect(surface, darkbg, (0,100,320,140))
-
 
 	# Draw bottom background
 	pygame.draw.rect(surface, lightbg, (0,224,320,16))
@@ -708,13 +860,20 @@ def softkeyinput(keyboard, kind, ssid):
 				if event.key == K_RETURN:	# Start key
 				## Need to handle ssid vs key logic here
 					redraw()
-					writeconfig("w")
-					go = "true"
-					modal("Connecting...","false")
-					connect()
-					drawinterfacestatus()
-					wait = "false"
-					passphrase = ''
+					if ssid == '':
+						go = "true"
+						wait = "false"
+					else:
+						writeconfig("w")
+						go = "true"
+						modal("Connecting...","false")
+						command = ['ifdown', wlan]
+						with open(os.devnull, "w") as fnull:
+							SU.Popen(command, stderr = fnull)
+						connect()
+						drawinterfacestatus()
+						wait = "false"
+						passphrase = ''
 	redraw()
 	return go
 
@@ -1081,15 +1240,29 @@ if __name__ == "__main__":
 
 						elif menu.get_position() == 1: # Manual setup
 							# Get SSID from the user
-							displayinputlabel("ssid")
-							drawkeyboard("qwertyNormal")
-							ssid = getinput("qwertyNormal", "ssid")
+							ssid = ''
+							while ssid == '':
+								ssid = getSSID()
+
 							## TODO add logic to determine encryption type of network
 							## and prompt for a key *only* if necessary.
+							encryptiontype = ''
+							drawEncryptionType()
+							while encryptiontype == '':
+								encryptiontype = askEncryptionType(ssid)
+
 							# Get key from the user
-							displayinputlabel("key")
-							drawkeyboard("qwertyNormal")
-							key = getinput("qwertyNormal", "key")
+							if not encryptiontype == '':
+								displayinputlabel("key")
+								drawkeyboard("qwertyNormal")
+								getinput("qwertyNormal", "key")
+
+							if ssid and passphrase:
+								print "SSID: " + ssid + " / Key: " + passphrase + " / Encryption: " + encryptiontype
+							elif ssid:
+								print "SSID: " + ssid
+							elif passphrase:
+								print "Key: " + passphrase
 
 						elif menu.get_position() == 2: # Toggle wifi
 							status = getwlanstatus()
@@ -1132,6 +1305,8 @@ if __name__ == "__main__":
 										getinput("qwertyNormal", "key", ssid)
 								else:
 									go = "true"
+									disconnect()
+									time.sleep(2)
 									connect()
 									redraw()							
 				elif event.key == K_ESCAPE:
