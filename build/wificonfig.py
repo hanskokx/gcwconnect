@@ -1151,6 +1151,7 @@ class Menu:
 class NetworksMenu(Menu):
 	def set_elements(self, elements):
 		self.elements = elements
+		self.font = pygame.font.Font('./data/Inconsolata.otf', 16)
 
 	def get_item_width(self, element):
 		if len(str(element[0])) > 16:
@@ -1174,8 +1175,8 @@ class NetworksMenu(Menu):
 		else:
 			the_ssid = element[0].ljust(19)
 
-		boldtext = pygame.font.SysFont(None, self.font_size, "bold")
-		subtext = pygame.font.SysFont(None, 12)
+		boldtext = pygame.font.Font('./data/Inconsolata.otf', self.font_size)
+		subtext = pygame.font.Font('./data/Inconsolata.otf', 12)
 
 		def qualityPercent(x):
 			percent = (float(x.split("/")[0]) / float(x.split("/")[1])) * 100
@@ -1201,7 +1202,7 @@ class NetworksMenu(Menu):
 		enc_type = element[2]
 		if enc_type == "none":
 			enc_icon = "open.png"
-			enc_type = "Open (unencrypted)"
+			enc_type = "Open"
 		elif enc_type == "wpa":
 			enc_icon = "closed.png"
 			enc_type = "WPA"
@@ -1221,15 +1222,15 @@ class NetworksMenu(Menu):
 
 		ssid = boldtext.render(the_ssid, 1, self.text_color)
 		enc = subtext.render(enc_type, 1, lightgrey)
-		strength = subtext.render(str(percent) + "%", 1, lightgrey)
+		strength = subtext.render(str(str(percent) + "%").rjust(4), 1, lightgrey)
 		qual = subtext.render(element[1], 1, lightgrey)
 		spacing = 2
 
 		menu_surface.blit(ssid, (left + spacing, top + spacing, ssid.get_rect().width, ssid.get_rect().height))
 		menu_surface.blit(enc, (left + enc_img.get_rect().width + 12, top + 18, enc.get_rect().width, enc.get_rect().height))
-		menu_surface.blit(enc_img, pygame.rect.Rect(left + 8, (top + 22) - (enc_img.get_rect().height / 2), enc_img.get_rect().width, enc_img.get_rect().height))
+		menu_surface.blit(enc_img, pygame.rect.Rect(left + 8, (top + 26) - (enc_img.get_rect().height / 2), enc_img.get_rect().width, enc_img.get_rect().height))
 		menu_surface.blit(strength, (left + 140 - qual_img.get_rect().width - 4, top + 18, strength.get_rect().width, strength.get_rect().height))
-		menu_surface.blit(qual_img, pygame.rect.Rect(left + 140, top + 6, qual_img.get_rect().width, qual_img.get_rect().height))
+		menu_surface.blit(qual_img, pygame.rect.Rect(left + 140, top + 8, qual_img.get_rect().width, qual_img.get_rect().height))
 		pygame.display.flip()
 
 	def draw(self,move=0):
