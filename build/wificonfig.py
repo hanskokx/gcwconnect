@@ -24,10 +24,7 @@
 TODO list:
 
 * Add in hostapd/ap configuration options for device to device connections
-* Add manual network configuration option
-* Rewrite menus to give better scrolling options, and not have to do logic by menu position instead of content
 * Allow viewing/deleting saved networks
-* Show signal strength of scanned SSIDs
 
 '''
 
