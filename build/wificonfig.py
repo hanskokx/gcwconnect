@@ -33,6 +33,7 @@ import subprocess as SU
 import sys, time, os, shutil, re
 import pygame
 from pygame.locals import *
+from os import listdir
 
 # What is our wireless interface?
 wlan = "wlan0"
@@ -265,6 +266,23 @@ def parseencryption(encryption):
 		encryption = "Encrypted (unknown)"
 
 	return encryption
+
+## Saved Networks menu
+def getsavednets():
+	uniqssid = {}
+	uniqssids = {}
+	menu = 1
+	configs = [ f for f in listdir(netconfdir) ]
+	for x in configs:
+		try:
+			x = re.sub(r'[\s"\\]', '', x).strip()
+		except:
+			pass
+		x = x.split(".conf")[:-1][0]
+		uniqssid=uniqssids.setdefault(x, {'Network': {'ESSID': x, 'menu': menu}})
+		menu += 1
+	uniq = uniqssids
+	return uniq
 
 ## Draw interface elements
 class hint:
@@ -1464,9 +1482,32 @@ if __name__ == "__main__":
 									connect()
 									redraw()
 
-
 						elif menu.get_position() == 2: # Saved networks
-							modal("Need to implement", timeout="false", wait="true")
+							uniq = getsavednets()
+							wirelessitems = []
+							l = []
+							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
+								for network, detail in uniq.iteritems():
+									if network == item:
+										try:
+											detail['Network']['Quality']
+										except KeyError:
+											detail['Network']['Quality'] = "0/1"
+										try:
+											detail['Network']['Encryption']
+										except KeyError:
+											detail['Network']['Encryption'] = ""
+
+										menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
+										l.append(menuitem)
+
+							create_wireless_menu()
+							wirelessmenu.init(l, surface)
+							wirelessmenu.draw()
+
+							active_menu = to_menu("ssid")
+							redraw()
+
 						elif menu.get_position() == 3: # Quit menu
 							pygame.display.quit()
 							sys.exit()
