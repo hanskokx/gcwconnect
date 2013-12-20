@@ -1182,10 +1182,14 @@ class NetworksMenu(Menu):
 
 		def qualityPercent(x):
 			percent = (float(x.split("/")[0]) / float(x.split("/")[1])) * 100
-			return percent
+			if percent > 100:
+				percent = 100
+			return int(percent)
 		## Wifi signal icons
 		percent = qualityPercent(element[1])
-		if percent >= 0 and percent <= 24:
+		if percent <= 5:
+			signal_icon = 'wifi-none.png'
+		elif percent >= 6 and percent <= 24:
 			signal_icon = 'wifi-0.png'
 		elif percent >= 25 and percent <= 49:
 			signal_icon = 'wifi-1.png'
@@ -1194,7 +1198,7 @@ class NetworksMenu(Menu):
 		elif percent >= 75:
 			signal_icon = 'wifi-3.png'
 		else:
-			signal_icon = 'wifi-0.png'
+			signal_icon = 'wifi-connecting.png'
 
 		## Encryption information
 		enc_type = element[2]
@@ -1220,12 +1224,14 @@ class NetworksMenu(Menu):
 
 		ssid = boldtext.render(the_ssid, 1, self.text_color)
 		enc = subtext.render(enc_type, 1, lightgrey)
+		strength = subtext.render(str(percent) + "%", 1, lightgrey)
 		qual = subtext.render(element[1], 1, lightgrey)
 		spacing = 2
 
 		menu_surface.blit(ssid, (left + spacing, top + spacing, ssid.get_rect().width, ssid.get_rect().height))
 		menu_surface.blit(enc, (left + enc_img.get_rect().width + 12, top + 18, enc.get_rect().width, enc.get_rect().height))
 		menu_surface.blit(enc_img, pygame.rect.Rect(left + 8, (top + 22) - (enc_img.get_rect().height / 2), enc_img.get_rect().width, enc_img.get_rect().height))
+		menu_surface.blit(strength, (left + 140 - qual_img.get_rect().width - 4, top + 18, strength.get_rect().width, strength.get_rect().height))
 		menu_surface.blit(qual_img, pygame.rect.Rect(left + 140, top + 6, qual_img.get_rect().width, qual_img.get_rect().height))
 		pygame.display.flip()
 
@@ -1380,18 +1386,18 @@ if __name__ == "__main__":
 								####### DEBUG #######
 								uniqssid = {}
 								uniqssids = {}
-								uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
-								uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'Quality': '0/100', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
-								uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
-								uniqssid=uniqssids.setdefault('BLAH BLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', 'menu': 3}})
-								uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
-								uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
-								uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
-								uniqssid=uniqssids.setdefault('GoBlue', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'GoBlue', 'menu': 7}})
-								uniqssid=uniqssids.setdefault('yangji', {'Network': {'Encryption': 'wpa', 'Quality': '0/100', 'ESSID': 'yangji', 'menu': 8}})
-								uniqssid=uniqssids.setdefault('U+zone', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'U+zone', 'menu': 9}})
-								uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
-								uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
+								uniqssid=uniqssids.setdefault('DEBUG', {'Network': {'ESSID': 'DEBUG', 'menu': 0}})
+								uniqssid=uniqssids.setdefault('DEBUG network', {'Network': {'Encryption': 'wpa2', 'Quality': '0/100', 'ESSID': 'DEBUG network', 'menu': 1}})
+								uniqssid=uniqssids.setdefault('Another Debug', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'Another Debug', 'menu': 2}})
+								uniqssid=uniqssids.setdefault('DEBUG DEBUG DEBUG DEBUG', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'DEBUG DEBUG DEBUG DEBUG', 'menu': 3}})
+								uniqssid=uniqssids.setdefault('Hello DEBUG', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'Hello DEBUG', 'menu': 4}})
+								uniqssid=uniqssids.setdefault('Oh My! Debug!', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'Oh My! Debug!', 'menu': 5}})
+								uniqssid=uniqssids.setdefault('More Debug?', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'More Debug?', 'menu': 6}})
+								uniqssid=uniqssids.setdefault('Yep! Debug!', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'Yep! Debug!', 'menu': 7}})
+								uniqssid=uniqssids.setdefault('The Quick Brown', {'Network': {'Encryption': 'wpa', 'Quality': '0/100', 'ESSID': 'The Quick Brown', 'menu': 8}})
+								uniqssid=uniqssids.setdefault('Fox Jumps', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'Fox Jumps', 'menu': 9}})
+								uniqssid=uniqssids.setdefault('Over The', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'Over The', 'menu': 10}})
+								uniqssid=uniqssids.setdefault('Lazy Dog', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Lazy Dog', 'menu': 11}})
 								uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
 								uniq = uniqssids
 								####### DEBUG #######
@@ -1400,6 +1406,15 @@ if __name__ == "__main__":
 							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
 								for network, detail in uniq.iteritems():
 									if network == item:
+										try:
+											detail['Network']['Quality']
+										except KeyError:
+											detail['Network']['Quality'] = "0/1"
+										try:
+											detail['Network']['Encryption']
+										except KeyError:
+											detail['Network']['Encryption'] = ""
+
 										menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
 										l.append(menuitem)
 
