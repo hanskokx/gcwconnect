@@ -1162,7 +1162,7 @@ class NetworksMenu(Menu):
 			the_ssid = element[0].ljust(19)
 
 		render = self.font.render(the_ssid, 1, self.text_color)
-		spacing = 5
+		spacing = 15
 		return render.get_rect().width + spacing * 2
 
 	def get_item_height(self, element):
@@ -1177,14 +1177,57 @@ class NetworksMenu(Menu):
 		else:
 			the_ssid = element[0].ljust(19)
 
-		bold = pygame.font.SysFont(None, self.font_size, "bold")
+		boldtext = pygame.font.SysFont(None, self.font_size, "bold")
+		subtext = pygame.font.SysFont(None, 12)
 
-		ssid = bold.render(the_ssid, 1, self.text_color)
-		enc = pygame.font.SysFont(None, 12, self.text_color).render(element[2], 1, lightgrey)
+		def qualityPercent(x):
+			percent = (float(x.split("/")[0]) / float(x.split("/")[1])) * 100
+			return percent
+		## Wifi signal icons
+		percent = qualityPercent(element[1])
+		if percent >= 0 and percent <= 24:
+			signal_icon = 'wifi-0.png'
+		elif percent >= 25 and percent <= 49:
+			signal_icon = 'wifi-1.png'
+		elif percent >= 50 and percent <= 74:
+			signal_icon = 'wifi-2.png'
+		elif percent >= 75:
+			signal_icon = 'wifi-3.png'
+		else:
+			signal_icon = 'wifi-0.png'
+
+		## Encryption information
+		enc_type = element[2]
+		if enc_type == "none":
+			enc_icon = "open.png"
+			enc_type = "Open (unencrypted)"
+		elif enc_type == "wpa":
+			enc_icon = "closed.png"
+			enc_type = "WPA"
+		elif enc_type == "wpa2":
+			enc_icon = "closed.png"
+			enc_type = "WPA 2"
+		elif enc_type == "wep":
+			enc_icon = "closed.png"
+			enc_type = "WEP"
+		else:
+			enc_icon = "unknown.png"
+			enc_type = "(Unknown)"
+
+
+		qual_img = pygame.image.load((os.path.join('data', signal_icon))).convert_alpha()
+		enc_img = pygame.image.load((os.path.join('data', enc_icon))).convert_alpha()
+
+		ssid = boldtext.render(the_ssid, 1, self.text_color)
+		enc = subtext.render(enc_type, 1, lightgrey)
+		qual = subtext.render(element[1], 1, lightgrey)
 		spacing = 2
-		menu_surface.blit(ssid, (left + spacing, top + spacing, ssid.get_rect().width, ssid.get_rect().height))
-		menu_surface.blit(enc, (left + spacing, top + 16, enc.get_rect().width, enc.get_rect().height))
 
+		menu_surface.blit(ssid, (left + spacing, top + spacing, ssid.get_rect().width, ssid.get_rect().height))
+		menu_surface.blit(enc, (left + enc_img.get_rect().width + 12, top + 18, enc.get_rect().width, enc.get_rect().height))
+		menu_surface.blit(enc_img, pygame.rect.Rect(left + 8, (top + 22) - (enc_img.get_rect().height / 2), enc_img.get_rect().width, enc_img.get_rect().height))
+		menu_surface.blit(qual_img, pygame.rect.Rect(left + 140, top + 6, qual_img.get_rect().width, qual_img.get_rect().height))
+		pygame.display.flip()
 
 	def draw(self,move=0):
 		if len(self.elements) == 0:
