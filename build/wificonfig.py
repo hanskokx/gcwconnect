@@ -1296,11 +1296,7 @@ menu = Menu()
 menu.set_font(pygame.font.Font('./data/Inconsolata.otf', 16))
 menu.move_menu(16, 96)
 def mainmenu():
-	status = getwlanstatus()
-	if not status == "ok":
-		menu.init(['Scan for APs', "Manual setup", "Turn WiFi on", "Quit"], surface)
-	else:
-		menu.init(['Scan for APs', "Manual setup", "Turn WiFi off", "Quit"], surface)
+	menu.init(['Scan for APs', "Manual setup", "Saved Networks", "Quit"], surface)
 	menu.draw()
 def create_wireless_menu():
 	global wirelessmenu
@@ -1469,16 +1465,8 @@ if __name__ == "__main__":
 									redraw()
 
 
-						elif menu.get_position() == 2: # Toggle wifi
-							status = getwlanstatus()
-							if not status == "ok":
-								ifup()
-								redraw()
-								status = ''
-							else:
-								ifdown()
-								redraw()
-								status = ''
+						elif menu.get_position() == 2: # Saved networks
+							modal("Need to implement", timeout="false", wait="true")
 						elif menu.get_position() == 3: # Quit menu
 							pygame.display.quit()
 							sys.exit()
