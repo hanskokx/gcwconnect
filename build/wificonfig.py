@@ -163,10 +163,9 @@ def getwlanip():
 			ip = str.strip(line[line.find('inet addr')+len('inet addr"'):line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
 			privateip = '169.254.'
 			regex = re.compile('%s\d*'%privateip)
-			regip = regex.match (privateip)
+			regip = regex.match(privateip)
 			if regip:
-				pass
-			
+				ip = ''
 			if ip == "10.1.1.2" or ip == "127.0.0.1":
 			# if ip == "10.1.1.2" or ip == "127.0.0.1":
 				ip = ''
