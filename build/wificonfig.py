@@ -50,6 +50,7 @@ activeselbg = (153, 0, 0)
 inactiveselbg = (84, 84, 84)
 activetext = (255, 255, 255)
 inactivetext = (128, 128, 128)
+lightgrey = (200,200,200)
 
 ## That's it for options. Everything else below shouldn't be edited.
 confdir = os.environ['HOME'] + "/.gcwconnect/"
@@ -246,6 +247,8 @@ def parseessid(essid):
 		return essid
 def parsequality(quality):
 	quality = quality[quality.find("Quality=")+len("Quality="):quality.find(" S")+len(" S")].rstrip(" S")
+	if len(quality) < 1:
+		quality = '0/100'
 	return quality
 def parseencryption(encryption):
 	encryption = str.strip(encryption)
@@ -887,8 +890,19 @@ def softkeyinput(keyboard, kind, ssid):
 					selectkey(keyboard, kind, "delete")
 				if event.key == K_ESCAPE:	# Select key
 					passphrase = ''
-					del encryption
-					del securitykey
+					try:
+						encryption
+					except NameError:
+						pass
+					else:
+						del encryption
+
+					try:
+						securitykey
+					except NameError:
+						pass
+					else:
+						del securitykey
 					wait = "false"
 				if event.key == K_RETURN:	# Start key
 				## Need to handle ssid vs key logic here
@@ -922,7 +936,10 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 	elif kind == "key":
 		# Draw SSID and encryption type labels
 		labelblock = pygame.draw.rect(surface, (255,255,255), (0,35,320,20))
-		labeltext = pygame.font.SysFont(None, 18).render("Enter key for "+"%s..."%(ssid[:16]), True, lightbg, (255,255,255))
+		if len(ssid) >= 16:
+			labeltext = pygame.font.SysFont(None, 18).render("Enter key for "+"%s..."%(ssid[:16]), True, lightbg, (255,255,255))
+		else:
+			labeltext = pygame.font.SysFont(None, 18).render("Enter key for "+ssid, True, lightbg, (255,255,255))
 		label = labeltext.get_rect()
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
@@ -1134,6 +1151,90 @@ class Menu:
 		render = self.font.render(element, 1, self.text_color)
 		spacing = 5
 		menu_surface.blit(render, (left + spacing, top + spacing, render.get_rect().width, render.get_rect().height))
+class NetworksMenu(Menu):
+	def set_elements(self, elements):
+		self.elements = elements
+
+	def get_item_width(self, element):
+		if len(str(element[0])) > 16:
+			the_ssid = "%s..."%(element[0][:16])
+		else:
+			the_ssid = element[0].ljust(19)
+
+		render = self.font.render(the_ssid, 1, self.text_color)
+		spacing = 5
+		return render.get_rect().width + spacing * 2
+
+	def get_item_height(self, element):
+		render = self.font.render(element[0], 1, self.text_color)
+		spacing = 5
+		return (render.get_rect().height + spacing * 2) + 5
+
+	def render_element(self, menu_surface, element, left, top):
+
+		if len(str(element[0])) > 16:
+			the_ssid = "%s..."%(element[0][:16])
+		else:
+			the_ssid = element[0].ljust(19)
+
+		bold = pygame.font.SysFont(None, self.font_size, "bold")
+
+		ssid = bold.render(the_ssid, 1, self.text_color)
+		enc = pygame.font.SysFont(None, 12, self.text_color).render(element[2], 1, lightgrey)
+		spacing = 2
+		menu_surface.blit(ssid, (left + spacing, top + spacing, ssid.get_rect().width, ssid.get_rect().height))
+		menu_surface.blit(enc, (left + spacing, top + 16, enc.get_rect().width, enc.get_rect().height))
+
+
+	def draw(self,move=0):
+		if len(self.elements) == 0:
+			return
+
+		if move != 0:
+			self.selected_item += move
+			if self.selected_item < 0:
+				self.selected_item = 0
+			elif self.selected_item >= len(self.elements):
+				self.selected_item = len(self.elements) - 1
+
+		# Which items are to be shown?
+		if self.selected_item <= 2: # We're at the top
+			visible_elements = self.elements[0:5]
+			selected_within_visible = self.selected_item
+		elif self.selected_item >= len(self.elements) - 3: # We're at the bottom
+			visible_elements = self.elements[-5:]
+			selected_within_visible = self.selected_item - (len(self.elements) - len(visible_elements))
+		else: # The list is larger than 5 elements, and we're in the middle
+			visible_elements = self.elements[self.selected_item - 2:self.selected_item + 3]
+			selected_within_visible = 2
+
+		# What width does everything have?
+		max_width = max([self.get_item_width(visible_element) for visible_element in visible_elements])
+
+		# And now the height
+		heights = [self.get_item_height(visible_element) for visible_element in visible_elements]
+		total_height = sum(heights)
+
+		# Background
+		menu_surface = pygame.Surface((max_width, total_height))
+		menu_surface.fill(self.canvas_color)
+
+		# Selection
+		left = 0
+		top = sum(heights[0:selected_within_visible])
+		width = max_width
+		height = heights[selected_within_visible]
+		selection_rect = (left, top, width, height)
+		pygame.draw.rect(menu_surface,self.selection_color,selection_rect)
+
+		# Elements
+		top = 0
+		for i in xrange(len(visible_elements)):
+			self.render_element(menu_surface, visible_elements[i], 0, top)
+			top += heights[i]
+		self.dest_surface.blit(menu_surface,self.origin)
+		return self.selected_item
+
 def to_menu(new_menu):
 	if new_menu == "main":
 		menu.set_colors(activetext, activeselbg, darkbg)
@@ -1157,7 +1258,7 @@ def mainmenu():
 	menu.draw()
 def create_wireless_menu():
 	global wirelessmenu
-	wirelessmenu = Menu()
+	wirelessmenu = NetworksMenu()
 	wirelessmenu.set_font(pygame.font.Font('./data/Inconsolata.otf', 14))
 	wirelessmenu.move_menu(150,40)
 def destroy_wireless_menu():
@@ -1174,7 +1275,6 @@ if __name__ == "__main__":
 	try:
 		createpaths()
 	except:
-		modal("Config write fail!", wait="true", timeout="false")
 		pass ## Can't create directories. Great for debugging on a pc.
 	
 	redraw()
@@ -1234,35 +1334,30 @@ if __name__ == "__main__":
 								getnetworks()
 								uniq = listuniqssids()
 							except:
-								modal("Error scanning", wait="true", timeout="false")
 								####### DEBUG #######
-								# uniqssid = {}
-								# uniqssids = {}
-								# uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
-								# uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
-								# uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
-								# uniqssid=uniqssids.setdefault('BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', 'menu': 3}})
-								# uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
-								# uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
-								# uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
-								# uniqssid=uniqssids.setdefault('GoBlue', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'GoBlue', 'menu': 7}})
-								# uniqssid=uniqssids.setdefault('yangji', {'Network': {'Encryption': 'wpa', 'ESSID': 'yangji', 'menu': 8}})
-								# uniqssid=uniqssids.setdefault('U+zone', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'U+zone', 'menu': 9}})
-								# uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
-								# uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
-								# uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
-								# uniq = uniqssids
+								uniqssid = {}
+								uniqssids = {}
+								uniqssid=uniqssids.setdefault('apple', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'apple', 'menu': 0}})
+								uniqssid=uniqssids.setdefault('MOTOROLA-92FCB', {'Network': {'Encryption': 'wpa2', 'Quality': '0/100', 'ESSID': 'MOTOROLA-92FCB', 'menu': 1}})
+								uniqssid=uniqssids.setdefault('ATT264', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'ATT264', 'menu': 2}})
+								uniqssid=uniqssids.setdefault('BLAH BLAH BLAH BLAH', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'BLAH BLAH BLAHBLAH BLAH BLAHBLAH BLAH BLAH', 'menu': 3}})
+								uniqssid=uniqssids.setdefault('PS3-9434763', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'PS3-9434763', 'menu': 4}})
+								uniqssid=uniqssids.setdefault('BASocialWorkers', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'BASocialWorkers', 'menu': 5}})
+								uniqssid=uniqssids.setdefault('HOME-A128', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'HOME-A128', 'menu': 6}})
+								uniqssid=uniqssids.setdefault('GoBlue', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'GoBlue', 'menu': 7}})
+								uniqssid=uniqssids.setdefault('yangji', {'Network': {'Encryption': 'wpa', 'Quality': '0/100', 'ESSID': 'yangji', 'menu': 8}})
+								uniqssid=uniqssids.setdefault('U+zone', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'U+zone', 'menu': 9}})
+								uniqssid=uniqssids.setdefault('U+Net7a77', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'U+Net7a77', 'menu': 10}})
+								uniqssid=uniqssids.setdefault('Pil77Jung84', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Pil77Jung84', 'menu': 11}})
+								uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
+								uniq = uniqssids
 								####### DEBUG #######
 							wirelessitems = []
 							l = []
 							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
 								for network, detail in uniq.iteritems():
 									if network == item:
-										s = str(detail['Network']['ESSID'])
-										if len(str(detail['Network']['ESSID'])) > 16:
-											menuitem = "%s..."%(s[:16])
-										else:
-											menuitem = s.ljust(19)
+										menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
 										l.append(menuitem)
 
 							create_wireless_menu()
