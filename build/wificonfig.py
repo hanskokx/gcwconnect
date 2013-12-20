@@ -484,13 +484,13 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 	if passphrase:
 		if passphrase == "none":
 			passphrase = ""
-		conf = netconfdir+ssidconfig+".conf"
-		f = open(conf, mode)
-		f.write('WLAN_ESSID="'+ssid+'"\n')
-		f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
-		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
-		f.write('WLAN_DHCP_RETRIES=20\n')
-		f.close()
+	conf = netconfdir+ssidconfig+".conf"
+	f = open(conf, mode)
+	f.write('WLAN_ESSID="'+ssid+'"\n')
+	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
+	f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
+	f.write('WLAN_DHCP_RETRIES=20\n')
+	f.close()
 def connect(): # Connect to a network
 	global go
 	if go == "true":
@@ -1228,7 +1228,7 @@ class NetworksMenu(Menu):
 
 		menu_surface.blit(ssid, (left + spacing, top + spacing, ssid.get_rect().width, ssid.get_rect().height))
 		menu_surface.blit(enc, (left + enc_img.get_rect().width + 12, top + 18, enc.get_rect().width, enc.get_rect().height))
-		menu_surface.blit(enc_img, pygame.rect.Rect(left + 8, (top + 26) - (enc_img.get_rect().height / 2), enc_img.get_rect().width, enc_img.get_rect().height))
+		menu_surface.blit(enc_img, pygame.rect.Rect(left + 8, (top + 25) - (enc_img.get_rect().height / 2), enc_img.get_rect().width, enc_img.get_rect().height))
 		menu_surface.blit(strength, (left + 140 - qual_img.get_rect().width - 4, top + 18, strength.get_rect().width, strength.get_rect().height))
 		menu_surface.blit(qual_img, pygame.rect.Rect(left + 140, top + 8, qual_img.get_rect().width, qual_img.get_rect().height))
 		pygame.display.flip()
