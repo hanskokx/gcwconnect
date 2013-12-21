@@ -80,14 +80,8 @@ def createpaths(): # Create paths, if necessary
 
 ## Interface management
 def ifdown(iface):
-	err = False
 	with open(os.devnull, "w") as fnull:
-		err = SU.Popen(['ifdown', iface], stderr = fnull).wait() != 0
-	try:
-		os.remove(sysconfdir+"config-"+iface+".conf")
-	except:
-		pass
-	return err
+		return SU.Popen(['ifdown', iface], stderr = fnull).wait() != 0
 
 def ifup(iface):
 	with open(os.devnull, "w") as fnull:
@@ -227,7 +221,7 @@ def parsequality(quality):
 def parseencryption(encryption):
 	encryption = str.strip(encryption)
 
- 	if encryption.startswith('Encryption key:off'):
+	if encryption.startswith('Encryption key:off'):
 	 	encryption = "none"
 	elif encryption.startswith('Encryption key:on'):
 		encryption = "wep"
@@ -453,7 +447,7 @@ def modal(text, wait=False, timeout=False):
 				return
 
 ## Connect to a network
-def writeconfig(mode="a"): # Write wireless configuration to disk
+def writeconfig(): # Write wireless configuration to disk
 	global passphrase
 	global encryption
 	try:
@@ -465,7 +459,7 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 		if passphrase == "none":
 			passphrase = ""
 	conf = netconfdir+ssidconfig+".conf"
-	f = open(conf, mode)
+	f = open(conf, "w")
 	f.write('WLAN_ESSID="'+ssid+'"\n')
 	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
 	f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
@@ -874,7 +868,7 @@ def softkeyinput(keyboard, kind, ssid):
 					redraw()
 					if ssid == '':
 						return False
-					writeconfig("w")
+					writeconfig()
 					return connect(wlan)
 
 def displayinputlabel(kind, size=24): # Display passphrase on screen
@@ -1421,8 +1415,7 @@ if __name__ == "__main__":
 									modal("Canceled.", timeout=True)
 								else:
 									conf = netconfdir+ssidconfig+".conf"
-									writeconfig("w")
-									disconnect(wlan)
+									writeconfig()
 									connect(wlan)
 									redraw()
 
@@ -1480,10 +1473,10 @@ if __name__ == "__main__":
 										drawkeyboard("qwertyNormal")
 										encryption = "wpa"
 										getinput("qwertyNormal", "key", ssid)
-								writeconfig()
+									writeconfig()
+								connect(wlan)
+								redraw()
 								break
-						connect(wlan)
-						redraw()
 
 				elif event.key == K_ESCAPE:
 					if active_menu == "ssid": # Allow us to edit the existing key
