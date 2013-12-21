@@ -61,10 +61,9 @@ selected_key = ''
 maxrows = ''
 maxcolumns = ''
 passphrase = ''
-go = ''
 active_menu = ''
 
-## Initialize the dispaly, for pygame
+## Initialize the display, for pygame
 if not pygame.display.get_init():
 	pygame.display.init()
 if not pygame.font.get_init():
@@ -84,116 +83,108 @@ def createpaths(): # Create paths, if necessary
 		os.makedirs(sysconfdir)
 
 ## Interface management
-def ifdown(reconnect=''):
-
-	modal("Disabling WiFi...","false")
-	command = ['ifdown', wlan]
+def ifdown(iface):
+        err = False
 	with open(os.devnull, "w") as fnull:
-		SU.Popen(command, stderr = fnull)
-	command = ['rfkill', 'block', 'wlan']
-	with open(os.devnull, "w") as fnull:
-		SU.Popen(command, stderr = fnull)
+		err = SU.Popen(['ifdown', iface], stderr = fnull).wait() != 0
 	try:
-		os.remove(sysconfdir+"config-"+wlan+".conf")
+		os.remove(sysconfdir+"config-"+iface+".conf")
 	except:
 		pass
-	time.sleep(1)
-def enablewifi():
-	check = checkinterfacestatus()
-	if not check:
-		modal("Enabling WiFi...","false")
-		command = ['rfkill', 'unblock', 'wlan']
-		with open(os.devnull, "w") as fnull:
-			SU.Popen(command, stderr = fnull)
+        return err
 
-		command = ['ifconfig']
-		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
-		drawinterfacestatus()
-		pygame.display.update()
-		good = ''
-		while not good:
-			for line in output:
-				if line.strip().startswith("wlan"):
-					good = "ok"
-				else:
-					command = ['ifconfig', wlan, 'up']
-					with open(os.devnull, "w") as fnull:
-						SU.Popen(command, stdout = fnull, stderr = fnull)
-					command = ['ifconfig']
-					output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
-def ifup():
-	oldssid = ''
-	if getcurrentssid():
-		oldssid = getcurrentssid()
-	counter = 0
-	check = checkinterfacestatus()
-	if not check:
-		enablewifi()
-	else:
-		modal("Connecting...","false")
-		check = ''
-		while not check and counter < timeout:
-			if counter > 0:
-				modal('Connection failed. Retrying...'+str(counter),"false")
-			command = ['ifup', wlan]
-			with open(os.devnull, "w") as fnull:
-				output = SU.Popen(command, stdout=SU.PIPE, stderr = fnull).stdout.readlines()
-			counter += 1
-			time.sleep(3)
-			drawstatusbar()
-			drawinterfacestatus()
-			pygame.display.update()
-			if counter >= timeout:
-				modal('Connection failed!',wait="true")
-			else:
-				wlanstatus = ""
-				currentssid = getcurrentssid()
-				if not checkinterfacestatus() == "offline":
-					if not currentssid == "unassociated":
-						pass
-						#modal("Connected!","false","true")
-			check = checkinterfacestatus()
-def getwlanip():
-	ip = ""
-	command = ['ifconfig']
+def ifup(iface):
+        with open(os.devnull, "w") as fnull:
+                return SU.Popen(['ifup', iface], \
+                            stdout=fnull, stderr=fnull).wait() == 0
+
+# Returns False if the interface was previously enabled
+def enableiface(iface):
+	check = checkinterfacestatus(iface)
+	if check:
+                return False
+
+        modal("Enabling WiFi...")
+        drawinterfacestatus()
+        pygame.display.update()
+
+        with open(os.devnull, "w") as fnull:
+                SU.Popen(['rfkill', 'unblock', 'wlan'], \
+                        stderr=fnull, stdout=fnull).wait()
+                while True:
+                        if SU.Popen(['ifconfig', iface, 'up'], \
+                                stderr=fnull, stdout=fnull).wait() == 0:
+                                break
+                        time.sleep(0.1);
+        return True
+
+def disableiface(iface):
+        with open(os.devnull, "w") as fnull:
+                SU.Popen(['rfkill', 'block', 'wlan'],
+                        stderr=fnull, stdout=fnull).wait()
+
+def getip(iface):
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
+		output = SU.Popen(['ifconfig', iface], \
+                        stderr=fnull, stdout=SU.PIPE).stdout.readlines()
 
 	for line in output:
 		if line.strip().startswith("inet addr"):
-			ip = str.strip(line[line.find('inet addr')+len('inet addr"'):line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
-			privateip = '169.254.'
-			regex = re.compile('%s\d*'%privateip)
-			regip = regex.match(privateip)
-			if regip:
-				ip = ''
-			if ip == "10.1.1.2" or ip == "127.0.0.1":
-			# if ip == "10.1.1.2" or ip == "127.0.0.1":
-				ip = ''
-	return ip
-def checkinterfacestatus():
-	interface = "" # set default assumption of interface status
-	ip = ""
-	command = ['ifconfig']
-	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(command, stdout=SU.PIPE, stderr = fnull).stdout.readlines()
+			return str.strip( \
+                                line[line.find('inet addr')+len('inet addr"') :\
+                                line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
 
-	for line in output:
-		if line.strip().startswith(wlan):
-			ip = getwlanip()
-			if ip:
-				interface = ip
-			else:
-				currentssid = getcurrentssid()
-				if currentssid == "unassociated":
-					interface = "disconnected"
-	return interface
-def getnetworks(): # Run iwlist to get a list of networks in range
-	enablewifi()
-	modal("Scanning...","false")
-	command = ['iwlist', wlan, 'scan']
+def getcurrentssid(iface): # What network are we connected to?
+        if not checkinterfacestatus(iface):
+                return None
+
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(command, stdout=SU.PIPE, stderr = fnull).stdout.readlines()
+		output = SU.Popen(['iwconfig', iface], \
+                        stdout=SU.PIPE, stderr = fnull).stdout.readlines()
+	for line in output:
+		if line.strip().startswith(iface):
+			ssid = str.strip(line[line.find('ESSID')+len('ESSID:"'):line.find('Nickname:')+len('Nickname:')].rstrip(' Nickname:').rstrip('"'))
+	return ssid
+
+def checkinterfacestatus(iface):
+        return getip(iface) != None
+
+def connect(iface): # Connect to a network
+        shutil.copy2(netconfdir+ssidconfig+".conf", \
+                sysconfdir+"config-"+iface+".conf")
+
+        if checkinterfacestatus(iface):
+                disconnect(iface)
+
+        modal("Connecting...")
+        counter = 0
+        while counter < timeout:
+                if counter > 0:
+                        modal('Connection failed. Retrying...'+str(counter))
+                if ifup(wlan):
+                        break
+                counter += 1
+                if counter >= timeout:
+                        modal('Connection failed!', wait=True)
+                        return False
+
+        pygame.display.update()
+        drawstatusbar()
+        drawinterfacestatus()
+        return True
+
+def disconnect(iface):
+        if checkinterfacestatus(iface):
+		modal("Disconnecting...")
+                ifdown(iface)
+
+def getnetworks(iface): # Run iwlist to get a list of networks in range
+	wasnotenabled = enableiface(iface)
+	modal("Scanning...")
+
+	with open(os.devnull, "w") as fnull:
+		output = SU.Popen(['iwlist', iface, 'scan'] \
+                        , stdout=SU.PIPE, stderr=fnull).stdout.readlines()
 	for item in output:
 		if item.strip().startswith('Cell'):
 			# network is the current list corresponding to a MAC address {MAC:[]}
@@ -209,7 +200,11 @@ def getnetworks(): # Run iwlist to get a list of networks in range
 			network["Quality"] = (parsequality(item))
 		# Now the loop is over, we will probably find a MAC address and a new "network" will be created.
 	redraw()
+
+        if wasnotenabled:
+                disableiface(iface)
 	return networks
+
 def listuniqssids():
 	menuposition = 0
 	uniqssid = {}
@@ -223,48 +218,35 @@ def listuniqssids():
 				uniqssid["Network"]["Encryption"] = detail['Encryption']
 				menuposition += 1
 	return uniqssids
-def getwlanstatus():
-	global wlan
-	wlanstatus = ''
-	command = ['ifconfig']
-	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(command, stdout=SU.PIPE).stdout.readlines()
-
-	for line in output:
-		if line.strip().startswith(wlan):
-			wlanstatus = "ok"
-	return wlanstatus
 
 ## Parsing iwlist output for various components
 def parsemac(macin):
 	mac = str.strip(macin[macin.find("Address:")+len("Address: "):macin.find("\n")+len("\n")])
 	return mac
+
 def parseessid(essid):
 		essid = str.strip(essid[essid.find('ESSID:"')+len('ESSID:"'):essid.find('"\n')+len('"\n')].rstrip('"\n'))
 		return essid
+
 def parsequality(quality):
 	quality = quality[quality.find("Quality=")+len("Quality="):quality.find(" S")+len(" S")].rstrip(" S")
 	if len(quality) < 1:
 		quality = '0/100'
 	return quality
+
 def parseencryption(encryption):
 	encryption = str.strip(encryption)
 
  	if encryption.startswith('Encryption key:off'):
 	 	encryption = "none"
-
 	elif encryption.startswith('Encryption key:on'):
 		encryption = "wep"
-
 	elif encryption.startswith("IE: WPA"):
 		encryption = "wpa"
-
 	elif encryption.startswith("IE: IEEE 802.11i/WPA2"):
 		encryption = "wpa2"
-
 	else:
 		encryption = "Encrypted (unknown)"
-
 	return encryption
 
 ## Saved Networks menu
@@ -286,7 +268,6 @@ def getsavednets():
 
 ## Draw interface elements
 class hint:
-
 	def __init__(self, button, text, x, y, bg=darkbg):
 		self.button = button
 		self.text = text
@@ -375,9 +356,11 @@ class hint:
 			labelblock = pygame.draw.rect(surface, self.bg, (self.x+20,self.y,35,14))
 			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, (255, 255, 255), self.bg)
 			surface.blit(labeltext, labelblock)
+
 def drawlogobar(): # Set up the menu bar
 	pygame.draw.rect(surface, lightbg, (0,0,320,32))
 	pygame.draw.line(surface, (255, 255, 255), (0, 33), (320, 33))
+
 def drawlogo():
 	gcw = "GCW"
 	zero = "Connect"
@@ -404,6 +387,7 @@ def drawlogo():
 	# logo_text = text4.get_rect()
 	# logo_text.topleft = (245, 18)
 	# surface.blit(text4, logo_text)
+
 def drawstatusbar(): # Set up the status bar
 	pygame.draw.rect(surface, lightbg, (0,224,320,16))
 	pygame.draw.line(surface, (255, 255, 255), (0, 223), (320, 223))
@@ -411,39 +395,25 @@ def drawstatusbar(): # Set up the status bar
 	wlan_text = wlantext.get_rect()
 	wlan_text.topleft = (4, 227)
 	surface.blit(wlantext, wlan_text)
+
 def drawinterfacestatus(): # Interface status badge
-	wlanstatus = getwlanstatus()
+	wlanstatus = checkinterfacestatus(wlan)
 	if not wlanstatus: 
 		wlanstatus = wlan+" is off."
 	else:
-		currentssid = getcurrentssid()
-		if currentssid == "unassociated":
-			wlanstatus = wlan+" is disconnected."
-		elif not currentssid == "unassociated":
-			wlanstatus = currentssid
-	
+		wlanstatus = getcurrentssid(wlan)
 
 	wlantext = pygame.font.SysFont(None, 16).render(wlanstatus, True, (255, 255, 255), lightbg)
 	wlan_text = wlantext.get_rect()
 	wlan_text.topleft = (4, 227)
 	surface.blit(wlantext, wlan_text)
 
-	if not checkinterfacestatus() == "not connected" and not checkinterfacestatus() == "disconnected":
-		text = pygame.font.SysFont(None, 16).render(checkinterfacestatus(), True, (153, 0, 0), lightbg)
+	if checkinterfacestatus(wlan):
+		text = pygame.font.SysFont(None, 16).render(getip(wlan), True, (153, 0, 0), lightbg)
 		interfacestatus_text = text.get_rect()
 		interfacestatus_text.topright = (315, 227)
 		surface.blit(text, interfacestatus_text)
-def getcurrentssid(): # What network are we connected to?
-	ssid = ''
-	command = ['iwconfig', wlan]
-	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(command, stdout=SU.PIPE, stderr = fnull).stdout.readlines()
 
-	for line in output:
-		if line.strip().startswith(wlan):
-			ssid = str.strip(line[line.find('ESSID')+len('ESSID:"'):line.find('Nickname:')+len('Nickname:')].rstrip(' Nickname:').rstrip('"'))
-
-	return ssid
 def redraw():
 	surface.fill(darkbg)
 	drawlogobar()
@@ -464,7 +434,8 @@ def redraw():
 	drawstatusbar()
 	drawinterfacestatus()
 	pygame.display.update()
-def modal(text,wait="true",timeout="false"): # Draw a modal
+
+def modal(text, wait=False, timeout=False):
 	dialog = pygame.draw.rect(surface, lightbg, (64,88,192,72))
 	pygame.draw.rect(surface, (255,255,255), (62,86,194,74), 2)
 
@@ -475,19 +446,21 @@ def modal(text,wait="true",timeout="false"): # Draw a modal
 	surface.blit(text, modal_text)
 	pygame.display.update()
 
-	if not wait == "true" and timeout == "true":
-		time.sleep(2.5)
-		redraw()
-	elif wait == "true":
+	if wait:
 		abutton = hint("a", "Continue", 205, 145, lightbg)
 		pygame.display.update()
+        elif timeout:
+		time.sleep(2.5)
+		redraw()
 
-	while wait == "true":
+        if not wait:
+                return
+
+	while True:
 		for event in pygame.event.get():
-			if event.type == KEYDOWN:
-				if event.key == K_LCTRL:
-					redraw()
-					wait = "false"
+			if event.type == KEYDOWN and event.key == K_LCTRL:
+                                redraw()
+                                return
 
 ## Connect to a network
 def writeconfig(mode="a"): # Write wireless configuration to disk
@@ -508,22 +481,6 @@ def writeconfig(mode="a"): # Write wireless configuration to disk
 	f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
 	f.write('WLAN_DHCP_RETRIES=20\n')
 	f.close()
-def connect(): # Connect to a network
-	global go
-	if go == "true":
-		oldconf = netconfdir+ssidconfig+".conf"
-		newconf = sysconfdir +"config-wlan0.conf"
-		os.environ['CONFIG_FILE'] = netconfdir+ssidconfig+".conf"
-		shutil.copy2(oldconf, newconf)
-		ifup()
-def disconnect():
-	interface = checkinterfacestatus()
-	if not interface == "disconnected":
-		modal("Disconnecting...","false")
-		command = ['ifdown', wlan]
-		with open(os.devnull, "w") as fnull:
-			SU.Popen(command, stderr = fnull)
-			time.sleep(3)
 
 ## Input methods
 def getkeys(board):
@@ -558,6 +515,7 @@ def getkeys(board):
 			
 			keyid += 1
 		return keyboard
+
 	def qwertyShift():
 		keyarray = {}
 		keyboard = {}
@@ -589,6 +547,7 @@ def getkeys(board):
 			
 			keyid += 1
 		return keyboard
+
 	def wep():
 		keyarray = {}
 		keyboard = {}
@@ -620,6 +579,7 @@ def getkeys(board):
 			
 			keyid += 1
 		return keyboard
+
 	def encryption():
 		keyarray = {}
 		keyboard = {}
@@ -658,6 +618,7 @@ def getkeys(board):
 	elif board == "encryption":
 		k = encryption()
 	return k
+
 class key:
 	def __init__(self):
 		self.key = []
@@ -686,6 +647,7 @@ class key:
 		label = text.get_rect()
 		label.center = keybox.center
 		surface.blit(text, label)
+
 class radio:
 	def __init__(self):
 		self.key = []
@@ -715,6 +677,7 @@ class radio:
 		label.left = radiobutton.right + 8
 		label.top = radiobutton.top + 4
 		surface.blit(text, label)
+
 def getSSID():
 	global passphrase
 	displayinputlabel("ssid")
@@ -723,6 +686,7 @@ def getSSID():
 	ssid = passphrase
 	passphrase = ''
 	return ssid
+
 def drawEncryptionType():
 	# Draw top background 
 	pygame.draw.rect(surface, darkbg, (0,100,320,140))
@@ -742,6 +706,7 @@ def drawEncryptionType():
 			z.init(y['key'],y['row'],y['column'])
 
 	pygame.display.update()
+
 def chooseencryption(keyboard, direction):
 	def getcurrentkey(keyboard, pos):
 		keys = getkeys(keyboard)
@@ -798,11 +763,10 @@ def chooseencryption(keyboard, direction):
 
 	highlightradio(keyboard, selected_key)
 	return encryption
+
 def getEncryptionType():
-	global encryptiontype
-	wait = "true"
 	chooseencryption("encryption", "init")
-	while wait == "true":
+	while True:
 		for event in pygame.event.get():
 			if event.type == KEYDOWN:
 				if event.key == K_LEFT:		# Move cursor left
@@ -810,14 +774,11 @@ def getEncryptionType():
 				if event.key == K_RIGHT:	# Move cursor right
 					chooseencryption("encryption", "right")
 				if event.key == K_LCTRL:	# A button
-					encryption = chooseencryption("encryption", "select")
-					wait = "false"
+					return chooseencryption("encryption", "select")
 				if event.key == K_ESCAPE:	# Select key
-					encryption = 'cancel'
-					wait = "false"
-	return encryption
-def drawkeyboard(board):
+					return 'cancel'
 
+def drawkeyboard(board):
 	# Draw keyboard background 
 	pygame.draw.rect(surface, darkbg, (0,100,320,140))
 
@@ -848,24 +809,23 @@ def drawkeyboard(board):
 
 	pygame.display.update()
 	return keyboard
+
 def getinput(board, kind, ssid=""):
 	selectkey(board, kind)
-	typed = softkeyinput(board, kind, ssid)
-	return typed
+	return softkeyinput(board, kind, ssid)
+
 def softkeyinput(keyboard, kind, ssid):
 	global passphrase
-	global go
 	global encryption
 	global securitykey
 
-	wait = "true"
-	while wait == "true":
+	while True:
 		for event in pygame.event.get():
 
 			if event.type == KEYDOWN:
 				if event.key == K_RETURN:		# finish input
 					selectkey(keyboard, kind, "enter")
-					wait = "false"
+                                        return True
 
 				if event.key == K_UP:		# Move cursor up
 					selectkey(keyboard, kind, "up")
@@ -917,26 +877,16 @@ def softkeyinput(keyboard, kind, ssid):
 						pass
 					else:
 						del securitykey
-					wait = "false"
+                                        redraw()
+                                        return False
 				if event.key == K_RETURN:	# Start key
 				## Need to handle ssid vs key logic here
 					redraw()
 					if ssid == '':
-						go = "true"
-						wait = "false"
-					else:
-						writeconfig("w")
-						go = "true"
-						modal("Connecting...","false")
-						command = ['ifdown', wlan]
-						with open(os.devnull, "w") as fnull:
-							SU.Popen(command, stderr = fnull)
-						connect()
-						drawinterfacestatus()
-						wait = "false"
-						passphrase = ''
-	redraw()
-	return go
+                                                return False
+                                        writeconfig("w")
+                                        return connect(wlan)
+
 def displayinputlabel(kind, size=24): # Display passphrase on screen
 
 	if kind == "ssid":
@@ -968,6 +918,7 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 	pwtext.center = bg.center
 	surface.blit(pw, pwtext)
 	pygame.display.update()
+
 def selectkey(keyboard, kind, direction=""):
 	def getcurrentkey(keyboard, pos):
 		keys = getkeys(keyboard)
@@ -1064,8 +1015,8 @@ def selectkey(keyboard, kind, direction=""):
 					displayinputlabel(kind, 12)
 				else:
 					displayinputlabel(kind)
-
 	highlightkey(keyboard, selected_key)
+
 class Menu:
 	font_size = 16
 	font = pygame.font.SysFont
@@ -1165,6 +1116,7 @@ class Menu:
 		render = self.font.render(element, 1, self.text_color)
 		spacing = 5
 		menu_surface.blit(render, (left + spacing, top + spacing, render.get_rect().width, render.get_rect().height))
+
 class NetworksMenu(Menu):
 	def set_elements(self, elements):
 		self.elements = elements
@@ -1313,14 +1265,17 @@ wirelessmenu = None
 menu = Menu()
 menu.set_font(pygame.font.Font('./data/Inconsolata.otf', 16))
 menu.move_menu(16, 96)
+
 def mainmenu():
 	menu.init(['Scan for APs', "Manual setup", "Saved Networks", "Quit"], surface)
 	menu.draw()
+
 def create_wireless_menu():
 	global wirelessmenu
 	wirelessmenu = NetworksMenu()
 	wirelessmenu.set_font(pygame.font.Font('./data/Inconsolata.otf', 14))
 	wirelessmenu.move_menu(150,40)
+
 def destroy_wireless_menu():
 	global wirelessmenu
 	wirelessmenu = None
@@ -1329,7 +1284,6 @@ if __name__ == "__main__":
 	# Persistent variables
 	networks = {}
 	uniqssids = {}
-	currentssid = ""
 	active_menu = "main"
 
 	try:
@@ -1391,7 +1345,7 @@ if __name__ == "__main__":
 						if menu.get_position() == 0: # Scan menu
 
 							try:	
-								getnetworks()
+								getnetworks(wlan)
 								uniq = listuniqssids()
 							except:
 								####### DEBUG #######
@@ -1465,7 +1419,7 @@ if __name__ == "__main__":
 										securitykey = getinput("wep", "key", ssid)
 									elif encryption == 'cancel':
 										del encryption, ssid, ssidconfig, securitykey
-										modal("Canceled.", wait="false", timeout="true")
+										modal("Canceled.", timeout=True)
 										redraw()
 								else:
 									encryption = "none"
@@ -1473,13 +1427,12 @@ if __name__ == "__main__":
 								try:
 									encryption
 								except NameError:
-									modal("Canceled.", wait="false", timeout="true")
+									modal("Canceled.", timeout=True)
 								else:
 									conf = netconfdir+ssidconfig+".conf"
 									writeconfig("w")
-									go = "true"
-									disconnect()
-									connect()
+									disconnect(wlan)
+									connect(wlan)
 									redraw()
 
 						elif menu.get_position() == 2: # Saved networks
@@ -1527,8 +1480,7 @@ if __name__ == "__main__":
 										passphrase = "none"
 										encryption = "none"
 										writeconfig()
-										go = "true"
-										connect()
+										connect(wlan)
 										redraw()
 									elif detail['Network']['Encryption'] == "wep":
 										displayinputlabel("key")
@@ -1539,9 +1491,8 @@ if __name__ == "__main__":
 										drawkeyboard("qwertyNormal")
 										encryption = getinput("qwertyNormal", "key", ssid)
 								else:
-									go = "true"
-									disconnect()
-									connect()
+									disconnect(wlan)
+									connect(wlan)
 									redraw()
 				elif event.key == K_ESCAPE:
 					if active_menu == "ssid": # Allow us to edit the existing key
