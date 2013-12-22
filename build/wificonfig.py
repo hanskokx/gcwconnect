@@ -238,22 +238,21 @@ def getsavednets():
 	uniqssids = {}
 	menu = 1
 	configs = [ f for f in listdir(netconfdir) ]
-	for x in configs:
-		try:
-			ssid = x
-			x = re.sub(r'[\s"\\]', '', x).strip()
-		except:
-			pass
+	for ssid in configs:
 		conf = netconfdir+ssid
-		x = x.split(".conf")[:-1][0]
+		ssid = ssid.split(".conf")[:-1][0]
 
 		with open(conf) as f:
 			for line in f:
 				if "WLAN_PASSPHRASE" in line:
 					key = str.strip(line[line.find('WLAN_PASSPHRASE="')\
 						+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-
-		uniqssid=uniqssids.setdefault(x, {'Network': {'ESSID': x, 'Key': key, 'menu': menu}})
+		x = ssid.split("\\")
+		ssid = ''
+		for y in x:
+			ssid += y
+		
+		uniqssid=uniqssids.setdefault(ssid, {'Network': {'ESSID': ssid, 'Key': key, 'menu': menu}})
 		menu += 1
 	uniq = uniqssids
 	return uniq
@@ -1313,16 +1312,26 @@ def create_saved_networks_menu():
 					detail['Network']['Encryption'] = ""
 				ssid = detail['Network']['ESSID']
 				ssidconfig = re.escape(ssid)
-				conf = netconfdir+ssidconfig+".conf"
-				with open(conf) as f:
-					for line in f:
-						if "WLAN_ENCRYPTION" in line:
-							detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')\
-								+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-						if "WLAN_PASSPHRASE" in line:
-							uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')\
-								+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-
+				try:
+					conf = netconfdir+ssidconfig+".conf"
+					with open(conf) as f:
+						for line in f:
+							if "WLAN_ENCRYPTION" in line:
+								detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')\
+									+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+							if "WLAN_PASSPHRASE" in line:
+								uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')\
+									+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+				except:
+					conf = netconfdir+ssid+".conf"
+					with open(conf) as f:
+						for line in f:
+							if "WLAN_ENCRYPTION" in line:
+								detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')\
+									+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+							if "WLAN_PASSPHRASE" in line:
+								uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')\
+									+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 				menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
 				l.append(menuitem)
 	create_wireless_menu()
