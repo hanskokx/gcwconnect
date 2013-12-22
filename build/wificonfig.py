@@ -830,6 +830,11 @@ def softkeyinput(keyboard, kind, ssid):
 			if event.type == KEYDOWN:
 				if event.key == K_RETURN:		# finish input
 					selectkey(keyboard, kind, "enter")
+					redraw()
+					if ssid == '':
+						return False
+					writeconfig()
+					connect(wlan)
 					return True
 
 				if event.key == K_UP:		# Move cursor up
@@ -884,13 +889,6 @@ def softkeyinput(keyboard, kind, ssid):
 						del securitykey
 					redraw()
 					return False
-				if event.key == K_RETURN:	# Start key
-				## Need to handle ssid vs key logic here
-					redraw()
-					if ssid == '':
-						return False
-					writeconfig()
-					return connect(wlan)
 
 def displayinputlabel(kind, size=24): # Display passphrase on screen
 
@@ -1572,7 +1570,6 @@ if __name__ == "__main__":
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position()+1)
 							if str(detail['Network']['menu']) == position:
-								print uniq[network]
 								ssid = network
 								ssidconfig = re.escape(ssid)
 								passphrase = uniq[network]['Network']['Key']
