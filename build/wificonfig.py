@@ -1515,6 +1515,9 @@ if __name__ == "__main__":
 									if detail['Network']['Encryption'] == "none":
 										passphrase = "none"
 										encryption = "none"
+										writeconfig()
+										connect(wlan)
+										redraw()
 									elif detail['Network']['Encryption'] == "wep":
 										displayinputlabel("key")
 										drawkeyboard("wep")
@@ -1523,11 +1526,8 @@ if __name__ == "__main__":
 									else:
 										displayinputlabel("key")
 										drawkeyboard("qwertyNormal")
-										encryption = "wpa"
+										encryption = detail['Network']['Encryption']
 										getinput("qwertyNormal", "key", ssid)
-									writeconfig()
-								connect(wlan)
-								redraw()
 								break
 
 					# Saved Networks menu
