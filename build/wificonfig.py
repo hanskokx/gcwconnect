@@ -269,6 +269,7 @@ class hint:
 		self.drawhint()
 
 	def drawhint(self):
+
 		color = (255,255,255)
 		yellow = (128, 128, 0)
 		blue = (0, 0, 128)
@@ -290,7 +291,7 @@ class hint:
 				pygame.draw.circle(surface, black, (self.x+29, self.y+5), 5)
 			
 			button = pygame.draw.rect(surface, black, (self.x+5, self.y, 25, 10))
-			text = pygame.font.Font(None, 10).render(self.button.upper(), True, (255, 255, 255), black)
+			text = pygame.font.SysFont(None, 10).render(self.button.upper(), True, (255, 255, 255), black)
 			buttontext = text.get_rect()
 			buttontext.center = button.center
 			surface.blit(text, buttontext)
@@ -592,8 +593,8 @@ def getkeys(board):
 		global maxrows
 		global maxcolumns
 		maxrows = 1
-		maxcolumns = 3
-		keys = 	'None', 'WEP', 'WPA/WPA2'
+		maxcolumns = 4
+		keys = 	'None', 'WEP', 'WPA', 'WPA2'
 		row = 0
 		column = 0
 		keyid = 0
@@ -601,7 +602,7 @@ def getkeys(board):
 			keyarray = keyboard.setdefault(keyid, {})
 			keyarray["key"] = k
 
-			if column <= 3:
+			if column <= 4:
 				keyarray["column"] = column
 				keyarray["row"] = row
 				column += 1
@@ -673,7 +674,7 @@ class radio:
 		key_height = 16
 
 		top = 136 + self.row * 20
-		left = 32 + self.column * 100
+		left = 32 + self.column * 64
 
 		if len(self.key) > 1:
 			key_width = 64
@@ -695,7 +696,7 @@ def getSSID():
 
 def drawEncryptionType():
 	# Draw top background 
-	pygame.draw.rect(surface, darkbg, (0,100,320,140))
+	pygame.draw.rect(surface, darkbg, (0,40,320,140))
 
 	# Draw footer
 	pygame.draw.rect(surface, lightbg, (0,224,320,16))
@@ -726,7 +727,7 @@ def chooseencryption(keyboard, direction):
 		drawEncryptionType()
 		pygame.display.update()
 
-		x = 32 + (pos[0] * 100)
+		x = 32 + (pos[0] * 64)
 		y = 136
 
 		list = [ \
@@ -892,6 +893,7 @@ def softkeyinput(keyboard, kind, ssid):
 					return False
 
 def displayinputlabel(kind, size=24): # Display passphrase on screen
+	font = pygame.font.Font('./data/Inconsolata.otf', 18)
 
 	if kind == "ssid":
 		# Draw SSID and encryption type labels
@@ -905,9 +907,9 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 		# Draw SSID and encryption type labels
 		labelblock = pygame.draw.rect(surface, (255,255,255), (0,35,320,20))
 		if len(ssid) >= 16:
-			labeltext = pygame.font.SysFont(None, 18).render("Enter key for "+"%s..."%(ssid[:16]), True, lightbg, (255,255,255))
+			labeltext = font.render("Enter key for "+"%s..."%(ssid[:16]), True, lightbg, (255,255,255))
 		else:
-			labeltext = pygame.font.SysFont(None, 18).render("Enter key for "+ssid, True, lightbg, (255,255,255))
+			labeltext = font.render("Enter key for "+ssid, True, lightbg, (255,255,255))
 		label = labeltext.get_rect()
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
@@ -1452,6 +1454,8 @@ if __name__ == "__main__":
 						elif menu.get_selected() == 'Manual Setup':
 							ssid = ''
 							encryption = ''
+							passphrase = ''
+							selected_key = ''
 							securitykey = ''
 
 							# Get SSID from the user
@@ -1465,8 +1469,13 @@ if __name__ == "__main__":
 
 								# Get key from the user
 								if not encryption == 'None':
-									if encryption == "WPA/WPA2":
+									if encryption == "WPA":
 										encryption = "wpa"
+										displayinputlabel("key")
+										drawkeyboard("qwertyNormal")
+										securitykey = getinput("qwertyNormal", "key", ssid)
+									elif encryption == "WPA2":
+										encryption = "wpa2"
 										displayinputlabel("key")
 										drawkeyboard("qwertyNormal")
 										securitykey = getinput("qwertyNormal", "key", ssid)
@@ -1486,11 +1495,7 @@ if __name__ == "__main__":
 									encryption
 								except NameError:
 									modal("Canceled.", timeout=True)
-								else:
-									conf = netconfdir+ssidconfig+".conf"
-									writeconfig()
-									connect(wlan)
-									redraw()
+
 
 						elif menu.get_selected() == 'Saved Networks':
 							create_saved_networks_menu()
@@ -1518,11 +1523,17 @@ if __name__ == "__main__":
 										writeconfig()
 										connect(wlan)
 									elif detail['Network']['Encryption'] == "wep":
+										passphrase = ''
+										selected_key = ''
+										securitykey = ''
 										displayinputlabel("key")
 										drawkeyboard("wep")
 										encryption = "wep"
 										getinput("wep", "key", ssid)
 									else:
+										passphrase = ''
+										selected_key = ''
+										securitykey = ''
 										displayinputlabel("key")
 										drawkeyboard("qwertyNormal")
 										encryption = detail['Network']['Encryption']
@@ -1540,7 +1551,6 @@ if __name__ == "__main__":
 								shutil.copy2(netconfdir+ssidconfig+".conf", sysconfdir+"config-"+wlan+".conf")
 								passphrase = detail['Network']['Key']
 								connect(wlan)
-								redraw()
 								break
 
 				elif event.key == K_ESCAPE:
@@ -1553,10 +1563,16 @@ if __name__ == "__main__":
 								if detail['Network']['Encryption'] == "none":
 									pass
 								elif detail['Network']['Encryption'] == "wep":
+									passphrase = ''
+									selected_key = ''
+									securitykey = ''
 									displayinputlabel("key")
 									drawkeyboard("wep")
 									getinput("wep", "key", ssid)
 								else:
+									passphrase = ''
+									selected_key = ''
+									securitykey = ''
 									displayinputlabel("key")
 									drawkeyboard("qwertyNormal")
 									getinput("qwertyNormal", "key", ssid)
@@ -1572,10 +1588,16 @@ if __name__ == "__main__":
 								if uniq[network]['Network']['Encryption'] == "none":
 									pass
 								elif uniq[network]['Network']['Encryption'] == "wep":
+									passphrase = ''
+									selected_key = ''
+									securitykey = ''
 									displayinputlabel("key")
 									drawkeyboard("wep")
 									getinput("wep", "key", ssid)
 								else:
+									passphrase = ''
+									selected_key = ''
+									securitykey = ''
 									displayinputlabel("key")
 									drawkeyboard("qwertyNormal")
 									getinput("qwertyNormal", "key", ssid)
