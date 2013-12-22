@@ -1367,6 +1367,10 @@ if __name__ == "__main__":
 						active_menu = to_menu("main")
 						del uniq
 						redraw()
+				elif event.key == K_SPACE:
+					if active_menu == "saved":
+						os.remove(netconfdir+re.escape(str(wirelessmenu.get_selected()[0]))+".conf")
+						create_saved_networks_menu()
 				elif event.key == K_LCTRL or event.key == K_RETURN:
 					# Main menu
 					if active_menu == "main":
