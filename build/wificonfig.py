@@ -1365,6 +1365,7 @@ if __name__ == "__main__":
 					if active_menu == "ssid" or active_menu == "saved":
 						destroy_wireless_menu()
 						active_menu = to_menu("main")
+						del uniq
 						redraw()
 				elif event.key == K_LCTRL or event.key == K_RETURN:
 					# Main menu
@@ -1505,17 +1506,14 @@ if __name__ == "__main__":
 
 					# Saved Networks menu
 					elif active_menu == "saved":
-						ssid = ""
-
+						ssid = ''
 						for network, detail in uniq.iteritems():
-							position = str(wirelessmenu.get_position())
+							position = str(wirelessmenu.get_position()+1)
 							if str(detail['Network']['menu']) == position:
 								encryption = detail['Network']['Encryption']
 								ssidconfig = re.escape(str(detail['Network']['ESSID']))
-								print network
 								shutil.copy2(netconfdir+ssidconfig+".conf", sysconfdir+"config-"+wlan+".conf")
 								passphrase = detail['Network']['Key']
-								writeconfig()
 								connect(wlan)
 								redraw()
 								break
