@@ -240,10 +240,11 @@ def getsavednets():
 	configs = [ f for f in listdir(netconfdir) ]
 	for x in configs:
 		try:
+			ssid = x
 			x = re.sub(r'[\s"\\]', '', x).strip()
 		except:
 			pass
-		conf = netconfdir+x
+		conf = netconfdir+ssid
 		x = x.split(".conf")[:-1][0]
 
 		with open(conf) as f:
@@ -471,7 +472,6 @@ def modal(text, wait=False, timeout=False, query=False):
 def writeconfig(): # Write wireless configuration to disk
 	global passphrase
 	global encryption
-	global conf
 	try:
 		encryption
 	except NameError:
@@ -480,8 +480,7 @@ def writeconfig(): # Write wireless configuration to disk
 	if passphrase:
 		if passphrase == "none":
 			passphrase = ""
-
-	# conf = netconfdir+ssidconfig+".conf"
+	conf = netconfdir+re.escape(ssid)+".conf"
 	f = open(conf, "w")
 	f.write('WLAN_ESSID="'+ssid+'"\n')
 	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
@@ -1307,8 +1306,8 @@ def create_saved_networks_menu():
 					detail['Network']['Encryption']
 				except KeyError:
 					detail['Network']['Encryption'] = ""
-
-				ssidconfig = re.escape(detail['Network']['ESSID'])
+				ssid = detail['Network']['ESSID']
+				ssidconfig = re.escape(ssid)
 				conf = netconfdir+ssidconfig+".conf"
 				with open(conf) as f:
 					for line in f:
@@ -1461,7 +1460,6 @@ if __name__ == "__main__":
 								pass
 							else:
 								ssidconfig = re.escape(ssid)
-
 								drawEncryptionType()
 								encryption = getEncryptionType()
 
@@ -1510,7 +1508,7 @@ if __name__ == "__main__":
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position())
 							if str(detail['Network']['menu']) == position:
-								ssid = network
+								ssid = detail['Network']['ESSID']
 								ssidconfig = re.escape(ssid)
 								conf = netconfdir+ssidconfig+".conf"
 								if not os.path.exists(conf):
@@ -1548,12 +1546,10 @@ if __name__ == "__main__":
 				elif event.key == K_ESCAPE:
 					if active_menu == "ssid": # Allow us to edit the existing key
 						ssid = ""
-
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position())
 							if str(detail['Network']['menu']) == position:
 								ssid = network
-								ssidconfig = re.escape(ssid)
 								if detail['Network']['Encryption'] == "none":
 									pass
 								elif detail['Network']['Encryption'] == "wep":
@@ -1572,7 +1568,6 @@ if __name__ == "__main__":
 							position = str(wirelessmenu.get_position()+1)
 							if str(detail['Network']['menu']) == position:
 								ssid = network
-								ssidconfig = re.escape(ssid)
 								passphrase = uniq[network]['Network']['Key']
 								if uniq[network]['Network']['Encryption'] == "none":
 									pass
