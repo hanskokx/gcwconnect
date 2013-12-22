@@ -24,7 +24,6 @@
 TODO list:
 
 * Add in hostapd/ap configuration options for device to device connections
-* Allow viewing/deleting saved networks
 
 '''
 
