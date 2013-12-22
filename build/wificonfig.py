@@ -800,8 +800,8 @@ def drawkeyboard(board):
 		hint("y", "Shift", 200, 227, lightbg)
 		hint("b", "Space", 240, 227, lightbg)
 
-	# else: ## Do not enable until 13-ASCII 128-bit WEP is supported
-	# 	hint("y", "Full KB", 200, 227, lightbg)
+	else:
+		hint("y", "Full KB", 200, 227, lightbg)
 
 	hint("a", "Enter", 285, 227, lightbg)
 
@@ -868,11 +868,11 @@ def softkeyinput(keyboard, kind, ssid):
 						keyboard = "qwertyNormal"
 						drawkeyboard(keyboard)
 						selectkey(keyboard, kind, "swap")
-					# else:
-					# 	keyboard = "qwertyNormal"
-					# 	drawkeyboard(keyboard)
-					# 	selectkey(keyboard, kind, "swap")
-					# encryption = "wpa"
+					else:
+						keyboard = "qwertyNormal"
+						drawkeyboard(keyboard)
+						selectkey(keyboard, kind, "swap")
+
 				if event.key == K_LSHIFT:	# X button
 					selectkey(keyboard, kind, "delete")
 				if event.key == K_ESCAPE:	# Select key
@@ -894,6 +894,8 @@ def softkeyinput(keyboard, kind, ssid):
 					return False
 
 def displayinputlabel(kind, size=24): # Display passphrase on screen
+	global encryption
+	print encryption
 	font = pygame.font.Font('./data/Inconsolata.otf', 18)
 
 	if kind == "ssid":
@@ -1440,11 +1442,8 @@ if __name__ == "__main__":
 										except KeyError:
 											detail['Network']['Encryption'] = ""
 
-										percent = (float(detail['Network']['Quality'].split("/")[0])\
-													/ float(detail['Network']['Quality'].split("/")[1])) * 100
-										if percent > 5:
-											menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
-											l.append(menuitem)
+										menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
+										l.append(menuitem)
 
 							create_wireless_menu()
 							wirelessmenu.init(l, surface)
@@ -1540,13 +1539,15 @@ if __name__ == "__main__":
 										drawkeyboard("qwertyNormal")
 										encryption = detail['Network']['Encryption']
 										getinput("qwertyNormal", "key", ssid)
+								else:
+									connect(wlan)
 								break
 
 					# Saved Networks menu
 					elif active_menu == "saved":
 						ssid = ''
 						for network, detail in uniq.iteritems():
-							position = str(wirelessmenu.get_position()+1)
+							position = str(wirelessmenu.get_position())
 							if str(detail['Network']['menu']) == position:
 								encryption = detail['Network']['Encryption']
 								ssidconfig = re.escape(str(detail['Network']['ESSID']))
