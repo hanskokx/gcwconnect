@@ -481,7 +481,8 @@ def writeconfig(): # Write wireless configuration to disk
 	if passphrase:
 		if passphrase == "none":
 			passphrase = ""
-	conf = netconfdir+re.escape(ssid)+".conf"
+	ssidconfig = re.escape(ssid)
+	conf = netconfdir+ssidconfig+".conf"
 	f = open(conf, "w")
 	f.write('WLAN_ESSID="'+ssid+'"\n')
 	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
@@ -894,8 +895,7 @@ def softkeyinput(keyboard, kind, ssid):
 					return False
 
 def displayinputlabel(kind, size=24): # Display passphrase on screen
-	global encryption
-	print encryption
+
 	font = pygame.font.Font('./data/Inconsolata.otf', 18)
 
 	if kind == "ssid":
@@ -1550,7 +1550,8 @@ if __name__ == "__main__":
 							position = str(wirelessmenu.get_position())
 							if str(detail['Network']['menu']) == position:
 								encryption = detail['Network']['Encryption']
-								ssidconfig = re.escape(str(detail['Network']['ESSID']))
+								ssid = str(detail['Network']['ESSID'])
+								ssidconfig = re.escape(ssid)
 								shutil.copy2(netconfdir+ssidconfig+".conf", sysconfdir+"config-"+wlan+".conf")
 								passphrase = detail['Network']['Key']
 								connect(wlan)
