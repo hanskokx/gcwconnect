@@ -471,6 +471,7 @@ def modal(text, wait=False, timeout=False, query=False):
 def writeconfig(): # Write wireless configuration to disk
 	global passphrase
 	global encryption
+	global conf
 	try:
 		encryption
 	except NameError:
@@ -479,7 +480,8 @@ def writeconfig(): # Write wireless configuration to disk
 	if passphrase:
 		if passphrase == "none":
 			passphrase = ""
-	conf = netconfdir+ssidconfig+".conf"
+
+	# conf = netconfdir+ssidconfig+".conf"
 	f = open(conf, "w")
 	f.write('WLAN_ESSID="'+ssid+'"\n')
 	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
