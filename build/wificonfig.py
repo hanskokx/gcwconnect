@@ -1270,6 +1270,39 @@ def destroy_wireless_menu():
 	global wirelessmenu
 	wirelessmenu = None
 
+def create_saved_networks_menu():
+	uniq = getsavednets()
+	wirelessitems = []
+	l = []
+	for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
+		for network, detail in uniq.iteritems():
+			if network == item:
+				try:
+					detail['Network']['Quality']
+				except KeyError:
+					detail['Network']['Quality'] = "0/1"
+				try:
+					detail['Network']['Encryption']
+				except KeyError:
+					detail['Network']['Encryption'] = ""
+
+				ssidconfig = re.escape(detail['Network']['ESSID'])
+				conf = netconfdir+ssidconfig+".conf"
+				with open(conf) as f:
+					for line in f:
+						if "WLAN_ENCRYPTION" in line:
+							detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')\
+								+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+				
+				menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
+				l.append(menuitem)
+
+	create_wireless_menu()
+	wirelessmenu.init(l, surface)
+	wirelessmenu.draw()
+
+	active_menu = to_menu("ssid")
+	redraw()
 if __name__ == "__main__":
 	# Persistent variables
 	networks = {}
@@ -1312,19 +1345,19 @@ if __name__ == "__main__":
 				elif event.key == K_UP: # Arrow up the menu
 					if active_menu == "main":
 						menu.draw(-1)
-					elif active_menu == "ssid":
+					elif active_menu == "ssid" or active_menu == "saved":
 						wirelessmenu.draw(-1)
 				elif event.key == K_DOWN: # Arrow down the menu
 					if active_menu == "main":
 						menu.draw(1)
-					elif active_menu == "ssid":
+					elif active_menu == "ssid" or active_menu == "saved":
 						wirelessmenu.draw(1)
 				elif event.key == K_RIGHT:
 					if wirelessmenu is not None and active_menu == "main":
 						active_menu = to_menu("ssid")
 						redraw()
 				elif event.key == K_LALT or event.key == K_LEFT:
-					if active_menu == "ssid":
+					if active_menu == "ssid" or active_menu == "saved":
 						destroy_wireless_menu()
 						active_menu = to_menu("main")
 						redraw()
@@ -1343,8 +1376,8 @@ if __name__ == "__main__":
 								uniqssid = {}
 								uniqssids = {}
 								uniqssid=uniqssids.setdefault('DEBUG', {'Network': {'ESSID': 'DEBUG', 'menu': 0}})
-								uniqssid=uniqssids.setdefault('DEBUG network', {'Network': {'Encryption': 'wpa2', 'Quality': '0/100', 'ESSID': 'DEBUG network', 'menu': 1}})
-								uniqssid=uniqssids.setdefault('Another Debug', {'Network': {'Encryption': 'wpa2', 'Quality': '76/100', 'ESSID': 'Another Debug', 'menu': 2}})
+								uniqssid=uniqssids.setdefault('DEBUG network', {'Network': {'Encryption': 'wep', 'Quality': '0/100', 'ESSID': 'DEBUG network', 'menu': 1}})
+								uniqssid=uniqssids.setdefault('Another Debug', {'Network': {'Encryption': 'wpa', 'Quality': '76/100', 'ESSID': 'Another Debug', 'menu': 2}})
 								uniqssid=uniqssids.setdefault('DEBUG DEBUG DEBUG DEBUG', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'DEBUG DEBUG DEBUG DEBUG', 'menu': 3}})
 								uniqssid=uniqssids.setdefault('Hello DEBUG', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'Hello DEBUG', 'menu': 4}})
 								uniqssid=uniqssids.setdefault('Oh My! Debug!', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'Oh My! Debug!', 'menu': 5}})
@@ -1371,7 +1404,8 @@ if __name__ == "__main__":
 										except KeyError:
 											detail['Network']['Encryption'] = ""
 
-										percent = (float(detail['Network']['Quality'].split("/")[0]) / float(detail['Network']['Quality'].split("/")[1])) * 100
+										percent = (float(detail['Network']['Quality'].split("/")[0])\
+													/ float(detail['Network']['Quality'].split("/")[1])) * 100
 										if percent > 5:
 											menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
 											l.append(menuitem)
@@ -1428,38 +1462,8 @@ if __name__ == "__main__":
 									redraw()
 
 						elif menu.get_selected() == 'Saved Networks':
-							uniq = getsavednets()
-							wirelessitems = []
-							l = []
-							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
-								for network, detail in uniq.iteritems():
-									if network == item:
-										try:
-											detail['Network']['Quality']
-										except KeyError:
-											detail['Network']['Quality'] = "0/1"
-										try:
-											detail['Network']['Encryption']
-										except KeyError:
-											detail['Network']['Encryption'] = ""
-
-										ssidconfig = re.escape(detail['Network']['ESSID'])
-										conf = netconfdir+ssidconfig+".conf"
-										with open(conf) as f:
-											for line in f:
-												if "WLAN_ENCRYPTION" in line:
-													detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')\
-														+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-										
-										menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
-										l.append(menuitem)
-
-							create_wireless_menu()
-							wirelessmenu.init(l, surface)
-							wirelessmenu.draw()
-
-							active_menu = to_menu("ssid")
-							redraw()
+							create_saved_networks_menu()
+							active_menu = to_menu("saved")
 
 						elif menu.get_selected() == 'Quit':
 							pygame.display.quit()
@@ -1493,6 +1497,9 @@ if __name__ == "__main__":
 								connect(wlan)
 								redraw()
 								break
+
+					elif active_menu == "saved":
+						print "ok"
 
 				elif event.key == K_ESCAPE:
 					if active_menu == "ssid": # Allow us to edit the existing key
