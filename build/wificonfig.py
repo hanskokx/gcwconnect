@@ -403,7 +403,6 @@ def redraw():
 	drawlogobar()
 	drawlogo()
 	mainmenu()
-
 	if wirelessmenu is not None:
 		wirelessmenu.draw()
 		pygame.draw.rect(surface, darkbg, (0, 208, 320, 16))
@@ -414,12 +413,14 @@ def redraw():
 	if active_menu == "main":
 		pygame.draw.rect(surface, darkbg, (0, 208, 320, 16))
 		hint("a", "Select", 8, 210)
+	if active_menu == "saved":
+		hint("y", "Forget", 195, 210)
 
 	drawstatusbar()
 	drawinterfacestatus()
 	pygame.display.update()
 
-def modal(text, wait=False, timeout=False):
+def modal(text, wait=False, timeout=False, query=False):
 	dialog = pygame.draw.rect(surface, lightbg, (64,88,192,72))
 	pygame.draw.rect(surface, (255,255,255), (62,86,194,74), 2)
 
@@ -436,6 +437,19 @@ def modal(text, wait=False, timeout=False):
 	elif timeout:
 		time.sleep(2.5)
 		redraw()
+	elif query:
+		abutton = hint("a", "Confirm", 150, 145, lightbg)
+		bbutton = hint("b", "Cancel", 205, 145, lightbg)
+		pygame.display.update()
+		while True:
+			for event in pygame.event.get():
+				if event.type == KEYDOWN:
+					if event.key == K_LCTRL:
+						return True
+					elif event.key == K_LALT:
+						return
+
+
 
 	if not wait:
 		return
@@ -1243,7 +1257,7 @@ def to_menu(new_menu):
 		menu.set_colors(activetext, activeselbg, darkbg)
 		if wirelessmenu is not None:
 			wirelessmenu.set_colors(inactivetext, inactiveselbg, darkbg)
-	elif new_menu == "ssid":
+	elif new_menu == "ssid" or new_menu == "saved":
 		menu.set_colors(inactivetext, inactiveselbg, darkbg)
 		wirelessmenu.set_colors(activetext, activeselbg, darkbg)
 	return new_menu
@@ -1301,13 +1315,9 @@ def create_saved_networks_menu():
 							detail['Network']['Key'] = ''
 				menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
 				l.append(menuitem)
-
 	create_wireless_menu()
 	wirelessmenu.init(l, surface)
 	wirelessmenu.draw()
-
-	active_menu = to_menu("ssid")
-	redraw()
 if __name__ == "__main__":
 	# Persistent variables
 	networks = {}
@@ -1369,8 +1379,15 @@ if __name__ == "__main__":
 						redraw()
 				elif event.key == K_SPACE:
 					if active_menu == "saved":
-						os.remove(netconfdir+re.escape(str(wirelessmenu.get_selected()[0]))+".conf")
+						if len(str(wirelessmenu.get_selected()[0])) > 16:
+							the_ssid = "%s..."%(wirelessmenu.get_selected()[0][:16])
+						else:
+							the_ssid = wirelessmenu.get_selected()[0]
+						confirm = modal("Forget "+the_ssid+"?", query=True)
+						if confirm:
+							os.remove(netconfdir+re.escape(str(wirelessmenu.get_selected()[0]))+".conf")
 						create_saved_networks_menu()
+						redraw()
 				elif event.key == K_LCTRL or event.key == K_RETURN:
 					# Main menu
 					if active_menu == "main":
@@ -1474,6 +1491,7 @@ if __name__ == "__main__":
 						elif menu.get_selected() == 'Saved Networks':
 							create_saved_networks_menu()
 							active_menu = to_menu("saved")
+							redraw()
 
 						elif menu.get_selected() == 'Quit':
 							pygame.display.quit()
