@@ -1517,7 +1517,6 @@ if __name__ == "__main__":
 										encryption = "none"
 										writeconfig()
 										connect(wlan)
-										redraw()
 									elif detail['Network']['Encryption'] == "wep":
 										displayinputlabel("key")
 										drawkeyboard("wep")
