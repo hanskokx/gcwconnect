@@ -1556,7 +1556,7 @@ if __name__ == "__main__":
 					elif active_menu == "saved":
 						ssid = ''
 						for network, detail in uniq.iteritems():
-							position = str(wirelessmenu.get_position())
+							position = str(wirelessmenu.get_position()+1)
 							if str(detail['Network']['menu']) == position:
 								encryption = detail['Network']['Encryption']
 								ssid = str(detail['Network']['ESSID'])
