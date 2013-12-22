@@ -209,8 +209,8 @@ def parsemac(macin):
 	return mac
 
 def parseessid(essid):
-		essid = str.strip(essid[essid.find('ESSID:"')+len('ESSID:"'):essid.find('"\n')+len('"\n')].rstrip('"\n'))
-		return essid
+	essid = str.strip(essid[essid.find('ESSID:"')+len('ESSID:"'):essid.find('"\n')+len('"\n')].rstrip('"\n'))
+	return essid
 
 def parsequality(quality):
 	quality = quality[quality.find("Quality=")+len("Quality="):quality.find(" S")+len(" S")].rstrip(" S")
@@ -1033,7 +1033,10 @@ class Menu:
 
 	def get_position(self):
 		return self.selected_item
-	
+
+	def get_selected(self):
+		return self.elements[self.selected_item]
+
 	def init(self, elements, dest_surface):
 		self.set_elements(elements)
 		self.dest_surface = dest_surface
@@ -1123,10 +1126,10 @@ class NetworksMenu(Menu):
 
 	def render_element(self, menu_surface, element, left, top):
 
-		if len(str(element[0])) > 16:
-			the_ssid = "%s..."%(element[0][:16])
+		if len(str(element[0])) > 17:
+			the_ssid = "%s..."%(element[0][:14])
 		else:
-			the_ssid = element[0].ljust(19)
+			the_ssid = element[0].ljust(17)
 
 		boldtext = pygame.font.Font('./data/Inconsolata.otf', self.font_size)
 		subtext = pygame.font.Font('./data/Inconsolata.otf', 12)
@@ -1138,9 +1141,8 @@ class NetworksMenu(Menu):
 			return int(percent)
 		## Wifi signal icons
 		percent = qualityPercent(element[1])
-		if percent <= 5:
-			signal_icon = 'wifi-none.png'
-		elif percent >= 6 and percent <= 24:
+
+		if percent >= 6 and percent <= 24:
 			signal_icon = 'wifi-0.png'
 		elif percent >= 25 and percent <= 49:
 			signal_icon = 'wifi-1.png'
@@ -1149,7 +1151,7 @@ class NetworksMenu(Menu):
 		elif percent >= 75:
 			signal_icon = 'wifi-3.png'
 		else:
-			signal_icon = 'wifi-connecting.png'
+			signal_icon = 'transparent.png'
 
 		## Encryption information
 		enc_type = element[2]
@@ -1161,7 +1163,7 @@ class NetworksMenu(Menu):
 			enc_type = "WPA"
 		elif enc_type == "wpa2":
 			enc_icon = "closed.png"
-			enc_type = "WPA 2"
+			enc_type = "WPA2"
 		elif enc_type == "wep":
 			enc_icon = "closed.png"
 			enc_type = "WEP"
@@ -1179,10 +1181,11 @@ class NetworksMenu(Menu):
 		qual = subtext.render(element[1], 1, lightgrey)
 		spacing = 2
 
-		menu_surface.blit(ssid, (left + spacing, top + spacing, ssid.get_rect().width, ssid.get_rect().height))
+		menu_surface.blit(ssid, (left + spacing, top, ssid.get_rect().width, ssid.get_rect().height))
 		menu_surface.blit(enc, (left + enc_img.get_rect().width + 12, top + 18, enc.get_rect().width, enc.get_rect().height))
-		menu_surface.blit(enc_img, pygame.rect.Rect(left + 8, (top + 25) - (enc_img.get_rect().height / 2), enc_img.get_rect().width, enc_img.get_rect().height))
-		menu_surface.blit(strength, (left + 140 - qual_img.get_rect().width - 4, top + 18, strength.get_rect().width, strength.get_rect().height))
+		menu_surface.blit(enc_img, pygame.rect.Rect(left + 8, (top + 24) - (enc_img.get_rect().height / 2), enc_img.get_rect().width, enc_img.get_rect().height))
+		# menu_surface.blit(strength, (left + 137, top + 18, strength.get_rect().width, strength.get_rect().height))
+		# menu_surface.blit(qual_img, pygame.rect.Rect(left + 140, top + 2, qual_img.get_rect().width, qual_img.get_rect().height))
 		menu_surface.blit(qual_img, pygame.rect.Rect(left + 140, top + 8, qual_img.get_rect().width, qual_img.get_rect().height))
 		pygame.display.flip()
 
@@ -1248,11 +1251,14 @@ def to_menu(new_menu):
 wirelessmenu = None
 menu = Menu()
 menu.set_font(pygame.font.Font('./data/Inconsolata.otf', 16))
-menu.move_menu(16, 96)
+menu.move_menu(8, 41)
 
 def mainmenu():
-	menu.init(['Scan for APs', "Manual setup", "Saved Networks", "Quit"], surface)
-	menu.draw()
+	elems = ['Scan for APs', "Manual Setup", "Saved Networks", "Quit"]
+	if checkinterfacestatus(wlan):
+		elems = ['Disconnect'] + elems
+	menu.init(elems, surface)
+ 	menu.draw()
 
 def create_wireless_menu():
 	global wirelessmenu
@@ -1325,9 +1331,11 @@ if __name__ == "__main__":
 				elif event.key == K_LCTRL or event.key == K_RETURN:
 					# Main menu
 					if active_menu == "main":
-						if menu.get_position() == 0: # Scan menu
-
-							try:	
+						if menu.get_selected() == 'Disconnect':
+							disconnect(wlan)
+							redraw()
+						elif menu.get_selected() == 'Scan for APs':
+							try:
 								getnetworks(wlan)
 								uniq = listuniqssids()
 							except:
@@ -1375,7 +1383,7 @@ if __name__ == "__main__":
 							active_menu = to_menu("ssid")
 							redraw()
 
-						elif menu.get_position() == 1: # Manual setup
+						elif menu.get_selected() == 'Manual Setup':
 							ssid = ''
 							encryption = ''
 							securitykey = ''
@@ -1419,7 +1427,7 @@ if __name__ == "__main__":
 									connect(wlan)
 									redraw()
 
-						elif menu.get_position() == 2: # Saved networks
+						elif menu.get_selected() == 'Saved Networks':
 							uniq = getsavednets()
 							wirelessitems = []
 							l = []
@@ -1435,6 +1443,14 @@ if __name__ == "__main__":
 										except KeyError:
 											detail['Network']['Encryption'] = ""
 
+										ssidconfig = re.escape(detail['Network']['ESSID'])
+										conf = netconfdir+ssidconfig+".conf"
+										with open(conf) as f:
+											for line in f:
+												if "WLAN_ENCRYPTION" in line:
+													detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')\
+														+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+										
 										menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
 										l.append(menuitem)
 
@@ -1445,7 +1461,7 @@ if __name__ == "__main__":
 							active_menu = to_menu("ssid")
 							redraw()
 
-						elif menu.get_position() == 3: # Quit menu
+						elif menu.get_selected() == 'Quit':
 							pygame.display.quit()
 							sys.exit()
 
