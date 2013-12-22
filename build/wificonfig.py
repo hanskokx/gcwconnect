@@ -800,8 +800,8 @@ def drawkeyboard(board):
 		hint("y", "Shift", 200, 227, lightbg)
 		hint("b", "Space", 240, 227, lightbg)
 
-	else:
-		hint("y", "Full KB", 200, 227, lightbg)
+	# else: ## Do not enable until 13-ASCII 128-bit WEP is supported
+	# 	hint("y", "Full KB", 200, 227, lightbg)
 
 	hint("a", "Enter", 285, 227, lightbg)
 
@@ -868,11 +868,11 @@ def softkeyinput(keyboard, kind, ssid):
 						keyboard = "qwertyNormal"
 						drawkeyboard(keyboard)
 						selectkey(keyboard, kind, "swap")
-					else:
-						keyboard = "qwertyNormal"
-						drawkeyboard(keyboard)
-						selectkey(keyboard, kind, "swap")
-					encryption = "wpa"
+					# else:
+					# 	keyboard = "qwertyNormal"
+					# 	drawkeyboard(keyboard)
+					# 	selectkey(keyboard, kind, "swap")
+					# encryption = "wpa"
 				if event.key == K_LSHIFT:	# X button
 					selectkey(keyboard, kind, "delete")
 				if event.key == K_ESCAPE:	# Select key
