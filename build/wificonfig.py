@@ -827,6 +827,7 @@ def softkeyinput(keyboard, kind, ssid):
 	global securitykey
 
 	while True:
+		time.sleep(0.05)
 		for event in pygame.event.get():
 
 			if event.type == KEYDOWN:
@@ -1338,6 +1339,7 @@ if __name__ == "__main__":
 	
 	redraw()
 	while True:
+		time.sleep(0.01)
 		for event in pygame.event.get():
 			## GCW-Zero keycodes:
 			# A = K_LCTRL
