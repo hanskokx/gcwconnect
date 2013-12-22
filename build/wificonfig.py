@@ -243,8 +243,16 @@ def getsavednets():
 			x = re.sub(r'[\s"\\]', '', x).strip()
 		except:
 			pass
+		conf = netconfdir+x
 		x = x.split(".conf")[:-1][0]
-		uniqssid=uniqssids.setdefault(x, {'Network': {'ESSID': x, 'menu': menu}})
+
+		with open(conf) as f:
+			for line in f:
+				if "WLAN_PASSPHRASE" in line:
+					key = str.strip(line[line.find('WLAN_PASSPHRASE="')\
+						+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+
+		uniqssid=uniqssids.setdefault(x, {'Network': {'ESSID': x, 'Key': key, 'menu': menu}})
 		menu += 1
 	uniq = uniqssids
 	return uniq
@@ -1308,10 +1316,9 @@ def create_saved_networks_menu():
 							detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')\
 								+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 						if "WLAN_PASSPHRASE" in line:
-							detail['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')\
+							uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')\
 								+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-						else:
-							detail['Network']['Key'] = ''
+
 				menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
 				l.append(menuitem)
 	create_wireless_menu()
@@ -1558,5 +1565,27 @@ if __name__ == "__main__":
 									displayinputlabel("key")
 									drawkeyboard("qwertyNormal")
 									getinput("qwertyNormal", "key", ssid)
+
+					if active_menu == "saved": # Allow us to edit the existing key
+						ssid = ''
+
+						for network, detail in uniq.iteritems():
+							position = str(wirelessmenu.get_position()+1)
+							if str(detail['Network']['menu']) == position:
+								print uniq[network]
+								ssid = network
+								ssidconfig = re.escape(ssid)
+								passphrase = uniq[network]['Network']['Key']
+								if uniq[network]['Network']['Encryption'] == "none":
+									pass
+								elif uniq[network]['Network']['Encryption'] == "wep":
+									displayinputlabel("key")
+									drawkeyboard("wep")
+									getinput("wep", "key", ssid)
+								else:
+									displayinputlabel("key")
+									drawkeyboard("qwertyNormal")
+									getinput("qwertyNormal", "key", ssid)
+
 
 		pygame.display.update()
