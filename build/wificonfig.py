@@ -1271,6 +1271,7 @@ def destroy_wireless_menu():
 	wirelessmenu = None
 
 def create_saved_networks_menu():
+	global uniq
 	uniq = getsavednets()
 	wirelessitems = []
 	l = []
@@ -1293,7 +1294,11 @@ def create_saved_networks_menu():
 						if "WLAN_ENCRYPTION" in line:
 							detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')\
 								+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-				
+						if "WLAN_PASSPHRASE" in line:
+							detail['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')\
+								+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+						else:
+							detail['Network']['Key'] = ''
 				menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
 				l.append(menuitem)
 
@@ -1498,8 +1503,22 @@ if __name__ == "__main__":
 								redraw()
 								break
 
+					# Saved Networks menu
 					elif active_menu == "saved":
-						print "ok"
+						ssid = ""
+
+						for network, detail in uniq.iteritems():
+							position = str(wirelessmenu.get_position())
+							if str(detail['Network']['menu']) == position:
+								encryption = detail['Network']['Encryption']
+								ssidconfig = re.escape(str(detail['Network']['ESSID']))
+								print network
+								shutil.copy2(netconfdir+ssidconfig+".conf", sysconfdir+"config-"+wlan+".conf")
+								passphrase = detail['Network']['Key']
+								writeconfig()
+								connect(wlan)
+								redraw()
+								break
 
 				elif event.key == K_ESCAPE:
 					if active_menu == "ssid": # Allow us to edit the existing key
