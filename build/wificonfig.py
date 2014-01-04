@@ -21,42 +21,21 @@
 
 '''
 
-TODO list:
-
+TODO:
 * Add in hostapd/ap configuration options for device to device connections
 
-gcw-connect bugs
-[17:45:32] <Nebuleon>	 Tried to delete a character while there was none, in the WPA keyboard
-[17:45:35] <Nebuleon>	 No bug
-[17:47:17] <Nebuleon>	 Entered the Manual Setup menu, tried to connect to a network with SSID "h" and None encryption, and the display stuck
-[17:47:52] <Nebuleon>	 If I press a key, I get a partial menu showing over the None/WEP/WPA/WPA2 list, and it didn't try to connect. (The file 'h.conf' didn't exist.)
-[17:48:20] <Nebuleon>	https://dl.dropboxusercontent.com/u/106475413/temp/screenshot032.png
-[17:49:11] <Nebuleon>	 In the Manual Setup menu, after cancelling, a "Canceled." dialog appears, which doesn't occur in any other menu when cancelling. (Consistency issue)
-[17:49:30] <Nebuleon>	 can be remedied by adding canceleds or removing that one, at your choice
-[17:50:32] <Nebuleon>	 In the WEP hexadecimal keyboard, it is possible to enter a space with B, despite the hint for [B] Space not appearing. This character is not legal in the hexadecimal keyboard.
-[17:51:30] <Nebuleon>	 In the WEP hexadecimal keyboard, it is possible to switch to the shifted QWERTY keyboard with Y, despite the hint for this not appearing. Once in the shifted QWERTY keyboard, all hints appear, and pressing Y switches to the lower-case QWERTY keyboard.
-[17:52:30] <Nebuleon>	 In the Saved Networks menu, deleting all networks and pressing Y results in an exception trace:
-[17:53:11] <Nebuleon>	 IndexError: list index out of range, at line 1062 [return self.elements[self.selected_item]] called by 1402 [if len(str(...))]
-[17:53:57] <Nebuleon>	 In the Saved Networks menu, pressing A in an empty network list does not produce any response. Possibly not a bug.
-[17:54:32] <Nebuleon>	 Done
-[17:54:59] <HaDAk>	 confirmed the manual input with no encryption bug.
-[17:56:44] <Nebuleon>	 The "forget an empty network" bug can be fixed by having a [try/except IndexError: return None] in get_selected
-[17:56:57] <Nebuleon>	 and checking for None at line 1402
-[17:57:18] <Nebuleon>	 The keyboard is a bit weirder
-[17:57:37] <Nebuleon>	 or a lot :|
-[17:59:14] <HaDAk>	 keyboard is weird? how?
-[17:59:32] <Nebuleon>	 the WEP hexadecimal keyboard can irrevocably escape into the full QWERTY keyboard :P
-[17:59:43] <HaDAk>	 blame zear for that.
-[17:59:48] <Nebuleon>	 or maybe that's a willful change
-[17:59:55] <Nebuleon>	 but its implementation is not complete
-[18:00:03] <Nebuleon>	 yeah I saw the conversation earlier
-[18:00:04] <HaDAk>	 WEP 128-bit keys *can* be ASCII
-[18:00:19] <Nebuleon>	 yeah, and there's then an algorithm to turn it into a hex key
-[18:00:19] <HaDAk>	 the reason i had that switch in there before?
-[18:00:34] <HaDAk>	 i didn't account for that.
-[18:00:45] <HaDAk>	 ugh.
-[18:00:46] <Nebuleon>	 there's no Y hint
-[18:01:06] <Nebuleon>	 and once you get to shifted qwerty you can only switch between caps and not, qwerty
+Bugs:
+* Manual entry of ssid with no encryption fails
+* HEX keyboard allows for "space" to be entered.  It should not.
+* Cannot manually switch to hex keyboard once in full keyboard
+* In the Saved Networks menu, deleting all networks and pressing Y results in an exception
+	* The "forget an empty network" bug can be fixed by having a [try/except IndexError: return None] in get_selected and checking for None at line 1402
+* Saved Networks menu should not be blank if no saved networks exist. Also, it should not let you connect - or show the hint to let you
+* 128-bit WEP keys with an ASCII key are not saved properly in the config
+* A network scan that comes back without any results should notify that no results were found, instead of showing a blank menu
+
+Inconsistencies:
+* Canceled modal does not always show. It either should, or should not.
 
 '''
 
