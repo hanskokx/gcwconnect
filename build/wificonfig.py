@@ -23,11 +23,11 @@
 
 TODO:
 * Add in hostapd/ap configuration options for device to device connections
+* Add a better mechanism for shifting keys in the keyboard vs switching keyboard layouts
 
 Bugs:
 * Manual entry of ssid with no encryption fails
 * HEX keyboard allows for "space" to be entered.  It should not.
-* Cannot manually switch to hex keyboard once in full keyboard
 * In the Saved Networks menu, deleting all networks and pressing Y results in an exception
 	* The "forget an empty network" bug can be fixed by having a [try/except IndexError: return None] in get_selected and checking for None at line 1402
 * Saved Networks menu should not be blank if no saved networks exist. Also, it should not let you connect - or show the hint to let you
@@ -36,6 +36,11 @@ Bugs:
 
 Inconsistencies:
 * Canceled modal does not always show. It either should, or should not.
+
+-------------------------
+Internal monologue:
+I think the L and R buttons should switch between encryption types in the key input screen.  This should set variables that can account for the 128-bit
+WEP key issue, among others. (Such as the encryption type being scanned improperly).
 
 '''
 
@@ -69,6 +74,7 @@ maxrows = ''
 maxcolumns = ''
 passphrase = ''
 active_menu = ''
+keyboards = ["wep","qwertyNormal","qwertyShift"]
 
 ## Initialize the display, for pygame
 if not pygame.display.get_init():
@@ -834,6 +840,17 @@ def getinput(board, kind, ssid=""):
 	selectkey(board, kind)
 	return softkeyinput(board, kind, ssid)
 
+def nextKeyboard(board):
+	for i, s in enumerate(keyboards):
+		if board in s:
+			x = keyboards.index(s)+1
+			try:
+				s = keyboards[x]
+			except IndexError:
+				s = keyboards[0]
+			return s
+	return -1
+
 def softkeyinput(keyboard, kind, ssid):
 	global passphrase
 	global encryption
@@ -866,25 +883,9 @@ def softkeyinput(keyboard, kind, ssid):
 				if event.key == K_LALT:		# B button
 					selectkey(keyboard, kind, "space")
 				if event.key == K_SPACE:	# Y button (swap keyboards)
-					# if not uniq[ssid]['Network']['Encryption'] == "wpa2" \
-					# 	or not uniq[ssid]['Network']['Encryption'] == "wpa":
-					# 	uniq[ssid]['Network']['Encryption'] = "wpa2"
-						# TESTING DEBUG
-						# This may work, or it may not. Will need to revisit it.
-						# TODO
-
-					if keyboard == "qwertyNormal":
-						keyboard = "qwertyShift"
-						drawkeyboard(keyboard)
-						selectkey(keyboard, kind, "swap")
-					elif keyboard == "qwertyShift":
-						keyboard = "qwertyNormal"
-						drawkeyboard(keyboard)
-						selectkey(keyboard, kind, "swap")
-					else:
-						keyboard = "qwertyNormal"
-						drawkeyboard(keyboard)
-						selectkey(keyboard, kind, "swap")
+					keyboard = nextKeyboard(keyboard)
+					drawkeyboard(keyboard)
+					selectkey(keyboard, kind, "swap")
 
 				if event.key == K_LSHIFT:	# X button
 					selectkey(keyboard, kind, "delete")
