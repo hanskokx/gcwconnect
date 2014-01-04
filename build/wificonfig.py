@@ -30,9 +30,7 @@ Bugs:
 * HEX keyboard allows for "space" to be entered.  It should not.
 * In the Saved Networks menu, deleting all networks and pressing Y results in an exception
 	* The "forget an empty network" bug can be fixed by having a [try/except IndexError: return None] in get_selected and checking for None at line 1402
-* Saved Networks menu should not be blank if no saved networks exist. Also, it should not let you connect - or show the hint to let you
 * 128-bit WEP keys with an ASCII key are not saved properly in the config
-* A network scan that comes back without any results should notify that no results were found, instead of showing a blank menu
 
 Inconsistencies:
 * Canceled modal does not always show. It either should, or should not.
@@ -53,6 +51,20 @@ from os import listdir
 
 # What is our wireless interface?
 wlan = "wlan0"
+
+## That's it for options. Everything else below shouldn't be edited.
+confdir = os.environ['HOME'] + "/.gcwconnect/"
+netconfdir = confdir+"networks/"
+sysconfdir = "/usr/local/etc/network/"
+
+surface = pygame.display.set_mode((320,240))
+keyboard = ''
+selected_key = ''
+maxrows = ''
+maxcolumns = ''
+passphrase = ''
+active_menu = ''
+keyboards = ["wep","qwertyNormal","qwertyShift"]
 colors = { \
 		"darkbg": (41, 41, 41), \
 		"lightbg": (84, 84, 84), \
@@ -70,19 +82,6 @@ colors = { \
 		"white": (255, 255, 255), \
 		}
 
-## That's it for options. Everything else below shouldn't be edited.
-confdir = os.environ['HOME'] + "/.gcwconnect/"
-netconfdir = confdir+"networks/"
-sysconfdir = "/usr/local/etc/network/"
-
-surface = pygame.display.set_mode((320,240))
-keyboard = ''
-selected_key = ''
-maxrows = ''
-maxcolumns = ''
-passphrase = ''
-active_menu = ''
-keyboards = ["wep","qwertyNormal","qwertyShift"]
 
 ## Initialize the display, for pygame
 if not pygame.display.get_init():
@@ -1132,6 +1131,10 @@ class Menu:
 		selection_rect = (left, top, width, height)
 		pygame.draw.rect(menu_surface,self.selection_color,selection_rect)
 
+		# Clear any error elements
+		error_rect = (left+width+10, 35, 192, 172)
+		pygame.draw.rect(surface,colors['darkbg'],error_rect)
+
 		# Elements
 		top = 0
 		for i in xrange(len(visible_elements)):
@@ -1331,6 +1334,8 @@ def create_saved_networks_menu():
 		text = ":("
 		renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
 		textelement = renderedtext.get_rect()
+		textelement.left = 192
+		textelement.top = 96
 		surface.blit(renderedtext, textelement)
 		pygame.display.update()
 	else:
@@ -1460,44 +1465,53 @@ if __name__ == "__main__":
 								####### DEBUG #######
 								uniqssid = {}
 								uniqssids = {}
-								uniqssid=uniqssids.setdefault('DEBUG', {'Network': {'ESSID': 'DEBUG', 'menu': 0}})
-								uniqssid=uniqssids.setdefault('DEBUG network', {'Network': {'Encryption': 'wep', 'Quality': '0/100', 'ESSID': 'DEBUG network', 'menu': 1}})
-								uniqssid=uniqssids.setdefault('Another Debug', {'Network': {'Encryption': 'wpa', 'Quality': '76/100', 'ESSID': 'Another Debug', 'menu': 2}})
-								uniqssid=uniqssids.setdefault('DEBUG DEBUG DEBUG DEBUG', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'DEBUG DEBUG DEBUG DEBUG', 'menu': 3}})
-								uniqssid=uniqssids.setdefault('Hello DEBUG', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'Hello DEBUG', 'menu': 4}})
-								uniqssid=uniqssids.setdefault('Oh My! Debug!', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'Oh My! Debug!', 'menu': 5}})
-								uniqssid=uniqssids.setdefault('More Debug?', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'More Debug?', 'menu': 6}})
-								uniqssid=uniqssids.setdefault('Yep! Debug!', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'Yep! Debug!', 'menu': 7}})
-								uniqssid=uniqssids.setdefault('The Quick Brown', {'Network': {'Encryption': 'wpa', 'Quality': '0/100', 'ESSID': 'The Quick Brown', 'menu': 8}})
-								uniqssid=uniqssids.setdefault('Fox Jumps', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'Fox Jumps', 'menu': 9}})
-								uniqssid=uniqssids.setdefault('Over The', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'Over The', 'menu': 10}})
-								uniqssid=uniqssids.setdefault('Lazy Dog', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Lazy Dog', 'menu': 11}})
-								uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
+								# uniqssid=uniqssids.setdefault('DEBUG', {'Network': {'ESSID': 'DEBUG', 'menu': 0}})
+								# uniqssid=uniqssids.setdefault('DEBUG network', {'Network': {'Encryption': 'wep', 'Quality': '0/100', 'ESSID': 'DEBUG network', 'menu': 1}})
+								# uniqssid=uniqssids.setdefault('Another Debug', {'Network': {'Encryption': 'wpa', 'Quality': '76/100', 'ESSID': 'Another Debug', 'menu': 2}})
+								# uniqssid=uniqssids.setdefault('DEBUG DEBUG DEBUG DEBUG', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'DEBUG DEBUG DEBUG DEBUG', 'menu': 3}})
+								# uniqssid=uniqssids.setdefault('Hello DEBUG', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'Hello DEBUG', 'menu': 4}})
+								# uniqssid=uniqssids.setdefault('Oh My! Debug!', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'Oh My! Debug!', 'menu': 5}})
+								# uniqssid=uniqssids.setdefault('More Debug?', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'More Debug?', 'menu': 6}})
+								# uniqssid=uniqssids.setdefault('Yep! Debug!', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'Yep! Debug!', 'menu': 7}})
+								# uniqssid=uniqssids.setdefault('The Quick Brown', {'Network': {'Encryption': 'wpa', 'Quality': '0/100', 'ESSID': 'The Quick Brown', 'menu': 8}})
+								# uniqssid=uniqssids.setdefault('Fox Jumps', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'Fox Jumps', 'menu': 9}})
+								# uniqssid=uniqssids.setdefault('Over The', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'Over The', 'menu': 10}})
+								# uniqssid=uniqssids.setdefault('Lazy Dog', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Lazy Dog', 'menu': 11}})
+								# uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
 								uniq = uniqssids
 								####### DEBUG #######
 							wirelessitems = []
 							l = []
-							for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
-								for network, detail in uniq.iteritems():
-									if network == item:
-										try:
-											detail['Network']['Quality']
-										except KeyError:
-											detail['Network']['Quality'] = "0/1"
-										try:
-											detail['Network']['Encryption']
-										except KeyError:
-											detail['Network']['Encryption'] = ""
+							if len(uniq) < 1:
+								text = ":("
+								renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
+								textelement = renderedtext.get_rect()
+								textelement.left = 192
+								textelement.top = 96
+								surface.blit(renderedtext, textelement)
+								pygame.display.update()
+							else:
+								for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
+									for network, detail in uniq.iteritems():
+										if network == item:
+											try:
+												detail['Network']['Quality']
+											except KeyError:
+												detail['Network']['Quality'] = "0/1"
+											try:
+												detail['Network']['Encryption']
+											except KeyError:
+												detail['Network']['Encryption'] = ""
 
-										menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
-										l.append(menuitem)
+											menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
+											l.append(menuitem)
 
-							create_wireless_menu()
-							wirelessmenu.init(l, surface)
-							wirelessmenu.draw()
+								create_wireless_menu()
+								wirelessmenu.init(l, surface)
+								wirelessmenu.draw()
 
-							active_menu = to_menu("ssid")
-							redraw()
+								active_menu = to_menu("ssid")
+								redraw()
 
 						elif menu.get_selected() == 'Manual Setup':
 							ssid = ''
