@@ -57,6 +57,7 @@ maxcolumns = ''
 passphrase = ''
 active_menu = ''
 keyboards = ["wep","qwertyNormal","qwertyShift"]
+encryptiontypes = ["wep-40","wep-128","wpa", "wpa2"]
 colors = { \
 		"darkbg": (41, 41, 41), \
 		"lightbg": (84, 84, 84), \
@@ -790,6 +791,32 @@ def chooseencryption(keyboard, direction):
 	highlightradio(keyboard, selected_key)
 	return encryption
 
+def prevEncryption():
+	global encryption
+	global encryptiontypes
+
+	for i, s in enumerate(encryptiontypes):
+		if encryption in s:
+			x = encryptiontypes.index(s)-1
+			try:
+				encryption = encryptiontypes[x]
+				return
+			except IndexError:
+				encryption = encryptiontypes[:-1]
+
+def nextEncryption():
+	global encryption
+	global encryptiontypes
+
+	for i, s in enumerate(encryptiontypes):
+		if encryption in s:
+			x = encryptiontypes.index(s)+1
+			try:
+				encryption = encryptiontypes[x]
+				return
+			except IndexError:
+				encryption = encryptiontypes[0]
+
 def getEncryptionType():
 	chooseencryption("encryption", "init")
 	while True:
@@ -841,7 +868,7 @@ def getinput(board, kind, ssid=""):
 	selectkey(board, kind)
 	return softkeyinput(board, kind, ssid)
 
-def nextKeyboard(board, kind):
+def nextKeyboard(board):
 	for i, s in enumerate(keyboards):
 		if board in s:
 			x = keyboards.index(s)+1
@@ -884,7 +911,7 @@ def softkeyinput(keyboard, kind, ssid):
 					if encryption != "wep":
 						selectkey(keyboard, kind, "space")
 				if event.key == K_SPACE:	# Y button (swap keyboards)
-					keyboard = nextKeyboard(keyboard, kind)
+					keyboard = nextKeyboard(keyboard)
 					drawkeyboard(keyboard)
 					selectkey(keyboard, kind, "swap")
 				if event.key == K_LSHIFT:	# X button
@@ -906,6 +933,11 @@ def softkeyinput(keyboard, kind, ssid):
 						del securitykey
 					redraw()
 					return False
+				if kind == "key":
+					if event.key == K_TAB:			# L shoulder button
+						prevEncryption()
+					if event.key == K_BACKSPACE:	# R shoulder button
+						nextEncryption()
 
 def displayinputlabel(kind, size=24): # Display passphrase on screen
 	global colors
