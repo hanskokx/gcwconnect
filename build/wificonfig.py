@@ -24,9 +24,9 @@
 TODO:
 * Add in hostapd/ap configuration options for device to device connections
 * Add a better mechanism for shifting keys in the keyboard vs switching keyboard layouts
+	* Switching from the ascii keyboard to the hex keyboard sets the cursor to an out-of-value position
 
 Bugs:
-* Manual entry of ssid with no encryption fails.
 * HEX keyboard allows for "space" to be entered.  It should not.
 * 128-bit WEP keys with an ASCII key are not saved properly in the config
 
