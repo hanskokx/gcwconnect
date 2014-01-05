@@ -23,8 +23,6 @@
 
 TODO:
 * Add in hostapd/ap configuration options for device to device connections
-* Add a better mechanism for shifting keys in the keyboard vs switching keyboard layouts
-	* Switching from the ascii keyboard to the hex keyboard sets the cursor to an out-of-value position
 
 Bugs:
 * HEX keyboard allows for "space" to be entered.  It should not.
@@ -844,7 +842,7 @@ def getinput(board, kind, ssid=""):
 	selectkey(board, kind)
 	return softkeyinput(board, kind, ssid)
 
-def nextKeyboard(board):
+def nextKeyboard(board, kind):
 	for i, s in enumerate(keyboards):
 		if board in s:
 			x = keyboards.index(s)+1
@@ -853,7 +851,6 @@ def nextKeyboard(board):
 			except IndexError:
 				s = keyboards[0]
 			return s
-	return -1
 
 def softkeyinput(keyboard, kind, ssid):
 	global passphrase
@@ -886,12 +883,12 @@ def softkeyinput(keyboard, kind, ssid):
 					selectkey(keyboard, kind, "select")
 				if event.key == K_LALT:		# B button
 					## TODO: check encryption type -- WEP shouldn't allow spaces
-					selectkey(keyboard, kind, "space")
+					if keyboard != "wep":
+						selectkey(keyboard, kind, "space")
 				if event.key == K_SPACE:	# Y button (swap keyboards)
-					keyboard = nextKeyboard(keyboard)
+					keyboard = nextKeyboard(keyboard, kind)
 					drawkeyboard(keyboard)
 					selectkey(keyboard, kind, "swap")
-
 				if event.key == K_LSHIFT:	# X button
 					selectkey(keyboard, kind, "delete")
 				if event.key == K_ESCAPE:	# Select key
@@ -981,6 +978,16 @@ def selectkey(keyboard, kind, direction=""):
 		lines = pygame.draw.lines(surface, (255,255,255), True, list, 1)
 		pygame.display.update()
 
+	def fix():
+		while True:
+			if selected_key[0] >= maxcolumns - 1:
+				selected_key[0] = maxcolumns - 1
+				return True
+			elif selected_key[1] >= maxrows - 1:
+				selected_key[1] = maxrows - 1
+				return True
+			else:
+				return False
 	global maxrows
 	global maxcolumns
 	global selected_key
@@ -991,6 +998,7 @@ def selectkey(keyboard, kind, direction=""):
 		highlightkey(keyboard, selected_key)
 
 	if direction == "swap":
+		fix()
 		highlightkey(keyboard, selected_key)
 	else:
 		if direction == "up":
