@@ -28,12 +28,7 @@ TODO:
 Bugs:
 * Manual entry of ssid with no encryption fails.
 * HEX keyboard allows for "space" to be entered.  It should not.
-* In the Saved Networks menu, deleting all networks and pressing Y results in an exception
-	* The "forget an empty network" bug can be fixed by having a [try/except IndexError: return None] in get_selected and checking for None at line 1402
 * 128-bit WEP keys with an ASCII key are not saved properly in the config
-
-Inconsistencies:
-* Canceled modal does not always show. It either should, or should not.
 
 -------------------------
 Internal monologue:
@@ -810,7 +805,6 @@ def getEncryptionType():
 				if event.key == K_LCTRL:	# A button
 					return chooseencryption("encryption", "select")
 				if event.key == K_ESCAPE:	# Select key
-					modal("Canceled.", timeout=True)
 					return 'cancel'
 
 def drawkeyboard(board):
@@ -1552,7 +1546,6 @@ if __name__ == "__main__":
 										securitykey = getinput("wep", "key", ssid)
 									elif encryption == 'cancel':
 										del encryption, ssid, ssidconfig, securitykey
-										modal("Canceled.", timeout=True)
 										redraw()
 								else:
 									encryption = "none"
@@ -1560,7 +1553,7 @@ if __name__ == "__main__":
 								try:
 									encryption
 								except NameError:
-									modal("Canceled.", timeout=True)
+									pass
 
 
 						elif menu.get_selected() == 'Saved Networks':
