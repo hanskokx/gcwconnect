@@ -1549,7 +1549,9 @@ if __name__ == "__main__":
 										redraw()
 								else:
 									encryption = "none"
-
+									redraw()
+									writeconfig()
+									connect(wlan)
 								try:
 									encryption
 								except NameError:
