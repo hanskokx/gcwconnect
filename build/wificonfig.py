@@ -25,7 +25,6 @@ TODO:
 * Add in hostapd/ap configuration options for device to device connections
 
 Bugs:
-* HEX keyboard allows for "space" to be entered.  It should not.
 * 128-bit WEP keys with an ASCII key are not saved properly in the config
 
 -------------------------
@@ -882,8 +881,7 @@ def softkeyinput(keyboard, kind, ssid):
 				if event.key == K_LCTRL:	# A button
 					selectkey(keyboard, kind, "select")
 				if event.key == K_LALT:		# B button
-					## TODO: check encryption type -- WEP shouldn't allow spaces
-					if keyboard != "wep":
+					if encryption != "wep":
 						selectkey(keyboard, kind, "space")
 				if event.key == K_SPACE:	# Y button (swap keyboards)
 					keyboard = nextKeyboard(keyboard, kind)
