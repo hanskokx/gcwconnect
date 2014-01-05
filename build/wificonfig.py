@@ -1450,6 +1450,10 @@ if __name__ == "__main__":
 							os.remove(netconfdir+re.escape(str(wirelessmenu.get_selected()[0]))+".conf")
 						create_saved_networks_menu()
 						redraw()
+						if len(uniq) < 1:
+							destroy_wireless_menu()
+							active_menu = to_menu("main")
+							redraw()
 				elif event.key == K_LCTRL or event.key == K_RETURN:
 					# Main menu
 					if active_menu == "main":
