@@ -1041,6 +1041,7 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 
 	if kind == "ssid":
 		# Draw SSID and encryption type labels
+		pygame.draw.rect(surface, colors['darkbg'], (2,100,320,34))
 		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,320,20))
 		labeltext = pygame.font.SysFont(None, 18).render("Enter new SSID", True, colors['lightbg'], colors['white'])
 		label = labeltext.get_rect()
@@ -1506,7 +1507,7 @@ def create_saved_networks_menu():
 									uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')\
 										+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 									## TODO: fix for 128-bit wep
-					menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
+					menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption'].upper()]
 					l.append(menuitem)
 		create_wireless_menu()
 		wirelessmenu.init(l, surface)
@@ -1785,6 +1786,7 @@ if __name__ == "__main__":
 							if str(detail['Network']['menu']) == position:
 								ssid = network
 								passphrase = uniq[network]['Network']['Key']
+								encryption = uniq[network]['Network']['Encryption'].upper()
 								if uniq[network]['Network']['Encryption'] == "none":
 									pass
 								elif uniq[network]['Network']['Encryption'] == "wep":
