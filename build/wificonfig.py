@@ -23,9 +23,7 @@
 
 TODO:
 * Add in hostapd/ap configuration options for device to device connections
-
-Bugs:
-* 128-bit WEP keys with an ASCII key are not saved properly in the config
+* Add option to cancel connecting to a network
 
 '''
 
@@ -152,6 +150,7 @@ def checkinterfacestatus(iface):
 	return getip(iface) != None
 
 def connect(iface): # Connect to a network
+	ssidconfig = re.escape(ssid)
 	shutil.copy2(netconfdir+ssidconfig+".conf", \
 			sysconfdir+"config-"+iface+".conf")
 
@@ -236,11 +235,11 @@ def parseencryption(encryption):
 	if encryption.startswith('Encryption key:off'):
 	 	encryption = "none"
 	elif encryption.startswith('Encryption key:on'):
-		encryption = "wep"
+		encryption = "WEP-40"
 	elif encryption.startswith("IE: WPA"):
-		encryption = "wpa"
+		encryption = "WPA"
 	elif encryption.startswith("IE: IEEE 802.11i/WPA2"):
-		encryption = "wpa2"
+		encryption = "WPA2"
 	else:
 		encryption = "Encrypted (unknown)"
 	return encryption
@@ -517,8 +516,11 @@ def writeconfig(): # Write wireless configuration to disk
 	if encryption == "WEP-40":
 		encryption = "wep"
 		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
-	elif encryption == "WPA" or encryption == "WPA2":
+	elif encryption == "WPA":
 		encryption = "wpa"
+		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
+	elif encryption == "WPA2":
+		encryption = "wpa2"
 		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
 	elif encryption == "WEP-128":
 		encryption = "wep"
@@ -761,19 +763,22 @@ def displayencryptionhint():
 	global encryption
 	font = pygame.font.Font('./data/Inconsolata.otf', 12)
 
-	if encryption:
-		pygame.draw.rect(surface, colors['darkbg'], (2,102,317,31))
-		hint("l", "L", 16, 113)
-		hint("r", "R", 289, 113)
+	try:
+		if encryption:
+			pygame.draw.rect(surface, colors['darkbg'], (2,100,320,34))
+			hint("l", "L", 16, 113)
+			hint("r", "R", 289, 113)
 
-		pos = 1
-		for enc in encryptiontypes:
-			x = (pos * 60) - 20
-			labelblock = pygame.draw.rect(surface, colors['darkbg'], (x, 111,25,14))
-			labeltext = font.render(enc.center(10, ' '), True, colors["white"], colors['darkbg'])
-			surface.blit(labeltext, labelblock)
-			pos += 1
-	pygame.display.update()
+			pos = 1
+			for enc in encryptiontypes:
+				x = (pos * 60) - 20
+				labelblock = pygame.draw.rect(surface, colors['darkbg'], (x, 111,25,14))
+				labeltext = font.render(enc.center(10, ' '), True, colors["white"], colors['darkbg'])
+				surface.blit(labeltext, labelblock)
+				pos += 1
+			pygame.display.update()
+	except NameError:
+		pass
 
 def chooseencryption(keyboard, direction):
 	global colors
@@ -881,7 +886,7 @@ def drawkeyboard(board):
 	global colors
 
 	# Draw keyboard background 
-	pygame.draw.rect(surface, colors['darkbg'], (0,100,320,140))
+	pygame.draw.rect(surface, colors['darkbg'], (0,134,320,106))
 
 	# Draw bottom background
 	pygame.draw.rect(surface, colors['lightbg'], (0,224,320,16))
@@ -943,6 +948,20 @@ def softkeyinput(keyboard, kind, ssid):
 	global encryption
 	global securitykey
 	font = pygame.font.Font('./data/Inconsolata.otf', 12)
+	def update():
+		displayinputlabel("key")
+		displayencryptionhint()
+		pos = 1
+		for enc in encryptiontypes:
+			x = (pos * 60) - 20
+			if enc == encryption:
+				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
+				labeltext = font.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
+				surface.blit(labeltext, labelblock)
+			else:
+				pos += 1
+		pygame.display.update()
+
 	while True:
 		time.sleep(0.05)
 		for event in pygame.event.get():
@@ -996,25 +1015,29 @@ def softkeyinput(keyboard, kind, ssid):
 				if kind == "key":
 					if event.key == K_TAB:			# L shoulder button
 						prevEncryption()
+						update()
 					if event.key == K_BACKSPACE:	# R shoulder button
 						nextEncryption()
-					displayinputlabel("key")
-					displayencryptionhint()
-					pos = 1
-					for enc in encryptiontypes:
-						x = (pos * 60) - 20
-						if enc == encryption:
-							labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
-							labeltext = font.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
-							surface.blit(labeltext, labelblock)
-						else:
-							pos += 1
-					pygame.display.update()
+						update()
+
 
 def displayinputlabel(kind, size=24): # Display passphrase on screen
 	global colors
 	global encryption
 	font = pygame.font.Font('./data/Inconsolata.otf', 18)
+
+	def update():
+		font = pygame.font.Font('./data/Inconsolata.otf', 12)
+		displayencryptionhint()
+		pos = 1
+		for enc in encryptiontypes:
+			x = (pos * 60) - 20
+			if enc == encryption:
+				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
+				labeltext = font.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
+				surface.blit(labeltext, labelblock)
+			else:
+				pos += 1
 
 	if kind == "ssid":
 		# Draw SSID and encryption type labels
@@ -1035,6 +1058,7 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 		label = labeltext.get_rect()
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
+		update()
 
 	# Input area
 	bg = pygame.draw.rect(surface, colors['white'], (0, 55, 320, 45))
@@ -1048,6 +1072,9 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 	pygame.display.update()
 
 def selectkey(keyboard, kind, direction=""):
+	global encryption
+	global colors
+	font = pygame.font.Font('./data/Inconsolata.otf', 12)
 	def getcurrentkey(keyboard, pos):
 		keys = getkeys(keyboard)
 		for item in keys.iteritems():
@@ -1319,13 +1346,11 @@ class NetworksMenu(Menu):
 		if enc_type == "none":
 			enc_icon = "open.png"
 			enc_type = "Open"
-		elif enc_type == "wpa":
+		elif enc_type == "WPA" or enc_type == "wpa":
 			enc_icon = "closed.png"
-			enc_type = "WPA"
-		elif enc_type == "wpa2":
+		elif enc_type == "WPA2" or enc_type == "wpa2":
 			enc_icon = "closed.png"
-			enc_type = "WPA2"
-		elif enc_type == "wep":
+		elif enc_type == "WEP-40" or enc_type == "WEP-128" or enc_type == "wep":
 			enc_icon = "closed.png"
 			enc_type = "WEP"
 		else:
@@ -1480,6 +1505,7 @@ def create_saved_networks_menu():
 								if "WLAN_PASSPHRASE" in line:
 									uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')\
 										+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+									## TODO: fix for 128-bit wep
 					menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
 					l.append(menuitem)
 		create_wireless_menu()
@@ -1568,7 +1594,7 @@ if __name__ == "__main__":
 							redraw()
 						elif menu.get_selected() == 'Scan for APs':
 							try:
-								getnetworks(poo) ## DEBUG
+								#getnetworks(poo) ## DEBUG
 								getnetworks(wlan)
 								uniq = listuniqssids()
 							except:
@@ -1680,20 +1706,20 @@ if __name__ == "__main__":
 					# SSID menu		
 					elif active_menu == "ssid":
 						ssid = ""
-
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position())
 							if str(detail['Network']['menu']) == position:
 								ssid = detail['Network']['ESSID']
 								ssidconfig = re.escape(ssid)
 								conf = netconfdir+ssidconfig+".conf"
+								encryption = detail['Network']['Encryption']
 								if not os.path.exists(conf):
-									if detail['Network']['Encryption'] == "none":
+									if encryption == "none":
 										passphrase = "none"
 										encryption = "none"
 										writeconfig()
 										connect(wlan)
-									elif detail['Network']['Encryption'] == "wep":
+									elif encryption == "WEP-40" or encryption == "WEP-128":
 										passphrase = ''
 										selected_key = ''
 										securitykey = ''
@@ -1707,7 +1733,6 @@ if __name__ == "__main__":
 										securitykey = ''
 										displayinputlabel("key")
 										drawkeyboard("qwertyNormal")
-										encryption = detail['Network']['Encryption']
 										getinput("qwertyNormal", "key", ssid)
 								else:
 									connect(wlan)
@@ -1734,6 +1759,7 @@ if __name__ == "__main__":
 							position = str(wirelessmenu.get_position())
 							if str(detail['Network']['menu']) == position:
 								ssid = network
+								encryption = detail['Network']['Encryption']
 								if detail['Network']['Encryption'] == "none":
 									pass
 								elif detail['Network']['Encryption'] == "wep":
