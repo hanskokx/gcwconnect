@@ -1351,7 +1351,7 @@ class NetworksMenu(Menu):
 			enc_icon = "closed.png"
 		elif enc_type == "WPA2" or enc_type == "wpa2":
 			enc_icon = "closed.png"
-		elif enc_type == "WEP-40" or enc_type == "WEP-128" or enc_type == "wep":
+		elif enc_type == "WEP-40" or enc_type == "WEP-128" or enc_type == "wep" or enc_type == "WEP":
 			enc_icon = "closed.png"
 			enc_type = "WEP"
 		else:
@@ -1793,6 +1793,7 @@ if __name__ == "__main__":
 									passphrase = ''
 									selected_key = ''
 									securitykey = ''
+									encryption = "WEP-40"
 									displayinputlabel("key")
 									drawkeyboard("wep")
 									getinput("wep", "key", ssid)
