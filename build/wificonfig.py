@@ -784,6 +784,13 @@ def displayencryptionhint():
 
 	try:
 		if encryption:
+			if encryption == "wep":
+				encryption = "WEP-40"
+	except:
+		pass
+
+	try:
+		if encryption:
 			pygame.draw.rect(surface, colors['darkbg'], (2,100,320,34))
 			hint("l", "L", 16, 113)
 			hint("r", "R", 289, 113)
