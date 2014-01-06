@@ -22,8 +22,8 @@
 '''
 
 TODO:
-* Add in hostapd/ap configuration options for device to device connections
 * Add option to cancel connecting to a network
+* Clean up host ap info display. It's ugly.
 
 '''
 
@@ -91,7 +91,8 @@ def createpaths(): # Create paths, if necessary
 ## Interface management
 def ifdown(iface):
 	with open(os.devnull, "w") as fnull:
-		return SU.Popen(['ifdown', iface], stderr = fnull).wait() != 0
+		SU.Popen(['ifdown', iface], stderr = fnull).wait()
+		return SU.call(['ap', '--stop']) != 0
 
 def ifup(iface):
 	with open(os.devnull, "w") as fnull:
@@ -532,6 +533,21 @@ def writeconfig(): # Write wireless configuration to disk
 	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
 	f.write('WLAN_DHCP_RETRIES=20\n')
 	f.close()
+
+## HostAP
+def startap():
+	global wlan
+	global colors
+	if checkinterfacestatus(wlan):
+		disconnect(wlan)
+
+	modal("Creating AP...")
+	with open(os.devnull, "w") as fnull:
+		SU.Popen(['ap', '--start']).wait()
+
+	modal('AP created!', timeout=True)
+	redraw()
+	return True
 
 ## Input methods
 def getkeys(board):
@@ -1240,10 +1256,10 @@ class Menu:
 
 		# Which items are to be shown?
 		if self.selected_item <= 2: # We're at the top
-			visible_elements = self.elements[0:5]
+			visible_elements = self.elements[0:6]
 			selected_within_visible = self.selected_item
 		elif self.selected_item >= len(self.elements) - 3: # We're at the bottom
-			visible_elements = self.elements[-5:]
+			visible_elements = self.elements[-6:]
 			selected_within_visible = self.selected_item - (len(self.elements) - len(visible_elements))
 		else: # The list is larger than 5 elements, and we're in the middle
 			visible_elements = self.elements[self.selected_item - 2:self.selected_item + 3]
@@ -1444,11 +1460,74 @@ menu.set_font(pygame.font.Font('./data/Inconsolata.otf', 16))
 menu.move_menu(8, 41)
 
 def mainmenu():
-	elems = ['Scan for APs', "Manual Setup", "Saved Networks", "Quit"]
+	global wlan
+	elems = ['Quit']
+
+	try:
+		ap = getcurrentssid(wlan).split("-")[1]
+		file = open('/sys/class/net/wlan0/address', 'r')
+		mac = file.read().strip('\n').replace(":", "")
+		file.close()
+		if mac == ap:
+			elems = ['AP info'] + elems
+	except:
+		elems = ['Create AP'] + elems
+
+	elems = ['Scan for APs', "Manual Setup", "Saved Networks"] + elems
+
 	if checkinterfacestatus(wlan):
 		elems = ['Disconnect'] + elems
+
 	menu.init(elems, surface)
  	menu.draw()
+
+def apinfo():
+	global wlan
+	font = pygame.font.Font('./data/Inconsolata.otf', 18)
+
+	try:
+		ap = getcurrentssid(wlan).split("-")[1]
+		file = open('/sys/class/net/wlan0/address', 'r')
+		mac = file.read().strip('\n').replace(":", "")
+		file.close()
+		if mac == ap:
+
+			ssidlabel = "SSID"
+			renderedssidlabel = pygame.font.Font('./data/Inconsolata.otf', 64).render(ssidlabel, True, colors["lightbg"], colors["darkbg"])
+			ssidlabelelement = renderedssidlabel.get_rect()
+			ssidlabelelement.right = 300
+			ssidlabelelement.top = 34
+			surface.blit(renderedssidlabel, ssidlabelelement)
+
+			ssid = getcurrentssid(wlan)
+			renderedssid = font.render(ssid, True, colors["white"], colors["darkbg"])
+			ssidelement = renderedssid.get_rect()
+			ssidelement.right = 315
+			ssidelement.top = 96
+			surface.blit(renderedssid, ssidelement)
+
+			enclabel = "Key"
+			renderedenclabel = pygame.font.Font('./data/Inconsolata.otf', 64).render(enclabel, True, colors["lightbg"], colors["darkbg"])
+			enclabelelement = renderedenclabel.get_rect()
+			enclabelelement.right = 300
+			enclabelelement.top = 114
+			surface.blit(renderedenclabel, enclabelelement)
+
+			renderedencp = font.render(mac, True, colors["white"], colors["darkbg"])
+			encpelement = renderedencp.get_rect()
+			encpelement.right = 315
+			encpelement.top = 180
+			surface.blit(renderedencp, encpelement)
+
+			pygame.display.update()
+	except:
+		text = ":("
+		renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
+		textelement = renderedtext.get_rect()
+		textelement.left = 192
+		textelement.top = 96
+		surface.blit(renderedtext, textelement)
+		pygame.display.update()
 
 def create_wireless_menu():
 	global wirelessmenu
@@ -1693,7 +1772,6 @@ if __name__ == "__main__":
 								except NameError:
 									pass
 
-
 						elif menu.get_selected() == 'Saved Networks':
 							create_saved_networks_menu()
 							try:
@@ -1702,6 +1780,12 @@ if __name__ == "__main__":
 							except:
 								active_menu = to_menu("main")
 							
+						elif menu.get_selected() == 'Create AP':
+							startap()
+
+						elif menu.get_selected() == 'AP info':
+							apinfo()
+
 						elif menu.get_selected() == 'Quit':
 							pygame.display.quit()
 							sys.exit()
