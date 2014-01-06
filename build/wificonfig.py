@@ -259,11 +259,14 @@ def getsavednets():
 				if "WLAN_PASSPHRASE" in line:
 					key = str.strip(line[line.find('WLAN_PASSPHRASE="')\
 						+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+				else:
+					key = ''
+
 		x = ssid.split("\\")
 		ssid = ''
 		for y in x:
 			ssid += y
-		
+
 		uniqssid=uniqssids.setdefault(ssid, {'Network': {'ESSID': ssid, 'Key': key, 'menu': menu}})
 		menu += 1
 	uniq = uniqssids
@@ -1020,7 +1023,6 @@ def softkeyinput(keyboard, kind, ssid):
 						nextEncryption()
 						update()
 
-
 def displayinputlabel(kind, size=24): # Display passphrase on screen
 	global colors
 	global encryption
@@ -1344,7 +1346,7 @@ class NetworksMenu(Menu):
 
 		## Encryption information
 		enc_type = element[2]
-		if enc_type == "none":
+		if enc_type == "NONE" or enc_type == '':
 			enc_icon = "open.png"
 			enc_type = "Open"
 		elif enc_type == "WPA" or enc_type == "wpa":
