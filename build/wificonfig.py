@@ -27,11 +27,6 @@ TODO:
 Bugs:
 * 128-bit WEP keys with an ASCII key are not saved properly in the config
 
--------------------------
-Internal monologue:
-I think the L and R buttons should switch between encryption types in the key input screen.  This should set variables that can account for the 128-bit
-WEP key issue, among others. (Such as the encryption type being scanned improperly).
-
 '''
 
 
@@ -57,7 +52,7 @@ maxcolumns = ''
 passphrase = ''
 active_menu = ''
 keyboards = ["wep","qwertyNormal","qwertyShift"]
-encryptiontypes = ["wep-40","wep-128","wpa", "wpa2"]
+encryptiontypes = ["WEP-40","WEP-128","WPA", "WPA2"]
 colors = { \
 		"darkbg": (41, 41, 41), \
 		"lightbg": (84, 84, 84), \
@@ -287,6 +282,22 @@ class hint:
 		self.drawhint()
 
 	def drawhint(self):
+		if self.button == 'l' or self.button == 'r':
+			if self.button == 'l':
+				pygame.draw.circle(surface, colors["black"], (self.x, self.y+5), 5)
+				pygame.draw.rect(surface, colors["black"], (self.x-5, self.y+5, 10, 5))
+
+
+			if self.button == 'r':
+				pygame.draw.circle(surface, colors["black"], (self.x+15, self.y+5), 5)
+				pygame.draw.rect(surface, colors["black"], (self.x+10, self.y+5, 10, 5))
+
+			button = pygame.draw.rect(surface, colors["black"], (self.x, self.y, 15, 10))
+			text = pygame.font.SysFont(None, 12).render(self.button.upper(), True, colors["white"], colors["black"])
+			buttontext = text.get_rect()
+			buttontext.center = button.center
+			surface.blit(text, buttontext)
+
 		if self.button == "select" or self.button == "start":
 			if self.button == "select":
 				pygame.draw.rect(surface, colors["black"], (self.x, self.y, 34, 5))
@@ -496,12 +507,24 @@ def writeconfig(): # Write wireless configuration to disk
 	if passphrase:
 		if passphrase == "none":
 			passphrase = ""
+
 	ssidconfig = re.escape(ssid)
 	conf = netconfdir+ssidconfig+".conf"
+
 	f = open(conf, "w")
 	f.write('WLAN_ESSID="'+ssid+'"\n')
+
+	if encryption == "WEP-40":
+		encryption = "wep"
+		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
+	elif encryption == "WPA" or encryption == "WPA2":
+		encryption = "wpa"
+		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
+	elif encryption == "WEP-128":
+		encryption = "wep"
+		f.write('WLAN_PASSPHRASE="s:'+passphrase+'"\n')
+	
 	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
-	f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
 	f.write('WLAN_DHCP_RETRIES=20\n')
 	f.close()
 
@@ -636,7 +659,7 @@ def getkeys(board):
 		k = qwertyNormal()
 	elif board == "qwertyShift":
 		k = qwertyShift()
-	elif board == "wep":
+	elif board == "wep" or board == "WEP-40" or board == "WEP-128":
 		k = wep()
 	elif board == "encryption":
 		k = encryption()
@@ -733,6 +756,25 @@ def drawEncryptionType():
 
 	pygame.display.update()
 
+def displayencryptionhint():
+	global colors
+	global encryption
+	font = pygame.font.Font('./data/Inconsolata.otf', 12)
+
+	if encryption:
+		pygame.draw.rect(surface, colors['darkbg'], (2,102,317,31))
+		hint("l", "L", 16, 113)
+		hint("r", "R", 289, 113)
+
+		pos = 1
+		for enc in encryptiontypes:
+			x = (pos * 60) - 20
+			labelblock = pygame.draw.rect(surface, colors['darkbg'], (x, 111,25,14))
+			labeltext = font.render(enc.center(10, ' '), True, colors["white"], colors['darkbg'])
+			surface.blit(labeltext, labelblock)
+			pos += 1
+	pygame.display.update()
+
 def chooseencryption(keyboard, direction):
 	global colors
 	def getcurrentkey(keyboard, pos):
@@ -789,6 +831,8 @@ def chooseencryption(keyboard, direction):
 		highlightradio(keyboard, selected_key)
 
 	highlightradio(keyboard, selected_key)
+	if encryption == "WEP":
+		encryption = "WEP-40"
 	return encryption
 
 def prevEncryption():
@@ -803,6 +847,7 @@ def prevEncryption():
 				return
 			except IndexError:
 				encryption = encryptiontypes[:-1]
+				return
 
 def nextEncryption():
 	global encryption
@@ -816,6 +861,7 @@ def nextEncryption():
 				return
 			except IndexError:
 				encryption = encryptiontypes[0]
+				return
 
 def getEncryptionType():
 	chooseencryption("encryption", "init")
@@ -833,6 +879,7 @@ def getEncryptionType():
 
 def drawkeyboard(board):
 	global colors
+
 	# Draw keyboard background 
 	pygame.draw.rect(surface, colors['darkbg'], (0,100,320,140))
 
@@ -865,7 +912,20 @@ def drawkeyboard(board):
 	return keyboard
 
 def getinput(board, kind, ssid=""):
+	font = pygame.font.Font('./data/Inconsolata.otf', 12)
 	selectkey(board, kind)
+	if kind == "key":
+		displayencryptionhint()
+		pos = 1
+		for enc in encryptiontypes:
+			x = (pos * 60) - 20
+			if enc == encryption:
+				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
+				labeltext = font.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
+				surface.blit(labeltext, labelblock)
+			else:
+				pos += 1
+		pygame.display.update()
 	return softkeyinput(board, kind, ssid)
 
 def nextKeyboard(board):
@@ -882,7 +942,7 @@ def softkeyinput(keyboard, kind, ssid):
 	global passphrase
 	global encryption
 	global securitykey
-
+	font = pygame.font.Font('./data/Inconsolata.otf', 12)
 	while True:
 		time.sleep(0.05)
 		for event in pygame.event.get():
@@ -908,7 +968,7 @@ def softkeyinput(keyboard, kind, ssid):
 				if event.key == K_LCTRL:	# A button
 					selectkey(keyboard, kind, "select")
 				if event.key == K_LALT:		# B button
-					if encryption != "wep":
+					if encryption != "WEP-40":
 						selectkey(keyboard, kind, "space")
 				if event.key == K_SPACE:	# Y button (swap keyboards)
 					keyboard = nextKeyboard(keyboard)
@@ -938,9 +998,22 @@ def softkeyinput(keyboard, kind, ssid):
 						prevEncryption()
 					if event.key == K_BACKSPACE:	# R shoulder button
 						nextEncryption()
+					displayinputlabel("key")
+					displayencryptionhint()
+					pos = 1
+					for enc in encryptiontypes:
+						x = (pos * 60) - 20
+						if enc == encryption:
+							labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
+							labeltext = font.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
+							surface.blit(labeltext, labelblock)
+						else:
+							pos += 1
+					pygame.display.update()
 
 def displayinputlabel(kind, size=24): # Display passphrase on screen
 	global colors
+	global encryption
 	font = pygame.font.Font('./data/Inconsolata.otf', 18)
 
 	if kind == "ssid":
@@ -952,12 +1025,13 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 		surface.blit(labeltext, label)
 
 	elif kind == "key":
+		displayencryptionhint()
 		# Draw SSID and encryption type labels
 		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,320,20))
-		if len(ssid) >= 16:
-			labeltext = font.render("Enter key for "+"%s..."%(ssid[:16]), True, colors['lightbg'], colors['white'])
+		if len(ssid) >= 13:
+			labeltext = font.render("Enter "+encryption+" for "+"%s..."%(ssid[:13]), True, colors['lightbg'], colors['white'])
 		else:
-			labeltext = font.render("Enter key for "+ssid, True, colors['lightbg'], colors['white'])
+			labeltext = font.render("Enter "+encryption+" key for "+ssid, True, colors['lightbg'], colors['white'])
 		label = labeltext.get_rect()
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
@@ -1548,7 +1622,6 @@ if __name__ == "__main__":
 
 								active_menu = to_menu("ssid")
 								redraw()
-
 						elif menu.get_selected() == 'Manual Setup':
 							ssid = ''
 							encryption = ''
@@ -1564,22 +1637,18 @@ if __name__ == "__main__":
 								ssidconfig = re.escape(ssid)
 								drawEncryptionType()
 								encryption = getEncryptionType()
-
+								displayinputlabel("key")
+								displayencryptionhint()
+								
 								# Get key from the user
 								if not encryption == 'None':
 									if encryption == "WPA":
-										encryption = "wpa"
-										displayinputlabel("key")
 										drawkeyboard("qwertyNormal")
 										securitykey = getinput("qwertyNormal", "key", ssid)
 									elif encryption == "WPA2":
-										encryption = "wpa2"
-										displayinputlabel("key")
 										drawkeyboard("qwertyNormal")
 										securitykey = getinput("qwertyNormal", "key", ssid)
-									elif encryption == "WEP":
-										encryption = "wep"
-										displayinputlabel("key")
+									elif encryption == "WEP-40":
 										drawkeyboard("wep")
 										securitykey = getinput("wep", "key", ssid)
 									elif encryption == 'cancel':
@@ -1604,7 +1673,6 @@ if __name__ == "__main__":
 							except:
 								active_menu = to_menu("main")
 							
-
 						elif menu.get_selected() == 'Quit':
 							pygame.display.quit()
 							sys.exit()
