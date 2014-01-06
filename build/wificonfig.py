@@ -1683,28 +1683,17 @@ if __name__ == "__main__":
 							redraw()
 						elif menu.get_selected() == 'Scan for APs':
 							try:
-								#getnetworks(poo) ## DEBUG
 								getnetworks(wlan)
 								uniq = listuniqssids()
 							except:
-								####### DEBUG #######
-								uniqssid = {}
-								uniqssids = {}
-								# uniqssid=uniqssids.setdefault('DEBUG', {'Network': {'ESSID': 'DEBUG', 'menu': 0}})
-								# uniqssid=uniqssids.setdefault('DEBUG network', {'Network': {'Encryption': 'wep', 'Quality': '0/100', 'ESSID': 'DEBUG network', 'menu': 1}})
-								# uniqssid=uniqssids.setdefault('Another Debug', {'Network': {'Encryption': 'wpa', 'Quality': '76/100', 'ESSID': 'Another Debug', 'menu': 2}})
-								# uniqssid=uniqssids.setdefault('DEBUG DEBUG DEBUG DEBUG', {'Network': {'Encryption': 'wpa2', 'Quality': '101/100', 'ESSID': 'DEBUG DEBUG DEBUG DEBUG', 'menu': 3}})
-								# uniqssid=uniqssids.setdefault('Hello DEBUG', {'Network': {'Encryption': 'wpa', 'Quality': '100/100', 'ESSID': 'Hello DEBUG', 'menu': 4}})
-								# uniqssid=uniqssids.setdefault('Oh My! Debug!', {'Network': {'Encryption': 'wpa2', 'Quality': '93/100', 'ESSID': 'Oh My! Debug!', 'menu': 5}})
-								# uniqssid=uniqssids.setdefault('More Debug?', {'Network': {'Encryption': 'wpa2', 'Quality': '2/100', 'ESSID': 'More Debug?', 'menu': 6}})
-								# uniqssid=uniqssids.setdefault('Yep! Debug!', {'Network': {'Encryption': 'wpa2', 'Quality': '56/100', 'ESSID': 'Yep! Debug!', 'menu': 7}})
-								# uniqssid=uniqssids.setdefault('The Quick Brown', {'Network': {'Encryption': 'wpa', 'Quality': '0/100', 'ESSID': 'The Quick Brown', 'menu': 8}})
-								# uniqssid=uniqssids.setdefault('Fox Jumps', {'Network': {'Encryption': 'wpa2', 'Quality': '80/100', 'ESSID': 'Fox Jumps', 'menu': 9}})
-								# uniqssid=uniqssids.setdefault('Over The', {'Network': {'Encryption': 'wep', 'Quality': '100/100', 'ESSID': 'Over The', 'menu': 10}})
-								# uniqssid=uniqssids.setdefault('Lazy Dog', {'Network': {'Encryption': 'wpa2', 'Quality': '97/100', 'ESSID': 'Lazy Dog', 'menu': 11}})
-								# uniqssid=uniqssids.setdefault('HaDAk', {'Network': {'Encryption': 'wpa2', 'Quality': '100/100', 'ESSID': 'HaDAk', 'menu': 12}})
-								uniq = uniqssids
-								####### DEBUG #######
+								text = ":("
+								renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
+								textelement = renderedtext.get_rect()
+								textelement.left = 192
+								textelement.top = 96
+								surface.blit(renderedtext, textelement)
+								pygame.display.update()
+
 							wirelessitems = []
 							l = []
 							if len(uniq) < 1:
@@ -1803,31 +1792,42 @@ if __name__ == "__main__":
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position())
 							if str(detail['Network']['menu']) == position:
-								ssid = detail['Network']['ESSID']
-								ssidconfig = re.escape(ssid)
-								conf = netconfdir+ssidconfig+".conf"
-								encryption = detail['Network']['Encryption']
+								if detail['Network']['ESSID'].split("-")[0] == "gcwzero":
+									ssid = detail['Network']['ESSID']
+									ssidconfig = re.escape(ssid)
+									conf = netconfdir+ssidconfig+".conf"
+									encryption = "WPA2"
+									passphrase = ssid.split("-")[1]
+								else:
+									ssid = detail['Network']['ESSID']
+									ssidconfig = re.escape(ssid)
+									conf = netconfdir+ssidconfig+".conf"
+									encryption = detail['Network']['Encryption']
 								if not os.path.exists(conf):
-									if encryption == "none":
-										passphrase = "none"
-										encryption = "none"
+									try:
 										writeconfig()
 										connect(wlan)
-									elif encryption == "WEP-40" or encryption == "WEP-128":
-										passphrase = ''
-										selected_key = ''
-										securitykey = ''
-										displayinputlabel("key")
-										drawkeyboard("wep")
-										encryption = "wep"
-										getinput("wep", "key", ssid)
-									else:
-										passphrase = ''
-										selected_key = ''
-										securitykey = ''
-										displayinputlabel("key")
-										drawkeyboard("qwertyNormal")
-										getinput("qwertyNormal", "key", ssid)
+									except:
+										if encryption == "none":
+											passphrase = "none"
+											encryption = "none"
+											writeconfig()
+											connect(wlan)
+										elif encryption == "WEP-40" or encryption == "WEP-128":
+											passphrase = ''
+											selected_key = ''
+											securitykey = ''
+											displayinputlabel("key")
+											drawkeyboard("wep")
+											encryption = "wep"
+											getinput("wep", "key", ssid)
+										else:
+											passphrase = ''
+											selected_key = ''
+											securitykey = ''
+											displayinputlabel("key")
+											drawkeyboard("qwertyNormal")
+											getinput("qwertyNormal", "key", ssid)
 								else:
 									connect(wlan)
 								break
