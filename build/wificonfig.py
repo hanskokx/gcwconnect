@@ -517,18 +517,18 @@ def writeconfig(): # Write wireless configuration to disk
 	f = open(conf, "w")
 	f.write('WLAN_ESSID="'+ssid+'"\n')
 
-	if encryption == "WEP-40":
-		encryption = "wep"
-		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
-	elif encryption == "WPA":
-		encryption = "wpa"
-		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
-	elif encryption == "WPA2":
-		encryption = "wpa2"
-		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
-	elif encryption == "WEP-128":
+	if encryption == "WEP-128":
 		encryption = "wep"
 		f.write('WLAN_PASSPHRASE="s:'+passphrase+'"\n')
+	else:
+		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
+		if encryption == "WEP-40":
+			encryption = "wep"
+		elif encryption == "WPA":
+			encryption = "wpa"
+		elif encryption == "WPA2":
+			encryption = "wpa2"
+
 	
 	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
 	f.write('WLAN_DHCP_RETRIES=20\n')
@@ -1798,16 +1798,14 @@ if __name__ == "__main__":
 									conf = netconfdir+ssidconfig+".conf"
 									encryption = "WPA2"
 									passphrase = ssid.split("-")[1]
+									writeconfig()
+									connect(wlan)
 								else:
 									ssid = detail['Network']['ESSID']
 									ssidconfig = re.escape(ssid)
 									conf = netconfdir+ssidconfig+".conf"
 									encryption = detail['Network']['Encryption']
-								if not os.path.exists(conf):
-									try:
-										writeconfig()
-										connect(wlan)
-									except:
+									if not os.path.exists(conf):
 										if encryption == "none":
 											passphrase = "none"
 											encryption = "none"
@@ -1820,16 +1818,16 @@ if __name__ == "__main__":
 											displayinputlabel("key")
 											drawkeyboard("wep")
 											encryption = "wep"
-											getinput("wep", "key", ssid)
+											passphrase = getinput("wep", "key", ssid)
 										else:
 											passphrase = ''
 											selected_key = ''
 											securitykey = ''
 											displayinputlabel("key")
 											drawkeyboard("qwertyNormal")
-											getinput("qwertyNormal", "key", ssid)
-								else:
-									connect(wlan)
+											passphrase = getinput("qwertyNormal", "key", ssid)
+									else:
+										connect(wlan)
 								break
 
 					# Saved Networks menu
