@@ -38,7 +38,7 @@ from os import listdir
 wlan = "wlan0"
 
 ## That's it for options. Everything else below shouldn't be edited.
-confdir = os.environ['HOME'] + "/.gcwconnect/"
+confdir = os.environ['HOME'] + "/.local/share/gcwconnect/"
 netconfdir = confdir+"networks/"
 sysconfdir = "/usr/local/etc/network/"
 
