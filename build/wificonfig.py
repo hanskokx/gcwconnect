@@ -1474,7 +1474,7 @@ def mainmenu():
 	except:
 		elems = ['Create AP'] + elems
 
-	elems = ['Scan for APs', "Manual Setup", "Saved Networks"] + elems
+	elems = ["Saved Networks", 'Scan for APs', "Manual Setup"] + elems
 
 	if checkinterfacestatus(wlan):
 		elems = ['Disconnect'] + elems
