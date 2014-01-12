@@ -41,6 +41,9 @@ wlan = "wlan0"
 confdir = os.environ['HOME'] + "/.local/share/gcwconnect/"
 netconfdir = confdir+"networks/"
 sysconfdir = "/usr/local/etc/network/"
+datadir = "/usr/share/gcwconnect/"
+if not os.path.exists(datadir):
+	datadir = "data/"
 
 surface = pygame.display.set_mode((320,240))
 keyboard = ''
@@ -78,6 +81,9 @@ if not pygame.font.get_init():
 surface.fill(colors["darkbg"])
 pygame.mouse.set_visible(False)
 pygame.key.set_repeat(199,69) #(delay,interval)
+
+font_path = os.path.join(datadir, 'Inconsolata.otf')
+font12 = pygame.font.Font(font_path, 12)
 
 ## File management
 def createpaths(): # Create paths, if necessary
@@ -385,8 +391,7 @@ def drawlogo():
 	# wireless = "Wireless"
 	# configuration = "configuration"
 
-	gcw_font = pygame.font.Font('./data/gcwzero.ttf', 24)
-
+	gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 24)
 	text1 = gcw_font.render(gcw, True, colors['white'], colors['lightbg'])
 	text2 = gcw_font.render(zero, True, colors["activeselbg"], colors['lightbg'])
 
@@ -780,7 +785,6 @@ def drawEncryptionType():
 def displayencryptionhint():
 	global colors
 	global encryption
-	font = pygame.font.Font('./data/Inconsolata.otf', 12)
 
 	try:
 		if encryption:
@@ -799,7 +803,7 @@ def displayencryptionhint():
 			for enc in encryptiontypes:
 				x = (pos * 60) - 20
 				labelblock = pygame.draw.rect(surface, colors['darkbg'], (x, 111,25,14))
-				labeltext = font.render(enc.center(10, ' '), True, colors["white"], colors['darkbg'])
+				labeltext = font12.render(enc.center(10, ' '), True, colors["white"], colors['darkbg'])
 				surface.blit(labeltext, labelblock)
 				pos += 1
 			pygame.display.update()
@@ -943,7 +947,6 @@ def drawkeyboard(board):
 	return keyboard
 
 def getinput(board, kind, ssid=""):
-	font = pygame.font.Font('./data/Inconsolata.otf', 12)
 	selectkey(board, kind)
 	if kind == "key":
 		displayencryptionhint()
@@ -952,7 +955,7 @@ def getinput(board, kind, ssid=""):
 			x = (pos * 60) - 20
 			if enc == encryption:
 				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
-				labeltext = font.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
+				labeltext = font12.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
 				surface.blit(labeltext, labelblock)
 			else:
 				pos += 1
@@ -973,7 +976,6 @@ def softkeyinput(keyboard, kind, ssid):
 	global passphrase
 	global encryption
 	global securitykey
-	font = pygame.font.Font('./data/Inconsolata.otf', 12)
 	def update():
 		displayinputlabel("key")
 		displayencryptionhint()
@@ -982,7 +984,7 @@ def softkeyinput(keyboard, kind, ssid):
 			x = (pos * 60) - 20
 			if enc == encryption:
 				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
-				labeltext = font.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
+				labeltext = font12.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
 				surface.blit(labeltext, labelblock)
 			else:
 				pos += 1
@@ -1049,17 +1051,15 @@ def softkeyinput(keyboard, kind, ssid):
 def displayinputlabel(kind, size=24): # Display passphrase on screen
 	global colors
 	global encryption
-	font = pygame.font.Font('./data/Inconsolata.otf', 18)
 
 	def update():
-		font = pygame.font.Font('./data/Inconsolata.otf', 12)
 		displayencryptionhint()
 		pos = 1
 		for enc in encryptiontypes:
 			x = (pos * 60) - 20
 			if enc == encryption:
 				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
-				labeltext = font.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
+				labeltext = font12.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
 				surface.blit(labeltext, labelblock)
 			else:
 				pos += 1
@@ -1078,9 +1078,9 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 		# Draw SSID and encryption type labels
 		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,320,20))
 		if len(ssid) >= 13:
-			labeltext = font.render("Enter "+encryption+" for "+"%s..."%(ssid[:13]), True, colors['lightbg'], colors['white'])
+			labeltext = font12.render("Enter "+encryption+" for "+"%s..."%(ssid[:13]), True, colors['lightbg'], colors['white'])
 		else:
-			labeltext = font.render("Enter "+encryption+" key for "+ssid, True, colors['lightbg'], colors['white'])
+			labeltext = font12.render("Enter "+encryption+" key for "+ssid, True, colors['lightbg'], colors['white'])
 		label = labeltext.get_rect()
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
@@ -1100,7 +1100,6 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 def selectkey(keyboard, kind, direction=""):
 	global encryption
 	global colors
-	font = pygame.font.Font('./data/Inconsolata.otf', 12)
 	def getcurrentkey(keyboard, pos):
 		keys = getkeys(keyboard)
 		for item in keys.iteritems():
@@ -1211,7 +1210,6 @@ def selectkey(keyboard, kind, direction=""):
 
 class Menu:
 	global colors
-	font_size = 16
 	font = pygame.font.SysFont
 	dest_surface = pygame.Surface
 	canvas_color = colors["darkbg"]
@@ -1226,6 +1224,7 @@ class Menu:
 		self.menu_height = 0
 		self.selection_color = colors["activeselbg"]
 		self.text_color = colors["activetext"]
+		self.font = pygame.font.Font(font_path, 16)
 
 	def move_menu(self, top, left):
 		self.origin = (top, left)
@@ -1233,9 +1232,6 @@ class Menu:
 	def set_colors(self, text, selection, background):
 		self.text_color = text
 		self.selection_color = selection
-		
-	def set_font(self, font):
-		self.font = font
 
 	def set_elements(self, elements):
 		self.elements = elements
@@ -1321,7 +1317,6 @@ class NetworksMenu(Menu):
 	global colors
 	def set_elements(self, elements):
 		self.elements = elements
-		self.font = pygame.font.Font('./data/Inconsolata.otf', 16)
 
 	def get_item_width(self, element):
 		if len(str(element[0])) > 16:
@@ -1344,9 +1339,6 @@ class NetworksMenu(Menu):
 			the_ssid = "%s..."%(element[0][:14])
 		else:
 			the_ssid = element[0].ljust(17)
-
-		boldtext = pygame.font.Font('./data/Inconsolata.otf', self.font_size)
-		subtext = pygame.font.Font('./data/Inconsolata.otf', 12)
 
 		def qualityPercent(x):
 			percent = (float(x.split("/")[0]) / float(x.split("/")[1])) * 100
@@ -1384,8 +1376,11 @@ class NetworksMenu(Menu):
 			enc_type = "(Unknown)"
 
 
-		qual_img = pygame.image.load((os.path.join('data', signal_icon))).convert_alpha()
-		enc_img = pygame.image.load((os.path.join('data', enc_icon))).convert_alpha()
+		qual_img = pygame.image.load((os.path.join(datadir, signal_icon))).convert_alpha()
+		enc_img = pygame.image.load((os.path.join(datadir, enc_icon))).convert_alpha()
+
+		boldtext = pygame.font.Font(font_path, 16)
+		subtext = font12
 
 		ssid = boldtext.render(the_ssid, 1, self.text_color)
 		enc = subtext.render(enc_type, 1, colors["lightgrey"])
@@ -1463,7 +1458,6 @@ def to_menu(new_menu):
 
 wirelessmenu = None
 menu = Menu()
-menu.set_font(pygame.font.Font('./data/Inconsolata.otf', 16))
 menu.move_menu(8, 41)
 
 def mainmenu():
@@ -1486,11 +1480,10 @@ def mainmenu():
 		elems = ['Disconnect'] + elems
 
 	menu.init(elems, surface)
- 	menu.draw()
+	menu.draw()
 
 def apinfo():
 	global wlan
-	font = pygame.font.Font('./data/Inconsolata.otf', 18)
 
 	try:
 		ap = getcurrentssid(wlan).split("-")[1]
@@ -1498,29 +1491,31 @@ def apinfo():
 		mac = file.read().strip('\n').replace(":", "")
 		file.close()
 		if mac == ap:
+			font18 = pygame.font.Font(font_path, 18)
+			font64 = pygame.font.Font(font_path, 64)
 
 			ssidlabel = "SSID"
-			renderedssidlabel = pygame.font.Font('./data/Inconsolata.otf', 64).render(ssidlabel, True, colors["lightbg"], colors["darkbg"])
+			renderedssidlabel = font64.render(ssidlabel, True, colors["lightbg"], colors["darkbg"])
 			ssidlabelelement = renderedssidlabel.get_rect()
 			ssidlabelelement.right = 300
 			ssidlabelelement.top = 34
 			surface.blit(renderedssidlabel, ssidlabelelement)
 
 			ssid = getcurrentssid(wlan)
-			renderedssid = font.render(ssid, True, colors["white"], colors["darkbg"])
+			renderedssid = font18.render(ssid, True, colors["white"], colors["darkbg"])
 			ssidelement = renderedssid.get_rect()
 			ssidelement.right = 315
 			ssidelement.top = 96
 			surface.blit(renderedssid, ssidelement)
 
 			enclabel = "Key"
-			renderedenclabel = pygame.font.Font('./data/Inconsolata.otf', 64).render(enclabel, True, colors["lightbg"], colors["darkbg"])
+			renderedenclabel = font64.render(enclabel, True, colors["lightbg"], colors["darkbg"])
 			enclabelelement = renderedenclabel.get_rect()
 			enclabelelement.right = 300
 			enclabelelement.top = 114
 			surface.blit(renderedenclabel, enclabelelement)
 
-			renderedencp = font.render(mac, True, colors["white"], colors["darkbg"])
+			renderedencp = font18.render(mac, True, colors["white"], colors["darkbg"])
 			encpelement = renderedencp.get_rect()
 			encpelement.right = 315
 			encpelement.top = 180
@@ -1539,7 +1534,6 @@ def apinfo():
 def create_wireless_menu():
 	global wirelessmenu
 	wirelessmenu = NetworksMenu()
-	wirelessmenu.set_font(pygame.font.Font('./data/Inconsolata.otf', 14))
 	wirelessmenu.move_menu(150,40)
 
 def destroy_wireless_menu():
