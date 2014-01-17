@@ -1644,9 +1644,6 @@ if __name__ == "__main__":
 						active_menu = to_menu("main")
 						del uniq
 						redraw()
-					elif event.key == K_LALT:
-						pygame.display.quit()
-						sys.exit()
 				elif event.key == K_SPACE:
 					if active_menu == "saved":
 						if len(str(wirelessmenu.get_selected()[0])) > 16:

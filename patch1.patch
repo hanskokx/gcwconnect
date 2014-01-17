@@ -1,0 +1,107 @@
+commit 405499f8afe97686b0ad17731dca4ca06945867c
+Author: Paul Cercueil <paul@crapouillou.net>
+Date:   Thu Jan 16 23:04:01 2014 +0100
+
+    Close file descriptors when executing external executables
+
+diff --git a/build/wificonfig.py b/build/wificonfig.py
+index 34b46bd..25c2b1d 100755
+--- a/build/wificonfig.py
++++ b/build/wificonfig.py
+@@ -96,14 +96,11 @@ def createpaths(): # Create paths, if necessary
+ 
+ ## Interface management
+ def ifdown(iface):
+-	with open(os.devnull, "w") as fnull:
+-		SU.Popen(['ifdown', iface], stderr = fnull).wait()
+-		return SU.call(['ap', '--stop']) != 0
++	SU.Popen(['ifdown', iface], close_fds=True).wait()
++	SU.Popen(['ap', '--stop'], close_fds=True).wait()
+ 
+ def ifup(iface):
+-	with open(os.devnull, "w") as fnull:
+-		return SU.Popen(['ifup', iface], \
+-				stdout=fnull, stderr=fnull).wait() == 0
++	return SU.Popen(['ifup', iface], close_fds=True).wait() == 0
+ 
+ # Returns False if the interface was previously enabled
+ def enableiface(iface):
+@@ -115,25 +112,20 @@ def enableiface(iface):
+ 	drawinterfacestatus()
+ 	pygame.display.update()
+ 
+-	with open(os.devnull, "w") as fnull:
+-		SU.Popen(['rfkill', 'unblock', 'wlan'], \
+-				stderr=fnull, stdout=fnull).wait()
+-		while True:
+-			if SU.Popen(['ifconfig', iface, 'up'], \
+-					stderr=fnull, stdout=fnull).wait() == 0:
+-				break
+-			time.sleep(0.1);
++	SU.Popen(['rfkill', 'unblock', 'wlan'], close_fds=True).wait()
++	while True:
++		if SU.Popen(['ifconfig', iface, 'up'], close_fds=True).wait() == 0:
++			break
++		time.sleep(0.1);
+ 	return True
+ 
+ def disableiface(iface):
+-	with open(os.devnull, "w") as fnull:
+-		SU.Popen(['rfkill', 'block', 'wlan'],
+-				stderr=fnull, stdout=fnull).wait()
++	SU.Popen(['rfkill', 'block', 'wlan'], close_fds=True).wait()
+ 
+ def getip(iface):
+ 	with open(os.devnull, "w") as fnull:
+ 		output = SU.Popen(['ifconfig', iface], \
+-				stderr=fnull, stdout=SU.PIPE).stdout.readlines()
++				stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+ 
+ 	for line in output:
+ 		if line.strip().startswith("inet addr"):
+@@ -147,7 +139,7 @@ def getcurrentssid(iface): # What network are we connected to?
+ 
+ 	with open(os.devnull, "w") as fnull:
+ 		output = SU.Popen(['iwconfig', iface], \
+-				stdout=SU.PIPE, stderr = fnull).stdout.readlines()
++				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
+ 	for line in output:
+ 		if line.strip().startswith(iface):
+ 			ssid = str.strip(line[line.find('ESSID')+len('ESSID:"'):line.find('Nickname:')+len('Nickname:')].rstrip(' Nickname:').rstrip('"'))
+@@ -186,7 +178,7 @@ def getnetworks(iface): # Run iwlist to get a list of networks in range
+ 
+ 	with open(os.devnull, "w") as fnull:
+ 		output = SU.Popen(['iwlist', iface, 'scan'] \
+-				, stdout=SU.PIPE, stderr=fnull).stdout.readlines()
++				, stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
+ 	for item in output:
+ 		if item.strip().startswith('Cell'):
+ 			# network is the current list corresponding to a MAC address {MAC:[]}
+@@ -542,15 +534,14 @@ def writeconfig(): # Write wireless configuration to disk
+ ## HostAP
+ def startap():
+ 	global wlan
+-	global colors
+ 	if checkinterfacestatus(wlan):
+ 		disconnect(wlan)
+ 
+ 	modal("Creating AP...")
+-	with open(os.devnull, "w") as fnull:
+-		SU.Popen(['ap', '--start']).wait()
+-
+-	modal('AP created!', timeout=True)
++	if SU.Popen(['ap', '--start'], close_fds=True).wait() == 0:
++		modal('AP created!', timeout=True)
++	else:
++		modal('Failed to create AP...', wait=True)
+ 	redraw()
+ 	return True
+ 
+@@ -1099,7 +1090,6 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
+ 
+ def selectkey(keyboard, kind, direction=""):
+ 	global encryption
+-	global colors
+ 	def getcurrentkey(keyboard, pos):
+ 		keys = getkeys(keyboard)
+ 		for item in keys.iteritems():
