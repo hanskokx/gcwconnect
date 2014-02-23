@@ -982,62 +982,61 @@ def softkeyinput(keyboard, kind, ssid):
 		pygame.display.update()
 
 	while True:
-		time.sleep(0.05)
-		for event in pygame.event.get():
+		event = pygame.event.wait()
 
-			if event.type == KEYDOWN:
-				if event.key == K_RETURN:		# finish input
-					selectkey(keyboard, kind, "enter")
-					redraw()
-					if ssid == '':
-						return False
-					writeconfig()
-					connect(wlan)
-					return True
-
-				if event.key == K_UP:		# Move cursor up
-					selectkey(keyboard, kind, "up")
-				if event.key == K_DOWN:		# Move cursor down
-					selectkey(keyboard, kind, "down")
-				if event.key == K_LEFT:		# Move cursor left
-					selectkey(keyboard, kind, "left")
-				if event.key == K_RIGHT:	# Move cursor right
-					selectkey(keyboard, kind, "right")
-				if event.key == K_LCTRL:	# A button
-					selectkey(keyboard, kind, "select")
-				if event.key == K_LALT:		# B button
-					if encryption != "WEP-40":
-						selectkey(keyboard, kind, "space")
-				if event.key == K_SPACE:	# Y button (swap keyboards)
-					keyboard = nextKeyboard(keyboard)
-					drawkeyboard(keyboard)
-					selectkey(keyboard, kind, "swap")
-				if event.key == K_LSHIFT:	# X button
-					selectkey(keyboard, kind, "delete")
-				if event.key == K_ESCAPE:	# Select key
-					passphrase = ''
-					try:
-						encryption
-					except NameError:
-						pass
-					else:
-						del encryption
-
-					try:
-						securitykey
-					except NameError:
-						pass
-					else:
-						del securitykey
-					redraw()
+		if event.type == KEYDOWN:
+			if event.key == K_RETURN:		# finish input
+				selectkey(keyboard, kind, "enter")
+				redraw()
+				if ssid == '':
 					return False
-				if kind == "key":
-					if event.key == K_TAB:			# L shoulder button
-						prevEncryption()
-						update()
-					if event.key == K_BACKSPACE:	# R shoulder button
-						nextEncryption()
-						update()
+				writeconfig()
+				connect(wlan)
+				return True
+
+			if event.key == K_UP:		# Move cursor up
+				selectkey(keyboard, kind, "up")
+			if event.key == K_DOWN:		# Move cursor down
+				selectkey(keyboard, kind, "down")
+			if event.key == K_LEFT:		# Move cursor left
+				selectkey(keyboard, kind, "left")
+			if event.key == K_RIGHT:	# Move cursor right
+				selectkey(keyboard, kind, "right")
+			if event.key == K_LCTRL:	# A button
+				selectkey(keyboard, kind, "select")
+			if event.key == K_LALT:		# B button
+				if encryption != "WEP-40":
+					selectkey(keyboard, kind, "space")
+			if event.key == K_SPACE:	# Y button (swap keyboards)
+				keyboard = nextKeyboard(keyboard)
+				drawkeyboard(keyboard)
+				selectkey(keyboard, kind, "swap")
+			if event.key == K_LSHIFT:	# X button
+				selectkey(keyboard, kind, "delete")
+			if event.key == K_ESCAPE:	# Select key
+				passphrase = ''
+				try:
+					encryption
+				except NameError:
+					pass
+				else:
+					del encryption
+
+				try:
+					securitykey
+				except NameError:
+					pass
+				else:
+					del securitykey
+				redraw()
+				return False
+			if kind == "key":
+				if event.key == K_TAB:			# L shoulder button
+					prevEncryption()
+					update()
+				if event.key == K_BACKSPACE:	# R shoulder button
+					nextEncryption()
+					update()
 
 def displayinputlabel(kind, size=24): # Display passphrase on screen
 	global colors
