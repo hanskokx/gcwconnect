@@ -52,7 +52,6 @@ maxrows = ''
 maxcolumns = ''
 passphrase = ''
 active_menu = ''
-keyboards = ["wep","qwertyNormal","qwertyShift"]
 encryptiontypes = ["WEP-40","WEP-128","WPA", "WPA2"]
 encryptionLabels = ('None', 'WEP', 'WPA', 'WPA2')
 colors = {
@@ -541,30 +540,31 @@ def startap():
 
 ## Input methods
 
-def getkeys(board):
-	if board == "qwertyNormal":
-		return (
-				('`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='),
-				('q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'),
-				('a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\''),
-				('z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'),
-				)
-	elif board == "qwertyShift":
-		return (
-				('~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+'),
-				('Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|'),
-				('A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'),
-				('Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'),
-				)
-	elif board == "wep" or board == "WEP-40" or board == "WEP-128":
-		return (
-				('1', '2', '3', '4'),
-				('5', '6', '7', '8'),
-				('9', '0', 'A', 'B'),
-				('C', 'D', 'E', 'F'),
-				)
-	else:
-		assert False, board
+keyLayouts = {
+	'qwertyNormal': (
+			('`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='),
+			('q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'),
+			('a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\''),
+			('z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'),
+			),
+	'qwertyShift': (
+			('~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+'),
+			('Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|'),
+			('A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'),
+			('Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'),
+			),
+	'wep': (
+			('1', '2', '3', '4'),
+			('5', '6', '7', '8'),
+			('9', '0', 'A', 'B'),
+			('C', 'D', 'E', 'F'),
+			),
+	}
+keyboardCycleOrder = ('wep', 'qwertyNormal', 'qwertyShift')
+def nextKeyboard(board):
+	return keyboardCycleOrder[
+			(keyboardCycleOrder.index(board) + 1) % len(keyboardCycleOrder)
+			]
 
 class key:
 	global colors
@@ -774,7 +774,7 @@ def drawkeyboard(board):
 
 	# Draw the keys
 	z = key()
-	for row, rowData in enumerate(getkeys(board)):
+	for row, rowData in enumerate(keyLayouts[board]):
 		for column, label in enumerate(rowData):
 			z.init(label, row, column)
 
@@ -796,16 +796,6 @@ def getinput(board, kind, ssid=""):
 				pos += 1
 		pygame.display.update()
 	return softkeyinput(board, kind, ssid)
-
-def nextKeyboard(board):
-	for i, s in enumerate(keyboards):
-		if board in s:
-			x = keyboards.index(s)+1
-			try:
-				s = keyboards[x]
-			except IndexError:
-				s = keyboards[0]
-			return s
 
 def softkeyinput(keyboard, kind, ssid):
 	global passphrase
@@ -973,7 +963,7 @@ def selectkey(keyboard, kind, direction=""):
 	def clampColumn():
 		selected_key[0] = min(selected_key[0], len(layout[selected_key[1]]) - 1)
 
-	layout = getkeys(keyboard)
+	layout = keyLayouts[keyboard]
 	if direction == "swap":
 		# Clamp row first since each row can have a different number of columns.
 		clampRow()
