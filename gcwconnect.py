@@ -54,21 +54,21 @@ passphrase = ''
 active_menu = ''
 keyboards = ["wep","qwertyNormal","qwertyShift"]
 encryptiontypes = ["WEP-40","WEP-128","WPA", "WPA2"]
-colors = { \
-		"darkbg": (41, 41, 41), \
-		"lightbg": (84, 84, 84), \
-		"activeselbg": (153, 0, 0), \
-		"inactiveselbg": (84, 84, 84), \
-		"activetext": (255, 255, 255), \
-		"inactivetext": (128, 128, 128), \
-		"lightgrey": (200,200,200), \
-		"color": (255,255,255), \
-		"yellow": (128, 128, 0), \
-		"blue": (0, 0, 128), \
-		"red": (128, 0, 0), \
-		"green": (0, 128, 0), \
-		"black": (0, 0, 0), \
-		"white": (255, 255, 255), \
+colors = {
+		"darkbg": (41, 41, 41),
+		"lightbg": (84, 84, 84),
+		"activeselbg": (153, 0, 0),
+		"inactiveselbg": (84, 84, 84),
+		"activetext": (255, 255, 255),
+		"inactivetext": (128, 128, 128),
+		"lightgrey": (200,200,200),
+		"color": (255,255,255),
+		"yellow": (128, 128, 0),
+		"blue": (0, 0, 128),
+		"red": (128, 0, 0),
+		"green": (0, 128, 0),
+		"black": (0, 0, 0),
+		"white": (255, 255, 255),
 		}
 
 
@@ -124,13 +124,13 @@ def disableiface(iface):
 
 def getip(iface):
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['ifconfig', iface], \
+		output = SU.Popen(['ifconfig', iface],
 				stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 
 	for line in output:
 		if line.strip().startswith("inet addr"):
-			return str.strip( \
-					line[line.find('inet addr')+len('inet addr"') :\
+			return str.strip(
+					line[line.find('inet addr')+len('inet addr"') :
 					line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
 
 def getcurrentssid(iface): # What network are we connected to?
@@ -138,7 +138,7 @@ def getcurrentssid(iface): # What network are we connected to?
 		return None
 
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['iwconfig', iface], \
+		output = SU.Popen(['iwconfig', iface],
 				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
 	for line in output:
 		if line.strip().startswith(iface):
@@ -150,7 +150,7 @@ def checkinterfacestatus(iface):
 
 def connect(iface): # Connect to a network
 	ssidconfig = re.escape(ssid)
-	shutil.copy2(netconfdir+ssidconfig+".conf", \
+	shutil.copy2(netconfdir+ssidconfig+".conf",
 			sysconfdir+"config-"+iface+".conf")
 
 	if checkinterfacestatus(iface):
@@ -177,8 +177,8 @@ def getnetworks(iface): # Run iwlist to get a list of networks in range
 	modal("Scanning...")
 
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['iwlist', iface, 'scan'] \
-				, stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
+		output = SU.Popen(['iwlist', iface, 'scan'],
+				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
 	for item in output:
 		if item.strip().startswith('Cell'):
 			# network is the current list corresponding to a MAC address {MAC:[]}
@@ -256,7 +256,7 @@ def getsavednets():
 		with open(conf) as f:
 			for line in f:
 				if "WLAN_PASSPHRASE" in line:
-					key = str.strip(line[line.find('WLAN_PASSPHRASE="')\
+					key = str.strip(line[line.find('WLAN_PASSPHRASE="')
 						+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 				else:
 					key = ''
@@ -321,11 +321,7 @@ class hint:
 			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, colors["white"], self.bg)
 			surface.blit(labeltext, labelblock)
 
-		elif self.button == "a" \
-			or self.button == "b" \
-			or self.button == "x" \
-			or self.button == "y":
-			
+		elif self.button in ('a', 'b', 'x', 'y'):
 			if self.button == "a":
 				color = colors["green"]
 			elif self.button == "b":
@@ -345,10 +341,7 @@ class hint:
 			buttontext.center = button.center
 			surface.blit(text, buttontext)
 
-		elif self.button == "left" \
-			or self.button == "right" \
-			or self.button == "up" \
-			or self.button == "down":
+		elif self.button in ('left', 'right', 'up', 'down'):
 
 			# Vertical
 			pygame.draw.rect(surface, colors["black"], (self.x+5, self.y-1, 4, 12))
@@ -554,10 +547,12 @@ def getkeys(board):
 		global maxcolumns
 		maxrows = 4
 		maxcolumns = 13
-		keys = 	'`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',\
-				'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\',\
-				'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '', '',\
+		keys = (
+				'`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',
+				'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\',
+				'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '', '',
 				'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '', '', ''
+				)
 		row = 0
 		column = 0
 		keyid = 0
@@ -586,10 +581,12 @@ def getkeys(board):
 		global maxcolumns
 		maxrows = 4
 		maxcolumns = 13
-		keys = 	'~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',\
-				'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|',\
-				'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '', '',\
+		keys = (
+				'~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',
+				'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|',
+				'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '', '',
 				'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '', '', ''
+				)
 		row = 0
 		column = 0
 		keyid = 0
@@ -618,10 +615,12 @@ def getkeys(board):
 		global maxcolumns
 		maxrows = 4
 		maxcolumns = 4
-		keys = 	'1', '2', '3', '4', \
-				'5', '6', '7', '8', \
-				'9', '0', 'A', 'B', \
+		keys = (
+				'1', '2', '3', '4',
+				'5', '6', '7', '8',
+				'9', '0', 'A', 'B',
 				'C', 'D', 'E', 'F'
+				)
 		row = 0
 		column = 0
 		keyid = 0
@@ -817,14 +816,6 @@ def chooseencryption(keyboard, direction):
 
 		x = 32 + (pos[0] * 64)
 		y = 136
-
-		list = [ \
-					(x, y), \
-					(x + 16, y), \
-					(x + 16, y + 16), \
-					(x, y + 16), \
-					(x, y) \
-				]
 
 		pygame.draw.circle(surface, colors['activeselbg'], (x, y), 6)
 		pygame.display.update()
@@ -1113,14 +1104,14 @@ def selectkey(keyboard, kind, direction=""):
 		else:
 			y = top_margin + (16 * pos[1]) + (pos[1] * 4)
 
-		list = [ \
-					(x, y), \
-					(x + 16, y), \
-					(x + 16, y + 16), \
-					(x, y + 16), \
-					(x, y) \
+		pointlist = [
+				(x, y),
+				(x + 16, y),
+				(x + 16, y + 16),
+				(x, y + 16),
+				(x, y)
 				]
-		lines = pygame.draw.lines(surface, (255,255,255), True, list, 1)
+		lines = pygame.draw.lines(surface, (255,255,255), True, pointlist, 1)
 		pygame.display.update()
 
 	def fix():
@@ -1562,20 +1553,20 @@ def create_saved_networks_menu():
 						with open(conf) as f:
 							for line in f:
 								if "WLAN_ENCRYPTION" in line:
-									detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')\
+									detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
 										+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 								if "WLAN_PASSPHRASE" in line:
-									uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')\
+									uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
 										+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 					except:
 						conf = netconfdir+ssid+".conf"
 						with open(conf) as f:
 							for line in f:
 								if "WLAN_ENCRYPTION" in line:
-									detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')\
+									detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
 										+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 								if "WLAN_PASSPHRASE" in line:
-									uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')\
+									uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
 										+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 									## TODO: fix for 128-bit wep
 					menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption'].upper()]
