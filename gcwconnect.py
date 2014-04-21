@@ -114,7 +114,7 @@ def enableiface(iface):
 
 	SU.Popen(['rfkill', 'unblock', 'wlan'], close_fds=True).wait()
 	while True:
-		if SU.Popen(['ifconfig', iface, 'up'], close_fds=True).wait() == 0:
+		if SU.Popen(['/sbin/ifconfig', iface, 'up'], close_fds=True).wait() == 0:
 			break
 		time.sleep(0.1);
 	return True
@@ -124,7 +124,7 @@ def disableiface(iface):
 
 def getip(iface):
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['ifconfig', iface],
+		output = SU.Popen(['/sbin/ifconfig', iface],
 				stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 
 	for line in output:
