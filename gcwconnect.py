@@ -300,16 +300,10 @@ class hint:
 			surface.blit(text, buttontext)
 
 		if self.button == "select" or self.button == "start":
-			if self.button == "select":
-				pygame.draw.rect(surface, colors["black"], (self.x, self.y, 34, 5))
-				pygame.draw.circle(surface, colors["black"], (self.x+5, self.y+5), 5)
-				pygame.draw.circle(surface, colors["black"], (self.x+29, self.y+5), 5)
-
-
-			elif self.button == "start":
-				pygame.draw.rect(surface, colors["black"], (self.x, self.y+5, 34, 5))
-				pygame.draw.circle(surface, colors["black"], (self.x+5, self.y+5), 5)
-				pygame.draw.circle(surface, colors["black"], (self.x+29, self.y+5), 5)
+			dy = (5 if self.button == "select" else 0)
+			pygame.draw.rect(surface, colors["black"], (self.x, self.y+dy, 34, 5))
+			pygame.draw.circle(surface, colors["black"], (self.x+5, self.y+5), 5)
+			pygame.draw.circle(surface, colors["black"], (self.x+29, self.y+5), 5)
 			
 			button = pygame.draw.rect(surface, colors["black"], (self.x+5, self.y, 25, 10))
 			text = pygame.font.SysFont(None, 10).render(self.button.upper(), True, colors["white"], colors["black"])
