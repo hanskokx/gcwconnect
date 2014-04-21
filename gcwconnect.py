@@ -539,147 +539,48 @@ def startap():
 	return True
 
 ## Input methods
+
+def createKeyDictionary(layout):
+	global maxrows
+	global maxcolumns
+	maxrows = len(layout)
+	maxcolumns = max(len(rowData) for rowData in layout)
+	keyboard = {}
+	keyid = 0
+	for row, rowData in enumerate(layout):
+		for column, k in enumerate(rowData):
+			keyboard[keyid] = dict(key = k, column = column, row = row)
+			keyid += 1
+	return keyboard
+
 def getkeys(board):
-	def qwertyNormal():
-		keyarray = {}
-		keyboard = {}
-		global maxrows
-		global maxcolumns
-		maxrows = 4
-		maxcolumns = 13
-		keys = (
-				'`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',
-				'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\',
-				'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '', '',
-				'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '', '', ''
-				)
-		row = 0
-		column = 0
-		keyid = 0
-		for k in keys:
-			keyarray = keyboard.setdefault(keyid, {})
-			keyarray["key"] = k
-
-			if column <= 12:
-				keyarray["column"] = column
-				keyarray["row"] = row
-				column += 1
-			else:
-				row += 1
-				column = 0
-				keyarray["column"] = column
-				keyarray["row"] = row
-				column += 1
-			
-			keyid += 1
-		return keyboard
-
-	def qwertyShift():
-		keyarray = {}
-		keyboard = {}
-		global maxrows
-		global maxcolumns
-		maxrows = 4
-		maxcolumns = 13
-		keys = (
-				'~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',
-				'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|',
-				'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '', '',
-				'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '', '', ''
-				)
-		row = 0
-		column = 0
-		keyid = 0
-		for k in keys:
-			keyarray = keyboard.setdefault(keyid, {})
-			keyarray["key"] = k
-
-			if column <= 12:
-				keyarray["column"] = column
-				keyarray["row"] = row
-				column += 1
-			else:
-				row += 1
-				column = 0
-				keyarray["column"] = column
-				keyarray["row"] = row
-				column += 1
-			
-			keyid += 1
-		return keyboard
-
-	def wep():
-		keyarray = {}
-		keyboard = {}
-		global maxrows
-		global maxcolumns
-		maxrows = 4
-		maxcolumns = 4
-		keys = (
-				'1', '2', '3', '4',
-				'5', '6', '7', '8',
-				'9', '0', 'A', 'B',
-				'C', 'D', 'E', 'F'
-				)
-		row = 0
-		column = 0
-		keyid = 0
-		for k in keys:
-			keyarray = keyboard.setdefault(keyid, {})
-			keyarray["key"] = k
-
-			if column <= 3:
-				keyarray["column"] = column
-				keyarray["row"] = row
-				column += 1
-			else:
-				row += 1
-				column = 0
-				keyarray["column"] = column
-				keyarray["row"] = row
-				column += 1
-			
-			keyid += 1
-		return keyboard
-
-	def encryption():
-		keyarray = {}
-		keyboard = {}
-		global maxrows
-		global maxcolumns
-		maxrows = 1
-		maxcolumns = 4
-		keys = 	'None', 'WEP', 'WPA', 'WPA2'
-		row = 0
-		column = 0
-		keyid = 0
-		for k in keys:
-			keyarray = keyboard.setdefault(keyid, {})
-			keyarray["key"] = k
-
-			if column <= 4:
-				keyarray["column"] = column
-				keyarray["row"] = row
-				column += 1
-			else:
-				row += 1
-				column = 0
-				keyarray["column"] = column
-				keyarray["row"] = row
-				column += 1
-			
-			keyid += 1
-		return keyboard
-
 	if board == "qwertyNormal":
-		k = qwertyNormal()
+		return createKeyDictionary((
+				('`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='),
+				('q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'),
+				('a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\''),
+				('z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'),
+				))
 	elif board == "qwertyShift":
-		k = qwertyShift()
+		return createKeyDictionary((
+				('~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+'),
+				('Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|'),
+				('A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'),
+				('Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'),
+				))
 	elif board == "wep" or board == "WEP-40" or board == "WEP-128":
-		k = wep()
+		return createKeyDictionary((
+				('1', '2', '3', '4'),
+				('5', '6', '7', '8'),
+				('9', '0', 'A', 'B'),
+				('C', 'D', 'E', 'F'),
+				))
 	elif board == "encryption":
-		k = encryption()
-	return k
+		return createKeyDictionary((
+				('None', 'WEP', 'WPA', 'WPA2'),
+				))
+	else:
+		assert False, board
 
 class key:
 	global colors
