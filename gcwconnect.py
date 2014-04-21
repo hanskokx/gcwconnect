@@ -54,6 +54,7 @@ passphrase = ''
 active_menu = ''
 keyboards = ["wep","qwertyNormal","qwertyShift"]
 encryptiontypes = ["WEP-40","WEP-128","WPA", "WPA2"]
+encryptionLabels = ('None', 'WEP', 'WPA', 'WPA2')
 colors = {
 		"darkbg": (41, 41, 41),
 		"lightbg": (84, 84, 84),
@@ -575,10 +576,6 @@ def getkeys(board):
 				('9', '0', 'A', 'B'),
 				('C', 'D', 'E', 'F'),
 				))
-	elif board == "encryption":
-		return createKeyDictionary((
-				('None', 'WEP', 'WPA', 'WPA2'),
-				))
 	else:
 		assert False, board
 
@@ -664,12 +661,9 @@ def drawEncryptionType():
 	hint("a", "Enter", 285, 227, colors['lightbg'])
 
 	# Draw the keys
-	k = getkeys("encryption")
 	z = radio()
-
-	for x, y in k.iteritems():
-		if y['key']:
-			z.init(y['key'],y['row'],y['column'])
+	for i, label in enumerate(encryptionLabels):
+		z.init(label, 0, i)
 
 	pygame.display.update()
 
@@ -701,56 +695,30 @@ def displayencryptionhint():
 	except NameError:
 		pass
 
-def chooseencryption(keyboard, direction):
-	global colors
-	def getcurrentkey(keyboard, pos):
-		keys = getkeys(keyboard)
-		for x in keys.iteritems():
-			for item in x:
-				if x[1]['column'] == pos[0]:
-					currentkey = x[1]['key']
-		return currentkey
-
-	def highlightradio(keyboard, pos='[0,0]'):
-		drawEncryptionType()
-		pygame.display.update()
-
-		x = 32 + (pos[0] * 64)
-		y = 136
-
-		pygame.draw.circle(surface, colors['activeselbg'], (x, y), 6)
-		pygame.display.update()
-
-	global maxcolumns
+def chooseencryption(direction):
 	global selected_key
+
 	encryption = ''
 
 	if direction == "left":
-		if selected_key[0] <= 0:
-			selected_key[0] = 0
-		elif not getcurrentkey(keyboard, (selected_key[0] - 1, selected_key[1])):
-			selected_key[0] = selected_key[0]
-		else:
-			selected_key[0] = selected_key[0] - 1
+		selected_key[0] = (selected_key[0] - 1) % len(encryptionLabels)
 
 	elif direction == "right":
-		if selected_key[0] >= maxcolumns - 1:
-			selected_key[0] = maxcolumns - 1
-		elif not getcurrentkey(keyboard, (selected_key[0] + 1, selected_key[1])):
-			selected_key[0] = selected_key[0]
-		else:
-			selected_key[0] = selected_key[0] + 1
+		selected_key[0] = (selected_key[0] + 1) % len(encryptionLabels)
 
 	elif direction == "select":
-		encryption = getcurrentkey(keyboard, selected_key)
-	
+		encryption = encryptionLabels[selected_key[0]]
+		if encryption == "WEP":
+			encryption = "WEP-40"
+
 	elif direction == "init":
 		selected_key = [0,0]
-		highlightradio(keyboard, selected_key)
 
-	highlightradio(keyboard, selected_key)
-	if encryption == "WEP":
-		encryption = "WEP-40"
+	drawEncryptionType()
+	pos = (32 + selected_key[0] * 64, 136)
+	pygame.draw.circle(surface, colors['activeselbg'], pos, 6)
+	pygame.display.update()
+
 	return encryption
 
 def prevEncryption():
@@ -782,16 +750,16 @@ def nextEncryption():
 				return
 
 def getEncryptionType():
-	chooseencryption("encryption", "init")
+	chooseencryption("init")
 	while True:
 		for event in pygame.event.get():
 			if event.type == KEYDOWN:
 				if event.key == K_LEFT:		# Move cursor left
-					chooseencryption("encryption", "left")
+					chooseencryption("left")
 				if event.key == K_RIGHT:	# Move cursor right
-					chooseencryption("encryption", "right")
+					chooseencryption("right")
 				if event.key == K_LCTRL:	# A button
-					return chooseencryption("encryption", "select")
+					return chooseencryption("select")
 				if event.key == K_ESCAPE:	# Select key
 					return 'cancel'
 
