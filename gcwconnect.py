@@ -541,41 +541,28 @@ def startap():
 
 ## Input methods
 
-def createKeyDictionary(layout):
-	global maxrows
-	global maxcolumns
-	maxrows = len(layout)
-	maxcolumns = max(len(rowData) for rowData in layout)
-	keyboard = {}
-	keyid = 0
-	for row, rowData in enumerate(layout):
-		for column, k in enumerate(rowData):
-			keyboard[keyid] = dict(key = k, column = column, row = row)
-			keyid += 1
-	return keyboard
-
 def getkeys(board):
 	if board == "qwertyNormal":
-		return createKeyDictionary((
+		return (
 				('`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='),
 				('q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'),
 				('a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\''),
 				('z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'),
-				))
+				)
 	elif board == "qwertyShift":
-		return createKeyDictionary((
+		return (
 				('~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+'),
 				('Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|'),
 				('A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'),
 				('Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'),
-				))
+				)
 	elif board == "wep" or board == "WEP-40" or board == "WEP-128":
-		return createKeyDictionary((
+		return (
 				('1', '2', '3', '4'),
 				('5', '6', '7', '8'),
 				('9', '0', 'A', 'B'),
 				('C', 'D', 'E', 'F'),
-				))
+				)
 	else:
 		assert False, board
 
@@ -786,13 +773,10 @@ def drawkeyboard(board):
 	hint("a", "Enter", 285, 227, colors['lightbg'])
 
 	# Draw the keys
-
-	k = getkeys(board)
 	z = key()
-
-	for x, y in k.iteritems():
-		if y['key']:
-			z.init(y['key'],y['row'],y['column'])
+	for row, rowData in enumerate(getkeys(board)):
+		for column, label in enumerate(rowData):
+			z.init(label, row, column)
 
 	pygame.display.update()
 	return keyboard
@@ -948,13 +932,6 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 	pygame.display.update()
 
 def selectkey(keyboard, kind, direction=""):
-	global encryption
-	def getcurrentkey(keyboard, pos):
-		keys = getkeys(keyboard)
-		for item in keys.iteritems():
-			if item[1]['row'] == pos[1] and item[1]['column'] == pos[0]:
-				currentkey = item[1]['key']
-		return currentkey
 	def highlightkey(keyboard, pos='[0,0]'):
 		drawkeyboard(keyboard)
 		pygame.display.update()
@@ -983,16 +960,6 @@ def selectkey(keyboard, kind, direction=""):
 		lines = pygame.draw.lines(surface, (255,255,255), True, pointlist, 1)
 		pygame.display.update()
 
-	def fix():
-		while True:
-			if selected_key[0] >= maxcolumns - 1:
-				selected_key[0] = maxcolumns - 1
-				return True
-			elif selected_key[1] >= maxrows - 1:
-				selected_key[1] = maxrows - 1
-				return True
-			else:
-				return False
 	global maxrows
 	global maxcolumns
 	global selected_key
@@ -1000,61 +967,53 @@ def selectkey(keyboard, kind, direction=""):
 
 	if not selected_key:
 		selected_key = [0,0]
-		highlightkey(keyboard, selected_key)
 
+	def clampRow():
+		selected_key[1] = min(selected_key[1], len(layout) - 1)
+	def clampColumn():
+		selected_key[0] = min(selected_key[0], len(layout[selected_key[1]]) - 1)
+
+	layout = getkeys(keyboard)
 	if direction == "swap":
-		fix()
-		highlightkey(keyboard, selected_key)
-	else:
-		if direction == "up":
-			if selected_key[1] <= 0:
-				selected_key[1] = 0
-			else:
-				selected_key[1] -= 1
-		elif direction == "down":
-			if selected_key[1] >= maxrows - 1:
-				selected_key[1] = maxrows - 1
-			elif not getcurrentkey(keyboard, (selected_key[0], selected_key[1] + 1)):
-				selected_key[1] = selected_key[1]
-			else:
-				selected_key[1] = selected_key[1] + 1
-		elif direction == "left":
-			if selected_key[0] <= 0:
-				selected_key[0] = 0
-			else:
-				selected_key[0] = selected_key[0] - 1
-		elif direction == "right":
-			if selected_key[0] >= maxcolumns - 1:
-				selected_key[0] = maxcolumns - 1
-			elif not getcurrentkey(keyboard, (selected_key[0] + 1, selected_key[1])):
-				selected_key[0] = selected_key[0]
-			else:
-				selected_key[0] = selected_key[0] + 1
-		elif direction == "select":
-			passphrase += getcurrentkey(keyboard, selected_key)
+		# Clamp row first since each row can have a different number of columns.
+		clampRow()
+		clampColumn()
+	elif direction == "up":
+		selected_key[1] = (selected_key[1] - 1) % len(layout)
+		clampColumn()
+	elif direction == "down":
+		selected_key[1] = (selected_key[1] + 1) % len(layout)
+		clampColumn()
+	elif direction == "left":
+		selected_key[0] = (selected_key[0] - 1) % len(layout[selected_key[1]])
+	elif direction == "right":
+		selected_key[0] = (selected_key[0] + 1) % len(layout[selected_key[1]])
+	elif direction == "select":
+		passphrase += layout[selected_key[1]][selected_key[0]]
+		if len(passphrase) > 20:
+			drawlogobar()
+			drawlogo()
+			displayinputlabel(kind, 12)
+		else:
+			displayinputlabel(kind)
+	elif direction == "space":
+		passphrase += ' '
+		if len(passphrase) > 20:
+			drawlogobar()
+			drawlogo()
+			displayinputlabel(kind, 12)
+		else:
+			displayinputlabel(kind)
+	elif direction == "delete":
+		if len(passphrase) > 0:
+			passphrase = passphrase[:-1]
+			drawlogobar()
+			drawlogo()
 			if len(passphrase) > 20:
-				drawlogobar()
-				drawlogo()
 				displayinputlabel(kind, 12)
 			else:
 				displayinputlabel(kind)
-		elif direction == "space":
-			passphrase += ' '
-			if len(passphrase) > 20:
-				drawlogobar()
-				drawlogo()
-				displayinputlabel(kind, 12)
-			else:
-				displayinputlabel(kind)
-		elif direction == "delete":
-			if len(passphrase) > 0:
-				passphrase = passphrase[:-1]
-				drawlogobar()
-				drawlogo()
-				if len(passphrase) > 20:
-					displayinputlabel(kind, 12)
-				else:
-					displayinputlabel(kind)
+
 	highlightkey(keyboard, selected_key)
 
 class Menu:
