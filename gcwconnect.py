@@ -46,10 +46,7 @@ if not os.path.exists(datadir):
 	datadir = "data/"
 
 surface = pygame.display.set_mode((320,240))
-keyboard = ''
 selected_key = ''
-maxrows = ''
-maxcolumns = ''
 passphrase = ''
 active_menu = ''
 encryptiontypes = ["WEP-40","WEP-128","WPA", "WPA2"]
@@ -773,7 +770,6 @@ def drawkeyboard(board):
 			z.init(label, row, column)
 
 	pygame.display.update()
-	return keyboard
 
 def getinput(board, kind, ssid=""):
 	selectkey(board, kind)
@@ -944,8 +940,6 @@ def selectkey(keyboard, kind, direction=""):
 		lines = pygame.draw.lines(surface, (255,255,255), True, pointlist, 1)
 		pygame.display.update()
 
-	global maxrows
-	global maxcolumns
 	global selected_key
 	global passphrase
 
