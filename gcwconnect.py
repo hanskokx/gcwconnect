@@ -49,7 +49,7 @@ surface = pygame.display.set_mode((320,240))
 selected_key = ''
 passphrase = ''
 active_menu = ''
-encryptiontypes = ["WEP-40","WEP-128","WPA", "WPA2"]
+encryptiontypes = ("WEP-40","WEP-128","WPA", "WPA2")
 encryptionLabels = ('None', 'WEP', 'WPA', 'WPA2')
 colors = {
 		"darkbg": (41, 41, 41),
@@ -701,7 +701,6 @@ def chooseencryption(direction):
 
 def prevEncryption():
 	global encryption
-	global encryptiontypes
 
 	for i, s in enumerate(encryptiontypes):
 		if encryption in s:
@@ -715,7 +714,6 @@ def prevEncryption():
 
 def nextEncryption():
 	global encryption
-	global encryptiontypes
 
 	for i, s in enumerate(encryptiontypes):
 		if encryption in s:
