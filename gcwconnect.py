@@ -1077,7 +1077,7 @@ class Menu:
 		pygame.draw.rect(menu_surface,self.selection_color,selection_rect)
 
 		# Clear any error elements
-		error_rect = (left+width+10, 35, 192, 172)
+		error_rect = (left+width+8, 35, 192, 172)
 		pygame.draw.rect(surface,colors['darkbg'],error_rect)
 
 		# Elements
