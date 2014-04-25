@@ -1475,6 +1475,7 @@ if __name__ == "__main__":
 								getnetworks(wlan)
 								uniq = listuniqssids()
 							except:
+								uniq = {}
 								text = ":("
 								renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
 								textelement = renderedtext.get_rect()
