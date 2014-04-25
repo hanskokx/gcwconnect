@@ -54,11 +54,13 @@ encryptionLabels = ('None', 'WEP', 'WPA', 'WPA2')
 colors = {
 		"darkbg": (41, 41, 41),
 		"lightbg": (84, 84, 84),
-		"activeselbg": (153, 0, 0),
+		"activeselbg": (160, 24, 24),
 		"inactiveselbg": (84, 84, 84),
 		"activetext": (255, 255, 255),
 		"inactivetext": (128, 128, 128),
 		"lightgrey": (200,200,200),
+		'logogcw': (255, 255, 255),
+		'logoconnect': (216, 32, 32),
 		"color": (255,255,255),
 		"yellow": (128, 128, 0),
 		"blue": (0, 0, 128),
@@ -359,16 +361,16 @@ class LogoBar(object):
 	'''The logo area at the top of the screen.'''
 
 	def __init__(self):
-		gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 24)
-		self.text1 = gcw_font.render('GCW', True, colors['white'], colors['lightbg'])
-		self.text2 = gcw_font.render('CONNECT', True, colors["activeselbg"], colors['lightbg'])
+		gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
+		self.text1 = gcw_font.render('GCW', True, colors['logogcw'], colors['lightbg'])
+		self.text2 = gcw_font.render('CONNECT', True, colors['logoconnect'], colors['lightbg'])
 
 	def draw(self):
 		pygame.draw.rect(surface, colors['lightbg'], (0,0,320,32))
 		pygame.draw.line(surface, colors['white'], (0, 33), (320, 33))
 
 		rect1 = self.text1.get_rect()
-		rect1.topleft = (8, 6)
+		rect1.topleft = (8 + 5 + 1, 5)
 		surface.blit(self.text1, rect1)
 
 		rect2 = self.text2.get_rect()
