@@ -32,6 +32,7 @@ import subprocess as SU
 import sys, time, os, shutil, re
 import pygame
 from pygame.locals import *
+import pygame.gfxdraw
 from os import listdir
 
 # What is our wireless interface?
@@ -270,6 +271,15 @@ def getsavednets():
 	uniq = uniqssids
 	return uniq
 
+def aafilledcircle(surface, color, center, radius):
+	'''Helper function to draw anti-aliased circles using an interface similar
+	to pygame.draw.circle.
+	'''
+	x, y = center
+	pygame.gfxdraw.aacircle(surface, x, y, radius, color)
+	pygame.gfxdraw.filled_circle(surface, x, y, radius, color)
+	return Rect(x - radius, y - radius, radius * 2 + 1, radius * 2 + 1)
+
 ## Draw interface elements
 class hint:
 	global colors
@@ -284,30 +294,38 @@ class hint:
 	def drawhint(self):
 		if self.button == 'l' or self.button == 'r':
 			if self.button == 'l':
-				pygame.draw.circle(surface, colors["black"], (self.x, self.y+5), 5)
-				pygame.draw.rect(surface, colors["black"], (self.x-5, self.y+5, 10, 5))
+				aafilledcircle(surface, colors["black"], (self.x, self.y+5), 5)
+				pygame.draw.rect(surface, colors["black"], (self.x-5, self.y+6, 10, 5))
 
 
 			if self.button == 'r':
-				pygame.draw.circle(surface, colors["black"], (self.x+15, self.y+5), 5)
-				pygame.draw.rect(surface, colors["black"], (self.x+10, self.y+5, 10, 5))
+				aafilledcircle(surface, colors["black"], (self.x+15, self.y+5), 5)
+				pygame.draw.rect(surface, colors["black"], (self.x+11, self.y+6, 10, 5))
 
-			button = pygame.draw.rect(surface, colors["black"], (self.x, self.y, 15, 10))
+			button = pygame.draw.rect(surface, colors["black"], (self.x, self.y, 15, 11))
 			text = pygame.font.SysFont(None, 12).render(self.button.upper(), True, colors["white"], colors["black"])
 			buttontext = text.get_rect()
 			buttontext.center = button.center
 			surface.blit(text, buttontext)
 
 		if self.button == "select" or self.button == "start":
-			dy = (5 if self.button == "select" else 0)
-			pygame.draw.rect(surface, colors["black"], (self.x, self.y+dy, 34, 5))
-			pygame.draw.circle(surface, colors["black"], (self.x+5, self.y+5), 5)
-			pygame.draw.circle(surface, colors["black"], (self.x+29, self.y+5), 5)
-			
-			button = pygame.draw.rect(surface, colors["black"], (self.x+5, self.y, 25, 10))
-			text = pygame.font.SysFont(None, 10).render(self.button.upper(), True, colors["white"], colors["black"])
+			lbox = aafilledcircle(surface, colors["black"], (self.x+5, self.y+4), 5)
+			rbox = aafilledcircle(surface, colors["black"], (self.x+29, self.y+4), 5)
+			straightbox = lbox.union(rbox)
+			buttoncenter = straightbox.center
+			if self.button == 'select':
+				straightbox.y = lbox.center[1]
+			straightbox.height = (straightbox.height + 1) / 2
+			pygame.draw.rect(surface, colors["black"], straightbox)
+
+			roundedbox = Rect(lbox.midtop, (rbox.midtop[0] - lbox.midtop[0], lbox.height - straightbox.height))
+			if self.button == 'start':
+				roundedbox.bottomleft = lbox.midbottom
+			pygame.draw.rect(surface, colors["black"], roundedbox)
+			text = pygame.font.SysFont(None, 11).render(self.button.upper(), True, colors["white"], colors["black"])
 			buttontext = text.get_rect()
-			buttontext.center = button.center
+			buttontext.center = buttoncenter
+			buttontext.move_ip(0, 1)
 			surface.blit(text, buttontext)
 
 			labelblock = pygame.draw.rect(surface, self.bg, (self.x+40,self.y,25,14))
@@ -328,10 +346,11 @@ class hint:
 			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, colors["white"], self.bg)
 			surface.blit(labeltext, labelblock)
 
-			button = pygame.draw.circle(surface, color, (self.x,self.y+4), 5) # (x, y)
-			text = pygame.font.SysFont(None, 10).render(self.button.upper(), True, colors["white"], color)
+			button = aafilledcircle(surface, color, (self.x,self.y+4), 5) # (x, y)
+			text = pygame.font.SysFont(None, 11).render(self.button.upper(), True, colors["white"], color)
 			buttontext = text.get_rect()
 			buttontext.center = button.center
+			buttontext.move_ip(0, 1)
 			surface.blit(text, buttontext)
 
 		elif self.button in ('left', 'right', 'up', 'down'):
@@ -600,7 +619,8 @@ class radio:
 
 		if len(self.key) > 1:
 			key_width = 64
-		radiobutton = pygame.draw.circle(surface, colors['white'], (left, top), 8, 2)
+		radiobutton = aafilledcircle(surface, colors['white'], (left, top), 8)
+		aafilledcircle(surface, colors['darkbg'], (left, top), 6)
 		text = pygame.font.SysFont(None, 16).render(self.key, True, (255, 255, 255), colors['darkbg'])
 		label = text.get_rect()
 		label.left = radiobutton.right + 8
@@ -683,7 +703,7 @@ def chooseencryption(direction):
 
 	drawEncryptionType()
 	pos = (32 + selected_key[0] * 64, 136)
-	pygame.draw.circle(surface, colors['activeselbg'], pos, 6)
+	aafilledcircle(surface, colors['activeselbg'], pos, 6)
 	pygame.display.update()
 
 	return encryption
