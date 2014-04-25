@@ -355,37 +355,25 @@ class hint:
 			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, (255, 255, 255), self.bg)
 			surface.blit(labeltext, labelblock)
 
-def drawlogobar(): # Set up the menu bar
-	global colors
-	pygame.draw.rect(surface, colors['lightbg'], (0,0,320,32))
-	pygame.draw.line(surface, colors['white'], (0, 33), (320, 33))
+class LogoBar(object):
+	'''The logo area at the top of the screen.'''
 
-def drawlogo():
-	global colors
-	gcw = "GCW"
-	zero = "Connect"
-	# wireless = "Wireless"
-	# configuration = "configuration"
+	def __init__(self):
+		gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 24)
+		self.text1 = gcw_font.render('GCW', True, colors['white'], colors['lightbg'])
+		self.text2 = gcw_font.render('CONNECT', True, colors["activeselbg"], colors['lightbg'])
 
-	gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 24)
-	text1 = gcw_font.render(gcw, True, colors['white'], colors['lightbg'])
-	text2 = gcw_font.render(zero, True, colors["activeselbg"], colors['lightbg'])
+	def draw(self):
+		pygame.draw.rect(surface, colors['lightbg'], (0,0,320,32))
+		pygame.draw.line(surface, colors['white'], (0, 33), (320, 33))
 
-	logo_text = text1.get_rect()
-	logo_text.topleft = (8, 6)
-	surface.blit(text1, logo_text)
+		rect1 = self.text1.get_rect()
+		rect1.topleft = (8, 6)
+		surface.blit(self.text1, rect1)
 
-	logo_text = text2.get_rect()
-	logo_text.topleft = (98, 6)
-	surface.blit(text2, logo_text)
-
-	# logo_text = text3.get_rect()
-	# logo_text.topleft = (272, 5)
-	# surface.blit(text3, logo_text)
-
-	# logo_text = text4.get_rect()
-	# logo_text.topleft = (245, 18)
-	# surface.blit(text4, logo_text)
+		rect2 = self.text2.get_rect()
+		rect2.topleft = rect1.topright
+		surface.blit(self.text2, rect2)
 
 def drawstatusbar(): # Set up the status bar
 	global colors
@@ -418,8 +406,7 @@ def drawinterfacestatus(): # Interface status badge
 def redraw():
 	global colors
 	surface.fill(colors['darkbg'])
-	drawlogobar()
-	drawlogo()
+	logoBar.draw()
 	mainmenu()
 	if wirelessmenu is not None:
 		wirelessmenu.draw()
@@ -967,24 +954,21 @@ def selectkey(keyboard, kind, direction=""):
 	elif direction == "select":
 		passphrase += layout[selected_key[1]][selected_key[0]]
 		if len(passphrase) > 20:
-			drawlogobar()
-			drawlogo()
+			logoBar.draw()
 			displayinputlabel(kind, 12)
 		else:
 			displayinputlabel(kind)
 	elif direction == "space":
 		passphrase += ' '
 		if len(passphrase) > 20:
-			drawlogobar()
-			drawlogo()
+			logoBar.draw()
 			displayinputlabel(kind, 12)
 		else:
 			displayinputlabel(kind)
 	elif direction == "delete":
 		if len(passphrase) > 0:
 			passphrase = passphrase[:-1]
-			drawlogobar()
-			drawlogo()
+			logoBar.draw()
 			if len(passphrase) > 20:
 				displayinputlabel(kind, 12)
 			else:
@@ -1388,7 +1372,9 @@ if __name__ == "__main__":
 		createpaths()
 	except:
 		pass ## Can't create directories. Great for debugging on a pc.
-	
+
+	logoBar = LogoBar()
+
 	redraw()
 	while True:
 		time.sleep(0.01)
