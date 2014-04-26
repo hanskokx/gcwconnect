@@ -1040,12 +1040,7 @@ class Menu:
 		if len(self.elements) == 0:
 			return
 
-		if move != 0:
-			self.selected_item += move
-			if self.selected_item < 0:
-				self.selected_item = 0
-			elif self.selected_item >= len(self.elements):
-				self.selected_item = len(self.elements) - 1
+		self.selected_item = (self.selected_item  + move) % len(self.elements)
 
 		# Which items are to be shown?
 		if self.selected_item <= 2: # We're at the top
