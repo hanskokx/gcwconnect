@@ -150,7 +150,9 @@ def checkinterfacestatus(iface):
 
 def connect(iface): # Connect to a network
 	ssidconfig = re.escape(ssid)
-	shutil.copy2(netconfdir+ssidconfig+".conf",
+	saved_file = netconfdir + ssidconfig + ".conf"
+	if os.path.exists(saved_file):
+		shutil.copy2(saved_file,
 			sysconfdir+"config-"+iface+".conf")
 
 	if checkinterfacestatus(iface):
@@ -1583,7 +1585,6 @@ if __name__ == "__main__":
 									conf = netconfdir+ssidconfig+".conf"
 									encryption = "WPA2"
 									passphrase = ssid.split("-")[1]
-									writeconfig()
 									connect(wlan)
 								else:
 									ssid = detail['Network']['ESSID']
