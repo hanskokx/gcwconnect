@@ -3,15 +3,15 @@
 #	wificonfig.py
 #
 #	Requires: pygame
-#			
+#
 #	Copyright (c) 2013 Hans Kokx
-#	
+#
 #	Licensed under the GNU General Public License, Version 3.0 (the "License");
 #	you may not use this file except in compliance with the License.
 #	You may obtain a copy of the License at
-#	
+#
 #	http://www.gnu.org/copyleft/gpl.html
-#	
+#
 #	Unless required by applicable law or agreed to in writing, software
 #	distributed under the License is distributed on an "AS IS" BASIS,
 #	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -152,8 +152,7 @@ def connect(iface): # Connect to a network
 	ssidconfig = re.escape(ssid)
 	saved_file = netconfdir + ssidconfig + ".conf"
 	if os.path.exists(saved_file):
-		shutil.copy2(saved_file,
-			sysconfdir+"config-"+iface+".conf")
+		shutil.copy2(saved_file, sysconfdir+"config-"+iface+".conf")
 
 	if checkinterfacestatus(iface):
 		disconnect(iface)
@@ -207,12 +206,12 @@ def listuniqssids():
 	uniqssids = {}
 
 	for network, detail in networks.iteritems():
-			if detail['ESSID'] not in uniqssids and detail['ESSID']:
-				uniqssid = uniqssids.setdefault(detail['ESSID'], {})
-				uniqssid["Network"] = detail
-				uniqssid["Network"]["menu"] = menuposition
-				uniqssid["Network"]["Encryption"] = detail['Encryption']
-				menuposition += 1
+		if detail['ESSID'] not in uniqssids and detail['ESSID']:
+			uniqssid = uniqssids.setdefault(detail['ESSID'], {})
+			uniqssid["Network"] = detail
+			uniqssid["Network"]["menu"] = menuposition
+			uniqssid["Network"]["Encryption"] = detail['Encryption']
+			menuposition += 1
 	return uniqssids
 
 ## Parsing iwlist output for various components
@@ -410,7 +409,7 @@ def drawstatusbar(): # Set up the status bar
 def drawinterfacestatus(): # Interface status badge
 	global colors
 	wlanstatus = checkinterfacestatus(wlan)
-	if not wlanstatus: 
+	if not wlanstatus:
 		wlanstatus = wlan+" is off."
 	else:
 		wlanstatus = getcurrentssid(wlan)
@@ -478,8 +477,6 @@ def modal(text, wait=False, timeout=False, query=False):
 					elif event.key == K_LALT:
 						return
 
-
-
 	if not wait:
 		return
 
@@ -520,7 +517,7 @@ def writeconfig(): # Write wireless configuration to disk
 		elif encryption == "WPA2":
 			encryption = "wpa2"
 
-	
+
 	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
 	f.write('WLAN_DHCP_RETRIES=20\n')
 	f.close()
@@ -640,7 +637,7 @@ def getSSID():
 
 def drawEncryptionType():
 	global colors
-	# Draw top background 
+	# Draw top background
 	pygame.draw.rect(surface, colors['darkbg'], (0,40,320,140))
 
 	# Draw footer
@@ -753,7 +750,7 @@ def getEncryptionType():
 def drawkeyboard(board):
 	global colors
 
-	# Draw keyboard background 
+	# Draw keyboard background
 	pygame.draw.rect(surface, colors['darkbg'], (0,134,320,106))
 
 	# Draw bottom background
@@ -932,7 +929,7 @@ def selectkey(keyboard, kind, direction=""):
 			x = left_margin + (16 * (pos[0]))
 		else:
 			x = left_margin + (16 * pos[0]) + (pos[0] * 4)
-			
+
 
 		if pos[1] > top_margin:
 			y = top_margin + (16 * (pos[1]))
@@ -1037,7 +1034,7 @@ class Menu:
 	def init(self, elements, dest_surface):
 		self.set_elements(elements)
 		self.dest_surface = dest_surface
-		
+
 	def draw(self,move=0):
 		if len(self.elements) == 0:
 			return
@@ -1530,7 +1527,7 @@ if __name__ == "__main__":
 								encryption = getEncryptionType()
 								displayinputlabel("key")
 								displayencryptionhint()
-								
+
 								# Get key from the user
 								if not encryption == 'None':
 									if encryption == "WPA":
@@ -1562,7 +1559,7 @@ if __name__ == "__main__":
 								redraw()
 							except:
 								active_menu = to_menu("main")
-							
+
 						elif menu.get_selected() == 'Create AP':
 							startap()
 
@@ -1573,7 +1570,7 @@ if __name__ == "__main__":
 							pygame.display.quit()
 							sys.exit()
 
-					# SSID menu		
+					# SSID menu
 					elif active_menu == "ssid":
 						ssid = ""
 						for network, detail in uniq.iteritems():
