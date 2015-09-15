@@ -207,10 +207,9 @@ def listuniqssids():
 
 	for network, detail in networks.iteritems():
 		if detail['ESSID'] not in uniqssids and detail['ESSID']:
-			uniqssid = uniqssids.setdefault(detail['ESSID'], {})
-			uniqssid["Network"] = detail
-			uniqssid["Network"]["menu"] = menuposition
-			uniqssid["Network"]["Encryption"] = detail['Encryption']
+			uniqssid = uniqssids.setdefault(detail['ESSID'], detail)
+			uniqssid["menu"] = menuposition
+			uniqssid["Encryption"] = detail['Encryption']
 			menuposition += 1
 	return uniqssids
 
@@ -267,7 +266,7 @@ def getsavednets():
 		for y in x:
 			ssid += y
 
-		uniqssid=uniqssids.setdefault(ssid, {'Network': {'ESSID': ssid, 'Key': key, 'menu': menu}})
+		uniqssid=uniqssids.setdefault(ssid, {'ESSID': ssid, 'Key': key, 'menu': menu})
 		menu += 1
 	uniq = uniqssids
 	return uniq
@@ -493,7 +492,7 @@ def writeconfig(): # Write wireless configuration to disk
 	try:
 		encryption
 	except NameError:
-		encryption = uniq[ssid]['Network']['Encryption']
+		encryption = uniq[ssid]['Encryption']
 
 	if passphrase:
 		if passphrase == "none":
@@ -1339,41 +1338,41 @@ def create_saved_networks_menu():
 	else:
 		wirelessitems = []
 		l = []
-		for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
+		for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['menu']):
 			for network, detail in uniq.iteritems():
 				if network == item:
 					try:
-						detail['Network']['Quality']
+						detail['Quality']
 					except KeyError:
-						detail['Network']['Quality'] = "0/1"
+						detail['Quality'] = "0/1"
 					try:
-						detail['Network']['Encryption']
+						detail['Encryption']
 					except KeyError:
-						detail['Network']['Encryption'] = ""
-					ssid = detail['Network']['ESSID']
+						detail['Encryption'] = ""
+					ssid = detail['ESSID']
 					ssidconfig = re.escape(ssid)
 					try:
 						conf = netconfdir+ssidconfig+".conf"
 						with open(conf) as f:
 							for line in f:
 								if "WLAN_ENCRYPTION" in line:
-									detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
+									detail['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
 										+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 								if "WLAN_PASSPHRASE" in line:
-									uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
+									uniq[network]['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
 										+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 					except:
 						conf = netconfdir+ssid+".conf"
 						with open(conf) as f:
 							for line in f:
 								if "WLAN_ENCRYPTION" in line:
-									detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
+									detail['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
 										+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 								if "WLAN_PASSPHRASE" in line:
-									uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
+									uniq[network]['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
 										+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 									## TODO: fix for 128-bit wep
-					menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption'].upper()]
+					menuitem = [ detail['ESSID'], detail['Quality'], detail['Encryption'].upper()]
 					l.append(menuitem)
 		create_wireless_menu()
 		wirelessmenu.init(l, surface)
@@ -1489,19 +1488,19 @@ if __name__ == "__main__":
 								surface.blit(renderedtext, textelement)
 								pygame.display.update()
 							else:
-								for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
+								for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['menu']):
 									for network, detail in uniq.iteritems():
 										if network == item:
 											try:
-												detail['Network']['Quality']
+												detail['Quality']
 											except KeyError:
-												detail['Network']['Quality'] = "0/1"
+												detail['Quality'] = "0/1"
 											try:
-												detail['Network']['Encryption']
+												detail['Encryption']
 											except KeyError:
-												detail['Network']['Encryption'] = ""
+												detail['Encryption'] = ""
 
-											menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
+											menuitem = [ detail['ESSID'], detail['Quality'], detail['Encryption']]
 											l.append(menuitem)
 
 								create_wireless_menu()
@@ -1575,19 +1574,19 @@ if __name__ == "__main__":
 						ssid = ""
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position())
-							if str(detail['Network']['menu']) == position:
-								if detail['Network']['ESSID'].split("-")[0] == "gcwzero":
-									ssid = detail['Network']['ESSID']
+							if str(detail['menu']) == position:
+								if detail['ESSID'].split("-")[0] == "gcwzero":
+									ssid = detail['ESSID']
 									ssidconfig = re.escape(ssid)
 									conf = netconfdir+ssidconfig+".conf"
 									encryption = "WPA2"
 									passphrase = ssid.split("-")[1]
 									connect(wlan)
 								else:
-									ssid = detail['Network']['ESSID']
+									ssid = detail['ESSID']
 									ssidconfig = re.escape(ssid)
 									conf = netconfdir+ssidconfig+".conf"
-									encryption = detail['Network']['Encryption']
+									encryption = detail['Encryption']
 									if not os.path.exists(conf):
 										if encryption == "none":
 											passphrase = "none"
@@ -1618,12 +1617,12 @@ if __name__ == "__main__":
 						ssid = ''
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position()+1)
-							if str(detail['Network']['menu']) == position:
-								encryption = detail['Network']['Encryption']
-								ssid = str(detail['Network']['ESSID'])
+							if str(detail['menu']) == position:
+								encryption = detail['Encryption']
+								ssid = str(detail['ESSID'])
 								ssidconfig = re.escape(ssid)
 								shutil.copy2(netconfdir+ssidconfig+".conf", sysconfdir+"config-"+wlan+".conf")
-								passphrase = detail['Network']['Key']
+								passphrase = detail['Key']
 								connect(wlan)
 								break
 
@@ -1632,12 +1631,12 @@ if __name__ == "__main__":
 						ssid = ""
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position())
-							if str(detail['Network']['menu']) == position:
+							if str(detail['menu']) == position:
 								ssid = network
-								encryption = detail['Network']['Encryption']
-								if detail['Network']['Encryption'] == "none":
+								encryption = detail['Encryption']
+								if detail['Encryption'] == "none":
 									pass
-								elif detail['Network']['Encryption'] == "wep":
+								elif detail['Encryption'] == "wep":
 									passphrase = ''
 									selected_key = ''
 									securitykey = ''
@@ -1657,13 +1656,13 @@ if __name__ == "__main__":
 
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position()+1)
-							if str(detail['Network']['menu']) == position:
+							if str(detail['menu']) == position:
 								ssid = network
-								passphrase = uniq[network]['Network']['Key']
-								encryption = uniq[network]['Network']['Encryption'].upper()
-								if uniq[network]['Network']['Encryption'] == "none":
+								passphrase = uniq[network]['Key']
+								encryption = uniq[network]['Encryption'].upper()
+								if uniq[network]['Encryption'] == "none":
 									pass
-								elif uniq[network]['Network']['Encryption'] == "wep":
+								elif uniq[network]['Encryption'] == "wep":
 									passphrase = ''
 									selected_key = ''
 									securitykey = ''
