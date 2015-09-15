@@ -1322,10 +1322,10 @@ def create_saved_networks_menu():
 	global colors
 	uniq = getsavednets()
 	if len(uniq) < 1:
-		text = ":("
+		text = "empty"
 		renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
 		textelement = renderedtext.get_rect()
-		textelement.left = 192
+		textelement.left = 152
 		textelement.top = 96
 		surface.blit(renderedtext, textelement)
 		pygame.display.update()
