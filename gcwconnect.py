@@ -29,11 +29,12 @@ TODO:
 
 
 import subprocess as SU
-import sys, time, os, shutil, re
+import sys, time, os, shutil
 import pygame
 from pygame.locals import *
 import pygame.gfxdraw
 from os import listdir
+from urllib import quote_plus, unquote_plus
 
 # What is our wireless interface?
 wlan = "wlan0"
@@ -149,8 +150,7 @@ def checkinterfacestatus(iface):
 	return getip(iface) != None
 
 def connect(iface): # Connect to a network
-	ssidconfig = re.escape(ssid)
-	saved_file = netconfdir + ssidconfig + ".conf"
+	saved_file = netconfdir + quote_plus(ssid) + ".conf"
 	if os.path.exists(saved_file):
 		shutil.copy2(saved_file, sysconfdir+"config-"+iface+".conf")
 
@@ -248,23 +248,18 @@ def getsavednets():
 	uniqssid = {}
 	uniqssids = {}
 	menu = 1
-	configs = [ f for f in listdir(netconfdir) ]
-	for ssid in configs:
-		conf = netconfdir+ssid
-		ssid = ssid.split(".conf")[:-1][0]
+	for confName in listdir(netconfdir):
+		if not confName.endswith('.conf'):
+			continue
+		ssid = unquote_plus(confName[:-5])
 
-		with open(conf) as f:
+		with open(netconfdir + confName) as f:
 			for line in f:
 				if "WLAN_PASSPHRASE" in line:
 					key = str.strip(line[line.find('WLAN_PASSPHRASE="')
 						+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 				else:
 					key = ''
-
-		x = ssid.split("\\")
-		ssid = ''
-		for y in x:
-			ssid += y
 
 		uniqssid=uniqssids.setdefault(ssid, {'ESSID': ssid, 'Key': key, 'menu': menu})
 		menu += 1
@@ -498,8 +493,7 @@ def writeconfig(): # Write wireless configuration to disk
 		if passphrase == "none":
 			passphrase = ""
 
-	ssidconfig = re.escape(ssid)
-	conf = netconfdir+ssidconfig+".conf"
+	conf = netconfdir + quote_plus(ssid) + ".conf"
 
 	f = open(conf, "w")
 	f.write('WLAN_ESSID="'+ssid+'"\n')
@@ -1350,27 +1344,15 @@ def create_saved_networks_menu():
 					except KeyError:
 						detail['Encryption'] = ""
 					ssid = detail['ESSID']
-					ssidconfig = re.escape(ssid)
-					try:
-						conf = netconfdir+ssidconfig+".conf"
-						with open(conf) as f:
-							for line in f:
-								if "WLAN_ENCRYPTION" in line:
-									detail['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
-										+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-								if "WLAN_PASSPHRASE" in line:
-									uniq[network]['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
-										+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-					except:
-						conf = netconfdir+ssid+".conf"
-						with open(conf) as f:
-							for line in f:
-								if "WLAN_ENCRYPTION" in line:
-									detail['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
-										+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-								if "WLAN_PASSPHRASE" in line:
-									uniq[network]['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
-										+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+					conf = netconfdir + quote_plus(ssid) + ".conf"
+					with open(conf) as f:
+						for line in f:
+							if "WLAN_ENCRYPTION" in line:
+								detail['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
+									+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
+							if "WLAN_PASSPHRASE" in line:
+								uniq[network]['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
+									+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
 									## TODO: fix for 128-bit wep
 					menuitem = [ detail['ESSID'], detail['Quality'], detail['Encryption'].upper()]
 					l.append(menuitem)
@@ -1450,7 +1432,7 @@ if __name__ == "__main__":
 							the_ssid = wirelessmenu.get_selected()[0]
 						confirm = modal("Forget "+the_ssid+"?", query=True)
 						if confirm:
-							os.remove(netconfdir+re.escape(str(wirelessmenu.get_selected()[0]))+".conf")
+							os.remove(netconfdir+quote_plus(str(wirelessmenu.get_selected()[0]))+".conf")
 						create_saved_networks_menu()
 						redraw()
 						if len(uniq) < 1:
@@ -1521,7 +1503,6 @@ if __name__ == "__main__":
 							if ssid == '':
 								pass
 							else:
-								ssidconfig = re.escape(ssid)
 								drawEncryptionType()
 								encryption = getEncryptionType()
 								displayinputlabel("key")
@@ -1539,7 +1520,7 @@ if __name__ == "__main__":
 										drawkeyboard("wep")
 										securitykey = getinput("wep", "key", ssid)
 									elif encryption == 'cancel':
-										del encryption, ssid, ssidconfig, securitykey
+										del encryption, ssid, securitykey
 										redraw()
 								else:
 									encryption = "none"
@@ -1577,15 +1558,13 @@ if __name__ == "__main__":
 							if str(detail['menu']) == position:
 								if detail['ESSID'].split("-")[0] == "gcwzero":
 									ssid = detail['ESSID']
-									ssidconfig = re.escape(ssid)
-									conf = netconfdir+ssidconfig+".conf"
+									conf = netconfdir + quote_plus(ssid) + ".conf"
 									encryption = "WPA2"
 									passphrase = ssid.split("-")[1]
 									connect(wlan)
 								else:
 									ssid = detail['ESSID']
-									ssidconfig = re.escape(ssid)
-									conf = netconfdir+ssidconfig+".conf"
+									conf = netconfdir + quote_plus(ssid) + ".conf"
 									encryption = detail['Encryption']
 									if not os.path.exists(conf):
 										if encryption == "none":
@@ -1620,8 +1599,7 @@ if __name__ == "__main__":
 							if str(detail['menu']) == position:
 								encryption = detail['Encryption']
 								ssid = str(detail['ESSID'])
-								ssidconfig = re.escape(ssid)
-								shutil.copy2(netconfdir+ssidconfig+".conf", sysconfdir+"config-"+wlan+".conf")
+								shutil.copy2(netconfdir + quote_plus(ssid) + ".conf", sysconfdir+"config-"+wlan+".conf")
 								passphrase = detail['Key']
 								connect(wlan)
 								break
