@@ -243,29 +243,6 @@ def parseencryption(encryption):
 		encryption = "Encrypted (unknown)"
 	return encryption
 
-## Saved Networks menu
-def getsavednets():
-	uniqssid = {}
-	uniqssids = {}
-	menu = 1
-	for confName in listdir(netconfdir):
-		if not confName.endswith('.conf'):
-			continue
-		ssid = unquote_plus(confName[:-5])
-
-		with open(netconfdir + confName) as f:
-			for line in f:
-				if "WLAN_PASSPHRASE" in line:
-					key = str.strip(line[line.find('WLAN_PASSPHRASE="')
-						+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-				else:
-					key = ''
-
-		uniqssid=uniqssids.setdefault(ssid, {'ESSID': ssid, 'Key': key, 'menu': menu})
-		menu += 1
-	uniq = uniqssids
-	return uniq
-
 def aafilledcircle(surface, color, center, radius):
 	'''Helper function to draw anti-aliased circles using an interface similar
 	to pygame.draw.circle.
@@ -1319,46 +1296,63 @@ def destroy_wireless_menu():
 
 def create_saved_networks_menu():
 	global uniq
-	global colors
-	uniq = getsavednets()
-	if len(uniq) < 1:
-		text = "empty"
+
+	uniqssids = {}
+	menu = 1
+	for confName in sorted(listdir(netconfdir)):
+		if not confName.endswith('.conf'):
+			continue
+		ssid = unquote_plus(confName[:-5])
+
+		detail = {
+			'ESSID': ssid,
+			'Encryption': '',
+			'Key': '',
+			'Quality': '0/1',
+			'menu': menu,
+			}
+		try:
+			with open(netconfdir + confName) as f:
+				for line in f:
+					key, value = line.split('=', 1)
+					key = key.strip()
+					value = value.strip()
+					if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+						value = value[1:-1]
+
+					if key == 'WLAN_ESSID':
+						detail['ESSID'] = value
+					elif key == 'WLAN_ENCRYPTION':
+						detail['Encryption'] = value
+					elif key == 'WLAN_PASSPHRASE':
+						# TODO: fix for 128-bit wep
+						detail['Key'] = value
+		except IOError as ex:
+			print 'Error reading conf:', ex
+		except ValueError as ex:
+			print 'Error parsing conf line:', line.strip()
+		else:
+			uniqssids[ssid] = detail
+			menu += 1
+	uniq = uniqssids
+
+	if uniq:
+		l = []
+		for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['menu']):
+			detail = uniq[item]
+			l.append([ detail['ESSID'], detail['Quality'], detail['Encryption'].upper()])
+		create_wireless_menu()
+		wirelessmenu.init(l, surface)
+		wirelessmenu.draw()
+	else:
+		text = 'empty'
 		renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
 		textelement = renderedtext.get_rect()
 		textelement.left = 152
 		textelement.top = 96
 		surface.blit(renderedtext, textelement)
 		pygame.display.update()
-	else:
-		wirelessitems = []
-		l = []
-		for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['menu']):
-			for network, detail in uniq.iteritems():
-				if network == item:
-					try:
-						detail['Quality']
-					except KeyError:
-						detail['Quality'] = "0/1"
-					try:
-						detail['Encryption']
-					except KeyError:
-						detail['Encryption'] = ""
-					ssid = detail['ESSID']
-					conf = netconfdir + quote_plus(ssid) + ".conf"
-					with open(conf) as f:
-						for line in f:
-							if "WLAN_ENCRYPTION" in line:
-								detail['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
-									+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-							if "WLAN_PASSPHRASE" in line:
-								uniq[network]['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
-									+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-									## TODO: fix for 128-bit wep
-					menuitem = [ detail['ESSID'], detail['Quality'], detail['Encryption'].upper()]
-					l.append(menuitem)
-		create_wireless_menu()
-		wirelessmenu.init(l, surface)
-		wirelessmenu.draw()
+
 if __name__ == "__main__":
 	# Persistent variables
 	networks = {}
@@ -1459,7 +1453,6 @@ if __name__ == "__main__":
 								surface.blit(renderedtext, textelement)
 								pygame.display.update()
 
-							wirelessitems = []
 							l = []
 							if len(uniq) < 1:
 								text = ":("
