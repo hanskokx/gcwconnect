@@ -72,6 +72,8 @@ colors = {
 		"white": (255, 255, 255),
 		}
 
+mac_addresses = {}
+
 
 ## Initialize the display, for pygame
 if not pygame.display.get_init():
@@ -118,6 +120,9 @@ def enableiface(iface):
 		if SU.Popen(['/sbin/ifconfig', iface, 'up'], close_fds=True).wait() == 0:
 			break
 		time.sleep(0.1);
+	# Let's grab the MAC address while we're here. If, on redraw, the
+	# interface is disabled, GCW Connect would otherwise be unable to grab it.
+	mac_addresses[iface] = getmac(iface)
 	return True
 
 def disableiface(iface):
@@ -133,6 +138,13 @@ def getip(iface):
 			return str.strip(
 					line[line.find('inet addr')+len('inet addr"') :
 					line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
+
+def getmac(iface):
+	try:
+		with open("/sys/class/net/" + iface + "/address", "rb") as mac_file:
+			return mac_file.readline(17)
+	except IOError:
+		return None  # WiFi is disabled
 
 def getcurrentssid(iface): # What network are we connected to?
 	if not checkinterfacestatus(iface):
@@ -395,6 +407,13 @@ def drawinterfacestatus(): # Interface status badge
 		interfacestatus_text = text.get_rect()
 		interfacestatus_text.topright = (315, 227)
 		surface.blit(text, interfacestatus_text)
+	else:
+		mac = mac_addresses.get(wlan)  # grabbed by enableiface()
+		if mac is not None:
+			text = pygame.font.SysFont(None, 16).render(mac, True, colors['white'], colors['lightbg'])
+			interfacestatus_text = text.get_rect()
+			interfacestatus_text.topright = (315, 227)
+			surface.blit(text, interfacestatus_text)
 
 def redraw():
 	global colors
