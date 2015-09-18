@@ -662,8 +662,11 @@ def displayencryptionhint():
 			pos = 1
 			for enc in encryptiontypes:
 				x = (pos * 60) - 20
-				labelblock = pygame.draw.rect(surface, colors['darkbg'], (x, 111,25,14))
-				labeltext = font12.render(enc.center(10, ' '), True, colors["white"], colors['darkbg'])
+				labelblock = pygame.Rect(x,111,55,14)
+				if enc == encryption:
+					# Draw a selection rectangle for the active encryption method
+					pygame.draw.rect(surface, colors['activeselbg'], labelblock)
+				labeltext = font12.render(enc.center(10, ' '), True, colors["white"])
 				surface.blit(labeltext, labelblock)
 				pos += 1
 			pygame.display.update()
@@ -768,18 +771,6 @@ def drawkeyboard(board):
 
 def getinput(board, kind, ssid=""):
 	selectkey(board, kind)
-	if kind == "key":
-		displayencryptionhint()
-		pos = 1
-		for enc in encryptiontypes:
-			x = (pos * 60) - 20
-			if enc == encryption:
-				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
-				labeltext = font12.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
-				surface.blit(labeltext, labelblock)
-			else:
-				pos += 1
-		pygame.display.update()
 	return softkeyinput(board, kind, ssid)
 
 def softkeyinput(keyboard, kind, ssid):
@@ -789,16 +780,6 @@ def softkeyinput(keyboard, kind, ssid):
 	def update():
 		displayinputlabel("key")
 		displayencryptionhint()
-		pos = 1
-		for enc in encryptiontypes:
-			x = (pos * 60) - 20
-			if enc == encryption:
-				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
-				labeltext = font12.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
-				surface.blit(labeltext, labelblock)
-			else:
-				pos += 1
-		pygame.display.update()
 
 	while True:
 		event = pygame.event.wait()
@@ -863,15 +844,6 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 
 	def update():
 		displayencryptionhint()
-		pos = 1
-		for enc in encryptiontypes:
-			x = (pos * 60) - 20
-			if enc == encryption:
-				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
-				labeltext = font12.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
-				surface.blit(labeltext, labelblock)
-			else:
-				pos += 1
 
 	if kind == "ssid":
 		# Draw SSID and encryption type labels
