@@ -403,14 +403,14 @@ def drawinterfacestatus(): # Interface status badge
 	surface.blit(wlantext, wlan_text)
 
 	if checkinterfacestatus(wlan):
-		text = pygame.font.SysFont(None, 16).render(getip(wlan), True, colors['activeselbg'], colors['lightbg'])
+		text = pygame.font.SysFont(None, 16).render(" "+getip(wlan), True, colors['activeselbg'], colors['lightbg'])
 		interfacestatus_text = text.get_rect()
 		interfacestatus_text.topright = (315, 227)
 		surface.blit(text, interfacestatus_text)
 	else:
 		mac = mac_addresses.get(wlan)  # grabbed by enableiface()
 		if mac is not None:
-			text = pygame.font.SysFont(None, 16).render(mac, True, colors['white'], colors['lightbg'])
+			text = pygame.font.SysFont(None, 16).render(" "+mac, True, colors['white'], colors['lightbg'])
 			interfacestatus_text = text.get_rect()
 			interfacestatus_text.topright = (315, 227)
 			surface.blit(text, interfacestatus_text)
