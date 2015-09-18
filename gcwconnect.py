@@ -989,7 +989,7 @@ def selectkey(keyboard, kind, direction=""):
 class Menu:
 	global colors
 	font = pygame.font.SysFont
-	dest_surface = pygame.Surface
+	dest_surface = surface
 	canvas_color = colors["darkbg"]
 
 	elements = []
