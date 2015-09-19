@@ -1344,6 +1344,24 @@ def create_saved_networks_menu():
 		surface.blit(renderedtext, textelement)
 		pygame.display.update()
 
+def convert_file_names():
+	"""In the directory containing WiFi network configuration files, removes
+	backslashes from file names created by older versions of GCW Connect."""
+	try:
+		confNames = listdir(netconfdir)
+	except IOError as ex:
+		print "Failed to list files in '%s': %s" (netconfdir, ex)
+	else:
+		for confName in confNames:
+			if not confName.endswith('.conf'):
+				continue
+			if '\\' in confName:
+				old, new = confName, quote_plus(confName.replace('\\', ''))
+				try:
+					os.rename(os.path.join(netconfdir, old), os.path.join(netconfdir, new))
+				except IOError as ex:
+					print "Failed to rename old-style network configuration file '%s' to '%s': %s" % (os.path.join(netconfdir, old), new, ex)
+
 if __name__ == "__main__":
 	# Persistent variables
 	networks = {}
@@ -1354,6 +1372,8 @@ if __name__ == "__main__":
 		createpaths()
 	except:
 		pass ## Can't create directories. Great for debugging on a pc.
+	else:
+		convert_file_names()
 
 	logoBar = LogoBar()
 
