@@ -1135,9 +1135,6 @@ class NetworksMenu(Menu):
 		qual_img = pygame.image.load((os.path.join(datadir, signal_icon))).convert_alpha()
 		enc_img = pygame.image.load((os.path.join(datadir, enc_icon))).convert_alpha()
 
-#senquack
-#ssid = font_mono_small.render(the_ssid, 1, self.text_color)
-		the_ssid = "ABCDEFGHIJKLMNOPQRSTUVWXYZggggggggggggggggggggg"
 		ssid = font_mono_small.render(the_ssid, 1, self.text_color)
 		enc = font_small.render(enc_type, 1, colors["lightgrey"])
 		#strength = font_small.render(str(str(percent) + "%").rjust(4), 1, colors["lightgrey"])
