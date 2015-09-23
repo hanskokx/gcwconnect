@@ -1440,7 +1440,7 @@ if __name__ == "__main__":
 							the_ssid = "%s..."%(wirelessmenu.get_selected()[0][:16])
 						else:
 							the_ssid = wirelessmenu.get_selected()[0]
-						confirm = modal("Forget "+the_ssid+"?", query=True)
+						confirm = modal("Forget AP configuration?", query=True)
 						if confirm:
 							os.remove(netconfdir+quote_plus(str(wirelessmenu.get_selected()[0]))+".conf")
 						create_saved_networks_menu()
