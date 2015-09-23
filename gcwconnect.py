@@ -374,8 +374,8 @@ class LogoBar(object):
 		self.text2 = gcw_font.render('CONNECT', True, colors['logoconnect'], colors['lightbg'])
 
 	def draw(self):
-		pygame.draw.rect(surface, colors['lightbg'], (0,0,320,32))
-		pygame.draw.line(surface, colors['white'], (0, 33), (320, 33))
+		pygame.draw.rect(surface, colors['lightbg'], (0,0,320,34))
+		pygame.draw.line(surface, colors['white'], (0, 34), (320, 34))
 
 		rect1 = self.text1.get_rect()
 		rect1.topleft = (8 + 5 + 1, 5)
@@ -855,7 +855,7 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 
 	if kind == "ssid":
 		# Draw SSID and encryption type labels
-		pygame.draw.rect(surface, colors['darkbg'], (2,100,320,34))
+		pygame.draw.rect(surface, colors['darkbg'], (0,100,320,34))
 		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,320,20))
 		labeltext = font_large.render("Enter new SSID", True, colors['lightbg'], colors['white'])
 		label = labeltext.get_rect()
@@ -1002,7 +1002,7 @@ class Menu:
 
 	def draw(self,move=0):
 		# Clear any old text (like from apinfo()), but don't overwrite button hint area above statusbar
-		pygame.draw.rect(surface, colors['darkbg'], (0,34,320,174))
+		pygame.draw.rect(surface, colors['darkbg'], (0,35,320,173))
 
 		if len(self.elements) == 0:
 			return
