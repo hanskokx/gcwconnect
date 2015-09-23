@@ -967,7 +967,6 @@ def selectkey(keyboard, kind, direction=""):
 	highlightkey(keyboard, selected_key)
 
 class Menu:
-	global colors
 	font = font_medium
 	dest_surface = surface
 	canvas_color = colors["darkbg"]
@@ -1070,16 +1069,11 @@ class Menu:
 		menu_surface.blit(render, (left + spacing, top + spacing, render.get_rect().width, render.get_rect().height))
 
 class NetworksMenu(Menu):
-	global colors
 	def set_elements(self, elements):
 		self.elements = elements
 
 	def get_item_width(self, element):
-		if len(str(element[0])) > 16:
-			the_ssid = "%s..."%(element[0][:16])
-		else:
-			the_ssid = element[0].ljust(19)
-
+		the_ssid = element[0]
 		render = self.font.render(the_ssid, 1, self.text_color)
 		spacing = 15
 		return render.get_rect().width + spacing * 2
@@ -1090,11 +1084,7 @@ class NetworksMenu(Menu):
 		return (render.get_rect().height + spacing * 2) + 5
 
 	def render_element(self, menu_surface, element, left, top):
-
-		if len(str(element[0])) > 17:
-			the_ssid = "%s..."%(element[0][:14])
-		else:
-			the_ssid = element[0].ljust(17)
+		the_ssid = element[0]
 
 		def qualityPercent(x):
 			percent = (float(x.split("/")[0]) / float(x.split("/")[1])) * 100
@@ -1436,10 +1426,6 @@ if __name__ == "__main__":
 						sys.exit()
 				elif event.key == K_SPACE:
 					if active_menu == "saved":
-						if len(str(wirelessmenu.get_selected()[0])) > 16:
-							the_ssid = "%s..."%(wirelessmenu.get_selected()[0][:16])
-						else:
-							the_ssid = wirelessmenu.get_selected()[0]
 						confirm = modal("Forget AP configuration?", query=True)
 						if confirm:
 							os.remove(netconfdir+quote_plus(str(wirelessmenu.get_selected()[0]))+".conf")
