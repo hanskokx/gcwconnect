@@ -866,10 +866,7 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 		displayencryptionhint()
 		# Draw SSID and encryption type labels
 		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,320,20))
-		if len(ssid) >= 13:
-			labeltext = font_small.render("Enter "+encryption+" for "+"%s..."%(ssid[:13]), True, colors['lightbg'], colors['white'])
-		else:
-			labeltext = font_small.render("Enter "+encryption+" key for "+ssid, True, colors['lightbg'], colors['white'])
+		labeltext = font_large.render("Enter "+encryption+" key", True, colors['lightbg'], colors['white'])
 		label = labeltext.get_rect()
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
