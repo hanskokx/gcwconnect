@@ -3,15 +3,15 @@
 #	wificonfig.py
 #
 #	Requires: pygame
-#			
+#
 #	Copyright (c) 2013 Hans Kokx
-#	
+#
 #	Licensed under the GNU General Public License, Version 3.0 (the "License");
 #	you may not use this file except in compliance with the License.
 #	You may obtain a copy of the License at
-#	
+#
 #	http://www.gnu.org/copyleft/gpl.html
-#	
+#
 #	Unless required by applicable law or agreed to in writing, software
 #	distributed under the License is distributed on an "AS IS" BASIS,
 #	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,11 +29,12 @@ TODO:
 
 
 import subprocess as SU
-import sys, time, os, shutil, re
+import sys, time, os, shutil
 import pygame
 from pygame.locals import *
 import pygame.gfxdraw
 from os import listdir
+from urllib import quote_plus, unquote_plus
 
 # What is our wireless interface?
 wlan = "wlan0"
@@ -71,6 +72,8 @@ colors = {
 		"white": (255, 255, 255),
 		}
 
+mac_addresses = {}
+
 
 ## Initialize the display, for pygame
 if not pygame.display.get_init():
@@ -82,8 +85,15 @@ surface.fill(colors["darkbg"])
 pygame.mouse.set_visible(False)
 pygame.key.set_repeat(199,69) #(delay,interval)
 
-font_path = os.path.join(datadir, 'Inconsolata.otf')
-font12 = pygame.font.Font(font_path, 12)
+## Fonts
+font_path   = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+font_tiny   = pygame.font.Font(font_path, 8)
+font_small  = pygame.font.Font(font_path, 10)
+font_medium = pygame.font.Font(font_path, 12)
+font_large  = pygame.font.Font(font_path, 16)
+font_huge   = pygame.font.Font(font_path, 48)
+gcw_font        = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
+font_mono_small = pygame.font.Font(os.path.join(datadir, 'Inconsolata.otf'), 11)
 
 ## File management
 def createpaths(): # Create paths, if necessary
@@ -117,6 +127,9 @@ def enableiface(iface):
 		if SU.Popen(['/sbin/ifconfig', iface, 'up'], close_fds=True).wait() == 0:
 			break
 		time.sleep(0.1);
+	# Let's grab the MAC address while we're here. If, on redraw, the
+	# interface is disabled, GCW Connect would otherwise be unable to grab it.
+	mac_addresses[iface] = getmac(iface)
 	return True
 
 def disableiface(iface):
@@ -132,6 +145,13 @@ def getip(iface):
 			return str.strip(
 					line[line.find('inet addr')+len('inet addr"') :
 					line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
+
+def getmac(iface):
+	try:
+		with open("/sys/class/net/" + iface + "/address", "rb") as mac_file:
+			return mac_file.readline(17)
+	except IOError:
+		return None  # WiFi is disabled
 
 def getcurrentssid(iface): # What network are we connected to?
 	if not checkinterfacestatus(iface):
@@ -149,9 +169,9 @@ def checkinterfacestatus(iface):
 	return getip(iface) != None
 
 def connect(iface): # Connect to a network
-	ssidconfig = re.escape(ssid)
-	shutil.copy2(netconfdir+ssidconfig+".conf",
-			sysconfdir+"config-"+iface+".conf")
+	saved_file = netconfdir + quote_plus(ssid) + ".conf"
+	if os.path.exists(saved_file):
+		shutil.copy2(saved_file, sysconfdir+"config-"+iface+".conf")
 
 	if checkinterfacestatus(iface):
 		disconnect(iface)
@@ -205,12 +225,11 @@ def listuniqssids():
 	uniqssids = {}
 
 	for network, detail in networks.iteritems():
-			if detail['ESSID'] not in uniqssids and detail['ESSID']:
-				uniqssid = uniqssids.setdefault(detail['ESSID'], {})
-				uniqssid["Network"] = detail
-				uniqssid["Network"]["menu"] = menuposition
-				uniqssid["Network"]["Encryption"] = detail['Encryption']
-				menuposition += 1
+		if detail['ESSID'] not in uniqssids and detail['ESSID']:
+			uniqssid = uniqssids.setdefault(detail['ESSID'], detail)
+			uniqssid["menu"] = menuposition
+			uniqssid["Encryption"] = detail['Encryption']
+			menuposition += 1
 	return uniqssids
 
 ## Parsing iwlist output for various components
@@ -242,34 +261,6 @@ def parseencryption(encryption):
 	else:
 		encryption = "Encrypted (unknown)"
 	return encryption
-
-## Saved Networks menu
-def getsavednets():
-	uniqssid = {}
-	uniqssids = {}
-	menu = 1
-	configs = [ f for f in listdir(netconfdir) ]
-	for ssid in configs:
-		conf = netconfdir+ssid
-		ssid = ssid.split(".conf")[:-1][0]
-
-		with open(conf) as f:
-			for line in f:
-				if "WLAN_PASSPHRASE" in line:
-					key = str.strip(line[line.find('WLAN_PASSPHRASE="')
-						+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-				else:
-					key = ''
-
-		x = ssid.split("\\")
-		ssid = ''
-		for y in x:
-			ssid += y
-
-		uniqssid=uniqssids.setdefault(ssid, {'Network': {'ESSID': ssid, 'Key': key, 'menu': menu}})
-		menu += 1
-	uniq = uniqssids
-	return uniq
 
 def aafilledcircle(surface, color, center, radius):
 	'''Helper function to draw anti-aliased circles using an interface similar
@@ -303,14 +294,14 @@ class hint:
 				pygame.draw.rect(surface, colors["black"], (self.x+11, self.y+6, 10, 5))
 
 			button = pygame.draw.rect(surface, colors["black"], (self.x, self.y, 15, 11))
-			text = pygame.font.SysFont(None, 12).render(self.button.upper(), True, colors["white"], colors["black"])
+			text = font_tiny.render(self.button.upper(), True, colors["white"], colors["black"])
 			buttontext = text.get_rect()
 			buttontext.center = button.center
 			surface.blit(text, buttontext)
 
 		if self.button == "select" or self.button == "start":
-			lbox = aafilledcircle(surface, colors["black"], (self.x+5, self.y+4), 5)
-			rbox = aafilledcircle(surface, colors["black"], (self.x+29, self.y+4), 5)
+			lbox = aafilledcircle(surface, colors["black"], (self.x+5, self.y+5), 6)
+			rbox = aafilledcircle(surface, colors["black"], (self.x+29, self.y+5), 6)
 			straightbox = lbox.union(rbox)
 			buttoncenter = straightbox.center
 			if self.button == 'select':
@@ -322,14 +313,14 @@ class hint:
 			if self.button == 'start':
 				roundedbox.bottomleft = lbox.midbottom
 			pygame.draw.rect(surface, colors["black"], roundedbox)
-			text = pygame.font.SysFont(None, 11).render(self.button.upper(), True, colors["white"], colors["black"])
+			text = font_tiny.render(self.button.upper(), True, colors["white"], colors["black"])
 			buttontext = text.get_rect()
 			buttontext.center = buttoncenter
 			buttontext.move_ip(0, 1)
 			surface.blit(text, buttontext)
 
 			labelblock = pygame.draw.rect(surface, self.bg, (self.x+40,self.y,25,14))
-			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, colors["white"], self.bg)
+			labeltext = font_tiny.render(self.text, True, colors["white"], self.bg)
 			surface.blit(labeltext, labelblock)
 
 		elif self.button in ('a', 'b', 'x', 'y'):
@@ -343,14 +334,13 @@ class hint:
 				color = colors["yellow"]
 
 			labelblock = pygame.draw.rect(surface, self.bg, (self.x+10,self.y,35,14))
-			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, colors["white"], self.bg)
+			labeltext = font_tiny.render(self.text, True, colors["white"], self.bg)
 			surface.blit(labeltext, labelblock)
 
-			button = aafilledcircle(surface, color, (self.x,self.y+4), 5) # (x, y)
-			text = pygame.font.SysFont(None, 11).render(self.button.upper(), True, colors["white"], color)
+			button = aafilledcircle(surface, color, (self.x,self.y+5), 6) # (x, y)
+			text = font_tiny.render(self.button.upper(), True, colors["white"], color)
 			buttontext = text.get_rect()
 			buttontext.center = button.center
-			buttontext.move_ip(0, 1)
 			surface.blit(text, buttontext)
 
 		elif self.button in ('left', 'right', 'up', 'down'):
@@ -373,20 +363,19 @@ class hint:
 				pygame.draw.rect(surface, colors["white"], (self.x+6, self.y+7, 2, 3))
 
 			labelblock = pygame.draw.rect(surface, self.bg, (self.x+20,self.y,35,14))
-			labeltext = pygame.font.SysFont(None, 12).render(self.text, True, (255, 255, 255), self.bg)
+			labeltext = font_tiny.render(self.text, True, (255, 255, 255), self.bg)
 			surface.blit(labeltext, labelblock)
 
 class LogoBar(object):
 	'''The logo area at the top of the screen.'''
 
 	def __init__(self):
-		gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
 		self.text1 = gcw_font.render('GCW', True, colors['logogcw'], colors['lightbg'])
 		self.text2 = gcw_font.render('CONNECT', True, colors['logoconnect'], colors['lightbg'])
 
 	def draw(self):
-		pygame.draw.rect(surface, colors['lightbg'], (0,0,320,32))
-		pygame.draw.line(surface, colors['white'], (0, 33), (320, 33))
+		pygame.draw.rect(surface, colors['lightbg'], (0,0,320,34))
+		pygame.draw.line(surface, colors['white'], (0, 34), (320, 34))
 
 		rect1 = self.text1.get_rect()
 		rect1.topleft = (8 + 5 + 1, 5)
@@ -400,29 +389,38 @@ def drawstatusbar(): # Set up the status bar
 	global colors
 	pygame.draw.rect(surface, colors['lightbg'], (0,224,320,16))
 	pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
-	wlantext = pygame.font.SysFont(None, 16).render("...", True, colors['white'], colors['lightbg'])
+	wlantext = font_mono_small.render("...", True, colors['white'], colors['lightbg'])
 	wlan_text = wlantext.get_rect()
-	wlan_text.topleft = (4, 227)
+	wlan_text.topleft = (2, 225)
 	surface.blit(wlantext, wlan_text)
 
 def drawinterfacestatus(): # Interface status badge
 	global colors
 	wlanstatus = checkinterfacestatus(wlan)
-	if not wlanstatus: 
+	if not wlanstatus:
 		wlanstatus = wlan+" is off."
 	else:
 		wlanstatus = getcurrentssid(wlan)
 
-	wlantext = pygame.font.SysFont(None, 16).render(wlanstatus, True, colors['white'], colors['lightbg'])
+	wlantext = font_mono_small.render(wlanstatus, True, colors['white'], colors['lightbg'])
 	wlan_text = wlantext.get_rect()
-	wlan_text.topleft = (4, 227)
+	wlan_text.topleft = (2, 225)
 	surface.blit(wlantext, wlan_text)
 
+	# Note that the leading space here is intentional, to more cleanly overdraw any overly-long
+	# strings written to the screen beneath it (i.e. a very long ESSID)
 	if checkinterfacestatus(wlan):
-		text = pygame.font.SysFont(None, 16).render(getip(wlan), True, colors['activeselbg'], colors['lightbg'])
+		text = font_mono_small.render(" "+getip(wlan), True, colors['white'], colors['lightbg'])
 		interfacestatus_text = text.get_rect()
-		interfacestatus_text.topright = (315, 227)
+		interfacestatus_text.topright = (317, 225)
 		surface.blit(text, interfacestatus_text)
+	else:
+		mac = mac_addresses.get(wlan)  # grabbed by enableiface()
+		if mac is not None:
+			text = font_mono_small.render(" "+mac, True, colors['white'], colors['lightbg'])
+			interfacestatus_text = text.get_rect()
+			interfacestatus_text.topright = (317, 225)
+			surface.blit(text, interfacestatus_text)
 
 def redraw():
 	global colors
@@ -451,7 +449,7 @@ def modal(text, wait=False, timeout=False, query=False):
 	dialog = pygame.draw.rect(surface, colors['lightbg'], (64,88,192,72))
 	pygame.draw.rect(surface, colors['white'], (62,86,194,74), 2)
 
-	text = pygame.font.SysFont(None, 16).render(text, True, colors['white'], colors['lightbg'])
+	text = font_medium.render(text, True, colors['white'], colors['lightbg'])
 	modal_text = text.get_rect()
 	modal_text.center = dialog.center
 
@@ -476,8 +474,6 @@ def modal(text, wait=False, timeout=False, query=False):
 					elif event.key == K_LALT:
 						return
 
-
-
 	if not wait:
 		return
 
@@ -494,14 +490,13 @@ def writeconfig(): # Write wireless configuration to disk
 	try:
 		encryption
 	except NameError:
-		encryption = uniq[ssid]['Network']['Encryption']
+		encryption = uniq[ssid]['Encryption']
 
 	if passphrase:
 		if passphrase == "none":
 			passphrase = ""
 
-	ssidconfig = re.escape(ssid)
-	conf = netconfdir+ssidconfig+".conf"
+	conf = netconfdir + quote_plus(ssid) + ".conf"
 
 	f = open(conf, "w")
 	f.write('WLAN_ESSID="'+ssid+'"\n')
@@ -518,7 +513,7 @@ def writeconfig(): # Write wireless configuration to disk
 		elif encryption == "WPA2":
 			encryption = "wpa2"
 
-	
+
 	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
 	f.write('WLAN_DHCP_RETRIES=20\n')
 	f.close()
@@ -590,9 +585,10 @@ class key:
 		if len(self.key) > 1:
 			key_width = 36
 		keybox = pygame.draw.rect(surface, colors['lightbg'], (left,top,key_width,key_height))
-		text = pygame.font.SysFont(None, 16).render(self.key, True, colors['white'], colors['lightbg'])
+		text = font_medium.render(self.key, True, colors['white'], colors['lightbg'])
 		label = text.get_rect()
 		label.center = keybox.center
+		label.y -= 1
 		surface.blit(text, label)
 
 class radio:
@@ -621,7 +617,7 @@ class radio:
 			key_width = 64
 		radiobutton = aafilledcircle(surface, colors['white'], (left, top), 8)
 		aafilledcircle(surface, colors['darkbg'], (left, top), 6)
-		text = pygame.font.SysFont(None, 16).render(self.key, True, (255, 255, 255), colors['darkbg'])
+		text = font_medium.render(self.key, True, (255, 255, 255), colors['darkbg'])
 		label = text.get_rect()
 		label.left = radiobutton.right + 8
 		label.top = radiobutton.top + 4
@@ -638,8 +634,8 @@ def getSSID():
 
 def drawEncryptionType():
 	global colors
-	# Draw top background 
-	pygame.draw.rect(surface, colors['darkbg'], (0,40,320,140))
+	# Draw top background
+	pygame.draw.rect(surface, colors['darkbg'], (0,40,320,200))
 
 	# Draw footer
 	pygame.draw.rect(surface, colors['lightbg'], (0,224,320,16))
@@ -667,15 +663,18 @@ def displayencryptionhint():
 
 	try:
 		if encryption:
-			pygame.draw.rect(surface, colors['darkbg'], (2,100,320,34))
+			pygame.draw.rect(surface, colors['darkbg'], (0,100,320,34))
 			hint("l", "L", 16, 113)
 			hint("r", "R", 289, 113)
 
 			pos = 1
 			for enc in encryptiontypes:
 				x = (pos * 60) - 20
-				labelblock = pygame.draw.rect(surface, colors['darkbg'], (x, 111,25,14))
-				labeltext = font12.render(enc.center(10, ' '), True, colors["white"], colors['darkbg'])
+				labelblock = pygame.Rect(x,111,55,14)
+				if enc == encryption:
+					# Draw a selection rectangle for the active encryption method
+					pygame.draw.rect(surface, colors['activeselbg'], labelblock)
+				labeltext = font_small.render(enc.center(10, ' '), True, colors["white"])
 				surface.blit(labeltext, labelblock)
 				pos += 1
 			pygame.display.update()
@@ -751,7 +750,7 @@ def getEncryptionType():
 def drawkeyboard(board):
 	global colors
 
-	# Draw keyboard background 
+	# Draw keyboard background
 	pygame.draw.rect(surface, colors['darkbg'], (0,134,320,106))
 
 	# Draw bottom background
@@ -780,18 +779,6 @@ def drawkeyboard(board):
 
 def getinput(board, kind, ssid=""):
 	selectkey(board, kind)
-	if kind == "key":
-		displayencryptionhint()
-		pos = 1
-		for enc in encryptiontypes:
-			x = (pos * 60) - 20
-			if enc == encryption:
-				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
-				labeltext = font12.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
-				surface.blit(labeltext, labelblock)
-			else:
-				pos += 1
-		pygame.display.update()
 	return softkeyinput(board, kind, ssid)
 
 def softkeyinput(keyboard, kind, ssid):
@@ -801,16 +788,6 @@ def softkeyinput(keyboard, kind, ssid):
 	def update():
 		displayinputlabel("key")
 		displayencryptionhint()
-		pos = 1
-		for enc in encryptiontypes:
-			x = (pos * 60) - 20
-			if enc == encryption:
-				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
-				labeltext = font12.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
-				surface.blit(labeltext, labelblock)
-			else:
-				pos += 1
-		pygame.display.update()
 
 	while True:
 		event = pygame.event.wait()
@@ -875,21 +852,12 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 
 	def update():
 		displayencryptionhint()
-		pos = 1
-		for enc in encryptiontypes:
-			x = (pos * 60) - 20
-			if enc == encryption:
-				labelblock = pygame.draw.rect(surface, colors['white'], (x, 111,25,14))
-				labeltext = font12.render(enc.center(10, ' '), True, colors["activetext"], colors['activeselbg'])
-				surface.blit(labeltext, labelblock)
-			else:
-				pos += 1
 
 	if kind == "ssid":
 		# Draw SSID and encryption type labels
-		pygame.draw.rect(surface, colors['darkbg'], (2,100,320,34))
+		pygame.draw.rect(surface, colors['darkbg'], (0,100,320,34))
 		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,320,20))
-		labeltext = pygame.font.SysFont(None, 18).render("Enter new SSID", True, colors['lightbg'], colors['white'])
+		labeltext = font_large.render("Enter new SSID", True, colors['lightbg'], colors['white'])
 		label = labeltext.get_rect()
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
@@ -898,10 +866,7 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 		displayencryptionhint()
 		# Draw SSID and encryption type labels
 		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,320,20))
-		if len(ssid) >= 13:
-			labeltext = font12.render("Enter "+encryption+" for "+"%s..."%(ssid[:13]), True, colors['lightbg'], colors['white'])
-		else:
-			labeltext = font12.render("Enter "+encryption+" key for "+ssid, True, colors['lightbg'], colors['white'])
+		labeltext = font_large.render("Enter "+encryption+" key", True, colors['lightbg'], colors['white'])
 		label = labeltext.get_rect()
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
@@ -912,7 +877,7 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 	text = "[ "
 	text += passphrase
 	text += " ]"
-	pw = pygame.font.SysFont(None, size).render(text, True, (0, 0, 0), colors['white'])
+	pw = font_mono_small.render(text, True, (0, 0, 0), colors['white'])
 	pwtext = pw.get_rect()
 	pwtext.center = bg.center
 	surface.blit(pw, pwtext)
@@ -930,7 +895,7 @@ def selectkey(keyboard, kind, direction=""):
 			x = left_margin + (16 * (pos[0]))
 		else:
 			x = left_margin + (16 * pos[0]) + (pos[0] * 4)
-			
+
 
 		if pos[1] > top_margin:
 			y = top_margin + (16 * (pos[1]))
@@ -999,9 +964,8 @@ def selectkey(keyboard, kind, direction=""):
 	highlightkey(keyboard, selected_key)
 
 class Menu:
-	global colors
-	font = pygame.font.SysFont
-	dest_surface = pygame.Surface
+	font = font_medium
+	dest_surface = surface
 	canvas_color = colors["darkbg"]
 
 	elements = []
@@ -1014,7 +978,7 @@ class Menu:
 		self.menu_height = 0
 		self.selection_color = colors["activeselbg"]
 		self.text_color = colors["activetext"]
-		self.font = pygame.font.Font(font_path, 16)
+		self.font = font_medium
 
 	def move_menu(self, top, left):
 		self.origin = (top, left)
@@ -1035,8 +999,11 @@ class Menu:
 	def init(self, elements, dest_surface):
 		self.set_elements(elements)
 		self.dest_surface = dest_surface
-		
+
 	def draw(self,move=0):
+		# Clear any old text (like from apinfo()), but don't overwrite button hint area above statusbar
+		pygame.draw.rect(surface, colors['darkbg'], (0,35,320,173))
+
 		if len(self.elements) == 0:
 			return
 
@@ -1099,31 +1066,22 @@ class Menu:
 		menu_surface.blit(render, (left + spacing, top + spacing, render.get_rect().width, render.get_rect().height))
 
 class NetworksMenu(Menu):
-	global colors
 	def set_elements(self, elements):
 		self.elements = elements
 
 	def get_item_width(self, element):
-		if len(str(element[0])) > 16:
-			the_ssid = "%s..."%(element[0][:16])
-		else:
-			the_ssid = element[0].ljust(19)
-
+		the_ssid = element[0]
 		render = self.font.render(the_ssid, 1, self.text_color)
 		spacing = 15
 		return render.get_rect().width + spacing * 2
 
 	def get_item_height(self, element):
 		render = self.font.render(element[0], 1, self.text_color)
-		spacing = 5
+		spacing = 6
 		return (render.get_rect().height + spacing * 2) + 5
 
 	def render_element(self, menu_surface, element, left, top):
-
-		if len(str(element[0])) > 17:
-			the_ssid = "%s..."%(element[0][:14])
-		else:
-			the_ssid = element[0].ljust(17)
+		the_ssid = element[0]
 
 		def qualityPercent(x):
 			percent = (float(x.split("/")[0]) / float(x.split("/")[1])) * 100
@@ -1164,22 +1122,20 @@ class NetworksMenu(Menu):
 		qual_img = pygame.image.load((os.path.join(datadir, signal_icon))).convert_alpha()
 		enc_img = pygame.image.load((os.path.join(datadir, enc_icon))).convert_alpha()
 
-		boldtext = pygame.font.Font(font_path, 16)
-		subtext = font12
-
-		ssid = boldtext.render(the_ssid, 1, self.text_color)
-		enc = subtext.render(enc_type, 1, colors["lightgrey"])
-		strength = subtext.render(str(str(percent) + "%").rjust(4), 1, colors["lightgrey"])
-		qual = subtext.render(element[1], 1, colors["lightgrey"])
+		ssid = font_mono_small.render(the_ssid, 1, self.text_color)
+		enc = font_small.render(enc_type, 1, colors["lightgrey"])
+		#strength = font_small.render(str(str(percent) + "%").rjust(4), 1, colors["lightgrey"])
+		#qual = font_small.render(element[1], 1, colors["lightgrey"])
 		spacing = 2
 
-		menu_surface.blit(ssid, (left + spacing, top, ssid.get_rect().width, ssid.get_rect().height))
-		menu_surface.blit(enc, (left + enc_img.get_rect().width + 12, top + 18, enc.get_rect().width, enc.get_rect().height))
-		menu_surface.blit(enc_img, pygame.rect.Rect(left + 8, (top + 24) - (enc_img.get_rect().height / 2), enc_img.get_rect().width, enc_img.get_rect().height))
+		menu_surface.blit(ssid, (left + spacing, top))
+		menu_surface.blit(enc, (left + enc_img.get_rect().width + 12, top + 18))
+		menu_surface.blit(enc_img, (left + 8, (top + 24) - (enc_img.get_rect().height / 2)))
 		# menu_surface.blit(strength, (left + 137, top + 18, strength.get_rect().width, strength.get_rect().height))
-		# menu_surface.blit(qual_img, pygame.rect.Rect(left + 140, top + 2, qual_img.get_rect().width, qual_img.get_rect().height))
-		menu_surface.blit(qual_img, pygame.rect.Rect(left + 140, top + 8, qual_img.get_rect().width, qual_img.get_rect().height))
-		pygame.display.flip()
+		qual_x = left + 200 - qual_img.get_rect().width - 3
+		qual_y = top + 7 + 6 
+		menu_surface.blit(qual_img, (qual_x, qual_y))
+		pygame.display.update()
 
 	def draw(self,move=0):
 		if len(self.elements) == 0:
@@ -1203,8 +1159,7 @@ class NetworksMenu(Menu):
 			visible_elements = self.elements[self.selected_item - 2:self.selected_item + 3]
 			selected_within_visible = 2
 
-		# What width does everything have?
-		max_width = max([self.get_item_width(visible_element) for visible_element in visible_elements])
+		max_width = 320 - self.origin[0] - 3
 
 		# And now the height
 		heights = [self.get_item_height(visible_element) for visible_element in visible_elements]
@@ -1243,7 +1198,7 @@ def to_menu(new_menu):
 
 wirelessmenu = None
 menu = Menu()
-menu.move_menu(8, 41)
+menu.move_menu(3, 41)
 
 def mainmenu():
 	global wlan
@@ -1276,31 +1231,28 @@ def apinfo():
 		mac = file.read().strip('\n').replace(":", "")
 		file.close()
 		if mac == ap:
-			font18 = pygame.font.Font(font_path, 18)
-			font64 = pygame.font.Font(font_path, 64)
-
 			ssidlabel = "SSID"
-			renderedssidlabel = font64.render(ssidlabel, True, colors["lightbg"], colors["darkbg"])
+			renderedssidlabel = font_huge.render(ssidlabel, True, colors["lightbg"], colors["darkbg"])
 			ssidlabelelement = renderedssidlabel.get_rect()
-			ssidlabelelement.right = 300
+			ssidlabelelement.right = 318
 			ssidlabelelement.top = 34
 			surface.blit(renderedssidlabel, ssidlabelelement)
 
 			ssid = getcurrentssid(wlan)
-			renderedssid = font18.render(ssid, True, colors["white"], colors["darkbg"])
+			renderedssid = font_mono_small.render(ssid, True, colors["white"], colors["darkbg"])
 			ssidelement = renderedssid.get_rect()
 			ssidelement.right = 315
 			ssidelement.top = 96
 			surface.blit(renderedssid, ssidelement)
 
 			enclabel = "Key"
-			renderedenclabel = font64.render(enclabel, True, colors["lightbg"], colors["darkbg"])
+			renderedenclabel = font_huge.render(enclabel, True, colors["lightbg"], colors["darkbg"])
 			enclabelelement = renderedenclabel.get_rect()
-			enclabelelement.right = 300
+			enclabelelement.right = 314 # Drawn a bit leftwards versus "SSID" text, so both right-align pixel-perfectly
 			enclabelelement.top = 114
 			surface.blit(renderedenclabel, enclabelelement)
 
-			renderedencp = font18.render(mac, True, colors["white"], colors["darkbg"])
+			renderedencp = font_mono_small.render(mac, True, colors["white"], colors["darkbg"])
 			encpelement = renderedencp.get_rect()
 			encpelement.right = 315
 			encpelement.top = 180
@@ -1309,7 +1261,7 @@ def apinfo():
 			pygame.display.update()
 	except:
 		text = ":("
-		renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
+		renderedtext = font_huge.render(text, True, colors["lightbg"], colors["darkbg"])
 		textelement = renderedtext.get_rect()
 		textelement.left = 192
 		textelement.top = 96
@@ -1319,7 +1271,7 @@ def apinfo():
 def create_wireless_menu():
 	global wirelessmenu
 	wirelessmenu = NetworksMenu()
-	wirelessmenu.move_menu(150,40)
+	wirelessmenu.move_menu(116,40)
 
 def destroy_wireless_menu():
 	global wirelessmenu
@@ -1327,58 +1279,81 @@ def destroy_wireless_menu():
 
 def create_saved_networks_menu():
 	global uniq
-	global colors
-	uniq = getsavednets()
-	if len(uniq) < 1:
-		text = ":("
-		renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
-		textelement = renderedtext.get_rect()
-		textelement.left = 192
-		textelement.top = 96
-		surface.blit(renderedtext, textelement)
-		pygame.display.update()
-	else:
-		wirelessitems = []
+
+	uniqssids = {}
+	menu = 1
+	for confName in sorted(listdir(netconfdir)):
+		if not confName.endswith('.conf'):
+			continue
+		ssid = unquote_plus(confName[:-5])
+
+		detail = {
+			'ESSID': ssid,
+			'Encryption': '',
+			'Key': '',
+			'Quality': '0/1',
+			'menu': menu,
+			}
+		try:
+			with open(netconfdir + confName) as f:
+				for line in f:
+					key, value = line.split('=', 1)
+					key = key.strip()
+					value = value.strip()
+					if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+						value = value[1:-1]
+
+					if key == 'WLAN_ESSID':
+						detail['ESSID'] = value
+					elif key == 'WLAN_ENCRYPTION':
+						detail['Encryption'] = value
+					elif key == 'WLAN_PASSPHRASE':
+						# TODO: fix for 128-bit wep
+						detail['Key'] = value
+		except IOError as ex:
+			print 'Error reading conf:', ex
+		except ValueError as ex:
+			print 'Error parsing conf line:', line.strip()
+		else:
+			uniqssids[ssid] = detail
+			menu += 1
+	uniq = uniqssids
+
+	if uniq:
 		l = []
-		for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
-			for network, detail in uniq.iteritems():
-				if network == item:
-					try:
-						detail['Network']['Quality']
-					except KeyError:
-						detail['Network']['Quality'] = "0/1"
-					try:
-						detail['Network']['Encryption']
-					except KeyError:
-						detail['Network']['Encryption'] = ""
-					ssid = detail['Network']['ESSID']
-					ssidconfig = re.escape(ssid)
-					try:
-						conf = netconfdir+ssidconfig+".conf"
-						with open(conf) as f:
-							for line in f:
-								if "WLAN_ENCRYPTION" in line:
-									detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
-										+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-								if "WLAN_PASSPHRASE" in line:
-									uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
-										+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-					except:
-						conf = netconfdir+ssid+".conf"
-						with open(conf) as f:
-							for line in f:
-								if "WLAN_ENCRYPTION" in line:
-									detail['Network']['Encryption'] = str.strip(line[line.find('WLAN_ENCRYPTION="')
-										+len('WLAN_ENCRYPTION="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-								if "WLAN_PASSPHRASE" in line:
-									uniq[network]['Network']['Key'] = str.strip(line[line.find('WLAN_PASSPHRASE="')
-										+len('WLAN_PASSPHRASE="'):line.find('"\n')+len('"\n')].rstrip('"\n'))
-									## TODO: fix for 128-bit wep
-					menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption'].upper()]
-					l.append(menuitem)
+		for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['menu']):
+			detail = uniq[item]
+			l.append([ detail['ESSID'], detail['Quality'], detail['Encryption'].upper()])
 		create_wireless_menu()
 		wirelessmenu.init(l, surface)
 		wirelessmenu.draw()
+	else:
+		text = 'empty'
+		renderedtext = font_huge.render(text, True, colors["lightbg"], colors["darkbg"])
+		textelement = renderedtext.get_rect()
+		textelement.left = 152
+		textelement.top = 96
+		surface.blit(renderedtext, textelement)
+		pygame.display.update()
+
+def convert_file_names():
+	"""In the directory containing WiFi network configuration files, removes
+	backslashes from file names created by older versions of GCW Connect."""
+	try:
+		confNames = listdir(netconfdir)
+	except IOError as ex:
+		print "Failed to list files in '%s': %s" (netconfdir, ex)
+	else:
+		for confName in confNames:
+			if not confName.endswith('.conf'):
+				continue
+			if '\\' in confName:
+				old, new = confName, quote_plus(confName.replace('\\', ''))
+				try:
+					os.rename(os.path.join(netconfdir, old), os.path.join(netconfdir, new))
+				except IOError as ex:
+					print "Failed to rename old-style network configuration file '%s' to '%s': %s" % (os.path.join(netconfdir, old), new, ex)
+
 if __name__ == "__main__":
 	# Persistent variables
 	networks = {}
@@ -1389,6 +1364,8 @@ if __name__ == "__main__":
 		createpaths()
 	except:
 		pass ## Can't create directories. Great for debugging on a pc.
+	else:
+		convert_file_names()
 
 	logoBar = LogoBar()
 
@@ -1446,13 +1423,9 @@ if __name__ == "__main__":
 						sys.exit()
 				elif event.key == K_SPACE:
 					if active_menu == "saved":
-						if len(str(wirelessmenu.get_selected()[0])) > 16:
-							the_ssid = "%s..."%(wirelessmenu.get_selected()[0][:16])
-						else:
-							the_ssid = wirelessmenu.get_selected()[0]
-						confirm = modal("Forget "+the_ssid+"?", query=True)
+						confirm = modal("Forget AP configuration?", query=True)
 						if confirm:
-							os.remove(netconfdir+re.escape(str(wirelessmenu.get_selected()[0]))+".conf")
+							os.remove(netconfdir+quote_plus(str(wirelessmenu.get_selected()[0]))+".conf")
 						create_saved_networks_menu()
 						redraw()
 						if len(uniq) < 1:
@@ -1472,37 +1445,36 @@ if __name__ == "__main__":
 							except:
 								uniq = {}
 								text = ":("
-								renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
+								renderedtext = font_huge.render(text, True, colors["lightbg"], colors["darkbg"])
 								textelement = renderedtext.get_rect()
 								textelement.left = 192
 								textelement.top = 96
 								surface.blit(renderedtext, textelement)
 								pygame.display.update()
 
-							wirelessitems = []
 							l = []
 							if len(uniq) < 1:
 								text = ":("
-								renderedtext = pygame.font.SysFont(None, 72).render(text, True, colors["lightbg"], colors["darkbg"])
+								renderedtext = font_huge.render(text, True, colors["lightbg"], colors["darkbg"])
 								textelement = renderedtext.get_rect()
 								textelement.left = 192
 								textelement.top = 96
 								surface.blit(renderedtext, textelement)
 								pygame.display.update()
 							else:
-								for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['Network']['menu']):
+								for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['menu']):
 									for network, detail in uniq.iteritems():
 										if network == item:
 											try:
-												detail['Network']['Quality']
+												detail['Quality']
 											except KeyError:
-												detail['Network']['Quality'] = "0/1"
+												detail['Quality'] = "0/1"
 											try:
-												detail['Network']['Encryption']
+												detail['Encryption']
 											except KeyError:
-												detail['Network']['Encryption'] = ""
+												detail['Encryption'] = ""
 
-											menuitem = [ detail['Network']['ESSID'], detail['Network']['Quality'], detail['Network']['Encryption']]
+											menuitem = [ detail['ESSID'], detail['Quality'], detail['Encryption']]
 											l.append(menuitem)
 
 								create_wireless_menu()
@@ -1523,12 +1495,11 @@ if __name__ == "__main__":
 							if ssid == '':
 								pass
 							else:
-								ssidconfig = re.escape(ssid)
 								drawEncryptionType()
 								encryption = getEncryptionType()
 								displayinputlabel("key")
 								displayencryptionhint()
-								
+
 								# Get key from the user
 								if not encryption == 'None':
 									if encryption == "WPA":
@@ -1541,7 +1512,7 @@ if __name__ == "__main__":
 										drawkeyboard("wep")
 										securitykey = getinput("wep", "key", ssid)
 									elif encryption == 'cancel':
-										del encryption, ssid, ssidconfig, securitykey
+										del encryption, ssid, securitykey
 										redraw()
 								else:
 									encryption = "none"
@@ -1560,7 +1531,7 @@ if __name__ == "__main__":
 								redraw()
 							except:
 								active_menu = to_menu("main")
-							
+
 						elif menu.get_selected() == 'Create AP':
 							startap()
 
@@ -1571,25 +1542,22 @@ if __name__ == "__main__":
 							pygame.display.quit()
 							sys.exit()
 
-					# SSID menu		
+					# SSID menu
 					elif active_menu == "ssid":
 						ssid = ""
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position())
-							if str(detail['Network']['menu']) == position:
-								if detail['Network']['ESSID'].split("-")[0] == "gcwzero":
-									ssid = detail['Network']['ESSID']
-									ssidconfig = re.escape(ssid)
-									conf = netconfdir+ssidconfig+".conf"
+							if str(detail['menu']) == position:
+								if detail['ESSID'].split("-")[0] == "gcwzero":
+									ssid = detail['ESSID']
+									conf = netconfdir + quote_plus(ssid) + ".conf"
 									encryption = "WPA2"
 									passphrase = ssid.split("-")[1]
-									writeconfig()
 									connect(wlan)
 								else:
-									ssid = detail['Network']['ESSID']
-									ssidconfig = re.escape(ssid)
-									conf = netconfdir+ssidconfig+".conf"
-									encryption = detail['Network']['Encryption']
+									ssid = detail['ESSID']
+									conf = netconfdir + quote_plus(ssid) + ".conf"
+									encryption = detail['Encryption']
 									if not os.path.exists(conf):
 										if encryption == "none":
 											passphrase = "none"
@@ -1620,12 +1588,11 @@ if __name__ == "__main__":
 						ssid = ''
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position()+1)
-							if str(detail['Network']['menu']) == position:
-								encryption = detail['Network']['Encryption']
-								ssid = str(detail['Network']['ESSID'])
-								ssidconfig = re.escape(ssid)
-								shutil.copy2(netconfdir+ssidconfig+".conf", sysconfdir+"config-"+wlan+".conf")
-								passphrase = detail['Network']['Key']
+							if str(detail['menu']) == position:
+								encryption = detail['Encryption']
+								ssid = str(detail['ESSID'])
+								shutil.copy2(netconfdir + quote_plus(ssid) + ".conf", sysconfdir+"config-"+wlan+".conf")
+								passphrase = detail['Key']
 								connect(wlan)
 								break
 
@@ -1634,12 +1601,12 @@ if __name__ == "__main__":
 						ssid = ""
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position())
-							if str(detail['Network']['menu']) == position:
+							if str(detail['menu']) == position:
 								ssid = network
-								encryption = detail['Network']['Encryption']
-								if detail['Network']['Encryption'] == "none":
+								encryption = detail['Encryption']
+								if detail['Encryption'] == "none":
 									pass
-								elif detail['Network']['Encryption'] == "wep":
+								elif detail['Encryption'] == "wep":
 									passphrase = ''
 									selected_key = ''
 									securitykey = ''
@@ -1659,13 +1626,13 @@ if __name__ == "__main__":
 
 						for network, detail in uniq.iteritems():
 							position = str(wirelessmenu.get_position()+1)
-							if str(detail['Network']['menu']) == position:
+							if str(detail['menu']) == position:
 								ssid = network
-								passphrase = uniq[network]['Network']['Key']
-								encryption = uniq[network]['Network']['Encryption'].upper()
-								if uniq[network]['Network']['Encryption'] == "none":
+								passphrase = uniq[network]['Key']
+								encryption = uniq[network]['Encryption'].upper()
+								if uniq[network]['Encryption'] == "none":
 									pass
-								elif uniq[network]['Network']['Encryption'] == "wep":
+								elif uniq[network]['Encryption'] == "wep":
 									passphrase = ''
 									selected_key = ''
 									securitykey = ''
