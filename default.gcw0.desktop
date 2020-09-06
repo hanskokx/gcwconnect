@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=GCW Connect
+Name=GCW Connect New
 Comment=Manage wireless networks and settings
 Exec=python gcwconnect.pyc
 Categories=settings;

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-#	wificonfig.py
+#	gcwconnect.py
 #
 #	Requires: pygame
 #
-#	Copyright (c) 2013 Hans Kokx
+#	Copyright (c) 2013-2020 Hans Kokx
 #
 #	Licensed under the GNU General Public License, Version 3.0 (the "License");
 #	you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import pygame
 from pygame.locals import *
 import pygame.gfxdraw
 from os import listdir
-from urllib import quote_plus, unquote_plus
+from urllib import parse
 
 # What is our wireless interface?
 wlan = "wlan0"
@@ -106,11 +106,11 @@ def createpaths(): # Create paths, if necessary
 
 ## Interface management
 def ifdown(iface):
-	SU.Popen(['ifdown', iface], close_fds=True).wait()
-	SU.Popen(['ap', '--stop'], close_fds=True).wait()
+	SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', iface, 'down'], close_fds=True).wait()
+	SU.Popen(['sudo', '/usr/sbin/ap', '--stop'], close_fds=True).wait()
 
 def ifup(iface):
-	return SU.Popen(['ifup', iface], close_fds=True).wait() == 0
+	return SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', iface, 'up'], close_fds=True).wait() == 0
 
 # Returns False if the interface was previously enabled
 def enableiface(iface):
@@ -122,9 +122,8 @@ def enableiface(iface):
 	drawinterfacestatus()
 	pygame.display.update()
 
-	SU.Popen(['rfkill', 'unblock', 'wlan'], close_fds=True).wait()
 	while True:
-		if SU.Popen(['/sbin/ifconfig', iface, 'up'], close_fds=True).wait() == 0:
+		if SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', iface, 'up'], close_fds=True).wait() == 0:
 			break
 		time.sleep(0.1);
 	# Let's grab the MAC address while we're here. If, on redraw, the
@@ -133,18 +132,19 @@ def enableiface(iface):
 	return True
 
 def disableiface(iface):
-	SU.Popen(['rfkill', 'block', 'wlan'], close_fds=True).wait()
+	SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', iface, 'down'], close_fds=True).wait()
 
 def getip(iface):
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['/sbin/ifconfig', iface],
+		output = SU.Popen(['/usr/sbin/ip', '-4', 'a', 'show', iface],
 				stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 
 	for line in output:
-		if line.strip().startswith("inet addr"):
+		if line.strip().startswith("inet"):
 			return str.strip(
-					line[line.find('inet addr')+len('inet addr"') :
-					line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
+					line[line.find('inet')+len('inet"') :
+					# line.find('/')+len('/')].rstrip('/'))
+					line.find('scope')+len('scope')].rstrip('scope'))
 
 def getmac(iface):
 	try:
@@ -158,9 +158,9 @@ def getcurrentssid(iface): # What network are we connected to?
 		return None
 
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['iwconfig', iface],
+		output = SU.Popen(['iw', iface, 'info'],
 				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
-	for line in output:
+	for line in output: # FIXME: This is unlikely to work.
 		if line.strip().startswith(iface):
 			ssid = str.strip(line[line.find('ESSID')+len('ESSID:"'):line.find('Nickname:')+len('Nickname:')].rstrip(' Nickname:').rstrip('"'))
 	return ssid
@@ -169,7 +169,7 @@ def checkinterfacestatus(iface):
 	return getip(iface) != None
 
 def connect(iface): # Connect to a network
-	saved_file = netconfdir + quote_plus(ssid) + ".conf"
+	saved_file = netconfdir + parse.quote_plus(ssid) + ".conf"
 	if os.path.exists(saved_file):
 		shutil.copy2(saved_file, sysconfdir+"config-"+iface+".conf")
 
@@ -197,21 +197,27 @@ def getnetworks(iface): # Run iwlist to get a list of networks in range
 	modal("Scanning...")
 
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['iwlist', iface, 'scan'],
+		output = SU.Popen(['sudo', '/usr/sbin/iw', iface, 'scan'],
 				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
+	
+	print(output) # FIXME: AP scanning is pretty broken right now.
 	for item in output:
-		if item.strip().startswith('Cell'):
+		if item.strip().startswith('BSS'):
 			# network is the current list corresponding to a MAC address {MAC:[]}
 			network = networks.setdefault(parsemac(item), dict())
+			print(network)
 
-		elif item.strip().startswith('ESSID:'):
+		elif item.strip().startswith('SSID:'):
 			network["ESSID"] = (parseessid(item))
+			print(network["ESSID"])
 
-		elif item.strip().startswith('IE:') and not item.strip().startswith('IE: Unknown') or item.strip().startswith('Encryption key:'):
+		elif item.strip().startswith('* Pairwise ciphers:'):
 			network["Encryption"] = (parseencryption(item))
+			print(network["Encryption"])
 
-		elif item.strip().startswith('Quality='):
+		elif item.strip().startswith('signal:'):
 			network["Quality"] = (parsequality(item))
+			print(network["Quality"])
 		# Now the loop is over, we will probably find a MAC address and a new "network" will be created.
 	redraw()
 
@@ -232,19 +238,26 @@ def listuniqssids():
 			menuposition += 1
 	return uniqssids
 
-## Parsing iwlist output for various components
+## Parsing iw scan output for various components
 def parsemac(macin):
-	mac = str.strip(macin[macin.find("Address:")+len("Address: "):macin.find("\n")+len("\n")])
+	mac=str.strip(macin[macin.find("BSS")+len("BSS "):macin.find("(on wlan0)\n")+len("(on wlan0)\n")])
 	return mac
 
 def parseessid(essid):
-	essid = str.strip(essid[essid.find('ESSID:"')+len('ESSID:"'):essid.find('"\n')+len('"\n')].rstrip('"\n'))
+	essid = str.strip(essid[essid.find('SSID: ')+len('SSID: '):essid.find('\n')+len('\n')].rstrip('\n'))
 	return essid
 
 def parsequality(quality):
-	quality = quality[quality.find("Quality=")+len("Quality="):quality.find(" S")+len(" S")].rstrip(" S")
-	if len(quality) < 1:
-		quality = '0/100'
+	quality = quality[quality.find("signal: ")+len("signal: "):quality.find(".\d\d dBm\n")+len(".\d\d dBm\n")].rstrip(".\d\d dBm\n")
+
+	if(quality >= -66): quality = 'Amazing';
+	if(quality <= -67 and quality >= -69): quality = 'Very Good';
+	if(quality <= -70 and quality >= -79): quality = 'Okay';
+	if(quality <= -80 and quality >= -89): quality = 'Poor';
+	if(quality <= -90): quality = 'Unusable';
+
+	# if len(quality) < 1:
+	# 	quality = '0/100'
 	return quality
 
 def parseencryption(encryption):
@@ -496,7 +509,7 @@ def writeconfig(): # Write wireless configuration to disk
 		if passphrase == "none":
 			passphrase = ""
 
-	conf = netconfdir + quote_plus(ssid) + ".conf"
+	conf = netconfdir + parse.quote_plus(ssid) + ".conf"
 
 	f = open(conf, "w")
 	f.write('WLAN_ESSID="'+ssid+'"\n')
@@ -525,7 +538,7 @@ def startap():
 		disconnect(wlan)
 
 	modal("Creating AP...")
-	if SU.Popen(['ap', '--start'], close_fds=True).wait() == 0:
+	if SU.Popen(['sudo', '/usr/sbin/ap', '--start'], close_fds=True).wait() == 0:
 		modal('AP created!', timeout=True)
 	else:
 		modal('Failed to create AP...', wait=True)
@@ -1044,7 +1057,7 @@ class Menu:
 
 		# Elements
 		top = 0
-		for i in xrange(len(visible_elements)):
+		for i in range(len(visible_elements)):
 			self.render_element(menu_surface, visible_elements[i], 0, top)
 			top += heights[i]
 		self.dest_surface.blit(menu_surface,self.origin)
@@ -1130,7 +1143,9 @@ class NetworksMenu(Menu):
 
 		menu_surface.blit(ssid, (left + spacing, top))
 		menu_surface.blit(enc, (left + enc_img.get_rect().width + 12, top + 18))
-		menu_surface.blit(enc_img, (left + 8, (top + 24) - (enc_img.get_rect().height / 2)))
+		# FIXME: DeprecationWarning: an integer is required (got type float).  Implicit conversion to integers using __int__ is deprecated, and may be removed in a future version of Python.
+		menu_surface.blit(enc_img, (left + 8, (top + 24) -
+                              (enc_img.get_rect().height / 2)))
 		# menu_surface.blit(strength, (left + 137, top + 18, strength.get_rect().width, strength.get_rect().height))
 		qual_x = left + 200 - qual_img.get_rect().width - 3
 		qual_y = top + 7 + 6 
@@ -1179,7 +1194,7 @@ class NetworksMenu(Menu):
 
 		# Elements
 		top = 0
-		for i in xrange(len(visible_elements)):
+		for i in range(len(visible_elements)):
 			self.render_element(menu_surface, visible_elements[i], 0, top)
 			top += heights[i]
 		self.dest_surface.blit(menu_surface,self.origin)
@@ -1285,7 +1300,7 @@ def create_saved_networks_menu():
 	for confName in sorted(listdir(netconfdir)):
 		if not confName.endswith('.conf'):
 			continue
-		ssid = unquote_plus(confName[:-5])
+		ssid = parse.unquote_plus(confName[:-5])
 
 		detail = {
 			'ESSID': ssid,
@@ -1311,9 +1326,9 @@ def create_saved_networks_menu():
 						# TODO: fix for 128-bit wep
 						detail['Key'] = value
 		except IOError as ex:
-			print 'Error reading conf:', ex
+			print('Error reading conf:', ex)
 		except ValueError as ex:
-			print 'Error parsing conf line:', line.strip()
+			print('Error parsing conf line:', line.strip())
 		else:
 			uniqssids[ssid] = detail
 			menu += 1
@@ -1321,7 +1336,7 @@ def create_saved_networks_menu():
 
 	if uniq:
 		l = []
-		for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['menu']):
+		for item in sorted(iter(uniq.keys()), key=lambda x: uniq[x]['menu']):
 			detail = uniq[item]
 			l.append([ detail['ESSID'], detail['Quality'], detail['Encryption'].upper()])
 		create_wireless_menu()
@@ -1342,17 +1357,17 @@ def convert_file_names():
 	try:
 		confNames = listdir(netconfdir)
 	except IOError as ex:
-		print "Failed to list files in '%s': %s" (netconfdir, ex)
+		print("Failed to list files in '%s': %s", (netconfdir, ex))
 	else:
 		for confName in confNames:
 			if not confName.endswith('.conf'):
 				continue
 			if '\\' in confName:
-				old, new = confName, quote_plus(confName.replace('\\', ''))
+				old, new = confName, parse.quote_plus(confName.replace('\\', ''))
 				try:
 					os.rename(os.path.join(netconfdir, old), os.path.join(netconfdir, new))
 				except IOError as ex:
-					print "Failed to rename old-style network configuration file '%s' to '%s': %s" % (os.path.join(netconfdir, old), new, ex)
+					print("Failed to rename old-style network configuration file '%s' to '%s': %s" % (os.path.join(netconfdir, old), new, ex))
 
 if __name__ == "__main__":
 	# Persistent variables
@@ -1425,7 +1440,8 @@ if __name__ == "__main__":
 					if active_menu == "saved":
 						confirm = modal("Forget AP configuration?", query=True)
 						if confirm:
-							os.remove(netconfdir+quote_plus(str(wirelessmenu.get_selected()[0]))+".conf")
+							os.remove(
+								netconfdir+parse.quote_plus(str(wirelessmenu.get_selected()[0]))+".conf")
 						create_saved_networks_menu()
 						redraw()
 						if len(uniq) < 1:
@@ -1550,13 +1566,13 @@ if __name__ == "__main__":
 							if str(detail['menu']) == position:
 								if detail['ESSID'].split("-")[0] == "gcwzero":
 									ssid = detail['ESSID']
-									conf = netconfdir + quote_plus(ssid) + ".conf"
+									conf = netconfdir + parse.quote_plus(ssid) + ".conf"
 									encryption = "WPA2"
 									passphrase = ssid.split("-")[1]
 									connect(wlan)
 								else:
 									ssid = detail['ESSID']
-									conf = netconfdir + quote_plus(ssid) + ".conf"
+									conf = netconfdir + parse.quote_plus(ssid) + ".conf"
 									encryption = detail['Encryption']
 									if not os.path.exists(conf):
 										if encryption == "none":
@@ -1586,12 +1602,13 @@ if __name__ == "__main__":
 					# Saved Networks menu
 					elif active_menu == "saved":
 						ssid = ''
-						for network, detail in uniq.iteritems():
+						for network, detail in iter(uniq.items()):
 							position = str(wirelessmenu.get_position()+1)
 							if str(detail['menu']) == position:
 								encryption = detail['Encryption']
 								ssid = str(detail['ESSID'])
-								shutil.copy2(netconfdir + quote_plus(ssid) + ".conf", sysconfdir+"config-"+wlan+".conf")
+								shutil.copy2(netconfdir + parse.quote_plus(ssid) +
+								             ".conf", sysconfdir+"config-"+wlan+".conf")
 								passphrase = detail['Key']
 								connect(wlan)
 								break
@@ -1599,7 +1616,7 @@ if __name__ == "__main__":
 				elif event.key == K_ESCAPE:
 					if active_menu == "ssid": # Allow us to edit the existing key
 						ssid = ""
-						for network, detail in uniq.iteritems():
+						for network, detail in iter(uniq.items()):
 							position = str(wirelessmenu.get_position())
 							if str(detail['menu']) == position:
 								ssid = network
@@ -1624,7 +1641,7 @@ if __name__ == "__main__":
 					if active_menu == "saved": # Allow us to edit the existing key
 						ssid = ''
 
-						for network, detail in uniq.iteritems():
+						for network, detail in iter(uniq.items()):
 							position = str(wirelessmenu.get_position()+1)
 							if str(detail['menu']) == position:
 								ssid = network
