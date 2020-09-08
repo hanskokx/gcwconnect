@@ -169,7 +169,7 @@ def checkIfInterfaceIsDormant():
 	operstate = False
 	try:
 		with open("/sys/class/net/" + wlan + "/dormant", "rb") as state:
-			return True
+			return state.readline().decode("utf-8").strip()
 	except IOError:
 		return False  # WiFi is disabled
 
@@ -180,7 +180,7 @@ def checkInterfaceStatus():
 	connected_to_network = getCurrentSSID()
 	ip_address = getIp()
 
-	if interface_is_up == True:
+	if interface_is_up != False:
 		print("DEBUG:", wlan, "is enabled")
 		interface_status = "Up"
 		if connected_to_network is not None:
@@ -219,7 +219,6 @@ def connectToAp(): # Connect to a network
 def disconnectFromAp():
 	modal("Disconnecting...")
 	ifDown()
-	disableIface()
 	
 	pygame.display.update()
 	drawStatusBar()
