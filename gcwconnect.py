@@ -106,11 +106,11 @@ def createpaths(): # Create paths, if necessary
 
 ## Interface management
 def ifdown(iface):
-	SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', iface, 'down'], close_fds=True).wait()
 	SU.Popen(['sudo', '/usr/sbin/ap', '--stop'], close_fds=True).wait()
+	SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', iface, 'down'], close_fds=True).wait()
 
 def ifup(iface):
-	return SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', iface, 'up'], close_fds=True).wait() == 0
+	return SU.Popen(['sudo', '/usr/sbin/ifup', iface], close_fds=True).wait() == 0
 
 # Returns False if the interface was previously enabled
 def enableiface(iface):
@@ -138,13 +138,11 @@ def getip(iface):
 	with open(os.devnull, "w") as fnull:
 		output = SU.Popen(['/usr/sbin/ip', '-4', 'a', 'show', iface],
 				stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
-
+	
 	for line in output:
-		if line.strip().startswith("inet"):
-			return str.strip(
-					line[line.find('inet')+len('inet"') :
-					# line.find('/')+len('/')].rstrip('/'))
-					line.find('scope')+len('scope')].rstrip('scope'))
+		if line.decode("utf-8").strip().startswith("inet"):
+			ip = line.decode("utf-8").split()[1].split("/")[0]
+	return ip
 
 def getmac(iface):
 	try:
@@ -158,11 +156,12 @@ def getcurrentssid(iface): # What network are we connected to?
 		return None
 
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['iw', iface, 'info'],
+		output = SU.Popen(['iw', iface, 'scan', 'dump'],
 				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
-	for line in output: # FIXME: This is unlikely to work.
-		if line.strip().startswith(iface):
-			ssid = str.strip(line[line.find('ESSID')+len('ESSID:"'):line.find('Nickname:')+len('Nickname:')].rstrip(' Nickname:').rstrip('"'))
+	for line in output: 
+		if line.decode("utf-8").strip().startswith('SSID'):
+			ssid = line.decode("utf-8").split()[1]
+
 	return ssid
 
 def checkinterfacestatus(iface):
@@ -205,7 +204,7 @@ def getnetworks(iface): # Run iwlist to get a list of networks in range
 		if item.strip().startswith('BSS'):
 			# network is the current list corresponding to a MAC address {MAC:[]}
 			network = networks.setdefault(parsemac(item), dict())
-			print(network)
+			print(network.first())
 
 		elif item.strip().startswith('SSID:'):
 			network["ESSID"] = (parseessid(item))
