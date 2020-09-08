@@ -2,7 +2,7 @@
 
 #	gcwconnect.py
 #
-#	Requires: pygame
+#	Requires: pygame, urllib
 #
 #	Copyright (c) 2013-2020 Hans Kokx
 #
@@ -96,7 +96,7 @@ gcw_font        = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
 font_mono_small = pygame.font.Font(os.path.join(datadir, 'Inconsolata.otf'), 11)
 
 ## File management
-def createpaths(): # Create paths, if necessary
+def createPaths(): # Create paths, if necessary
 	if not os.path.exists(confdir):
 		os.makedirs(confdir)
 	if not os.path.exists(netconfdir):
@@ -105,98 +105,140 @@ def createpaths(): # Create paths, if necessary
 		os.makedirs(sysconfdir)
 
 ## Interface management
-def ifdown(iface):
+def ifDown():
 	SU.Popen(['sudo', '/usr/sbin/ap', '--stop'], close_fds=True).wait()
-	SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', iface, 'down'], close_fds=True).wait()
+	SU.Popen(['sudo', '/usr/sbin/ifdown', wlan], close_fds=True).wait()
 
-def ifup(iface):
-	return SU.Popen(['sudo', '/usr/sbin/ifup', iface], close_fds=True).wait() == 0
+def ifUp():
+	SU.Popen(['sudo', '/usr/sbin/ifup', wlan], close_fds=True).wait() == 0
+	status = checkInterfaceStatus()
+	return status
 
 # Returns False if the interface was previously enabled
-def enableiface(iface):
-	check = checkinterfacestatus(iface)
+def enableIface():
+	check = checkInterfaceStatus()
 	if check:
 		return False
 
 	modal("Enabling WiFi...")
-	drawinterfacestatus()
+	drawInterfaceStatus()
 	pygame.display.update()
 
 	while True:
-		if SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', iface, 'up'], close_fds=True).wait() == 0:
+		if SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', wlan, 'up'], close_fds=True).wait() == 0:
 			break
 		time.sleep(0.1);
 	# Let's grab the MAC address while we're here. If, on redraw, the
 	# interface is disabled, GCW Connect would otherwise be unable to grab it.
-	mac_addresses[iface] = getmac(iface)
+	mac_addresses[wlan] = getMacAddress()
 	return True
 
-def disableiface(iface):
-	SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', iface, 'down'], close_fds=True).wait()
+def disableIface():
+	SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', wlan, 'down'], close_fds=True).wait()
 
-def getip(iface):
+def getIp():
+	ip = None
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['/usr/sbin/ip', '-4', 'a', 'show', iface],
+		output = SU.Popen(['/usr/sbin/ip', '-4', 'a', 'show', wlan],
 				stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 	
 	for line in output:
 		if line.decode("utf-8").strip().startswith("inet"):
 			ip = line.decode("utf-8").split()[1].split("/")[0]
+	
 	return ip
 
-def getmac(iface):
+def getMacAddress():
 	try:
-		with open("/sys/class/net/" + iface + "/address", "rb") as mac_file:
+		with open("/sys/class/net/" + wlan + "/address", "rb") as mac_file:
 			return mac_file.readline(17)
 	except IOError:
-		return None  # WiFi is disabled
+		return False  # WiFi is disabled
 
-def getcurrentssid(iface): # What network are we connected to?
-	if not checkinterfacestatus(iface):
-		return None
-
+def getCurrentSSID():  # What network are we connected to?
+	ssid = None
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['iw', iface, 'scan', 'dump'],
+		output = SU.Popen(['iw', 'dev', wlan, 'link'],
 				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
-	for line in output: 
-		if line.decode("utf-8").strip().startswith('SSID'):
-			ssid = line.decode("utf-8").split()[1]
+	if output is not None:
+		for line in output:
+			if line.decode("utf-8").strip().startswith('SSID'):
+				ssid = line.decode("utf-8").split()[1]
 
 	return ssid
 
-def checkinterfacestatus(iface):
-	return getip(iface) != None
+def checkInterfaceStatus(): #FIXME: this section needs work
+	interface_status = False
 
-def connect(iface): # Connect to a network
+	interface_is_up = getMacAddress()
+	connected_to_network = getCurrentSSID()
+	ip_address = getIp()
+
+	if interface_is_up != False:
+		print("DEBUG:",wlan,"is enabled")
+		interface_status = True
+		if connected_to_network is not None:
+			print("DEBUG: Connected to",connected_to_network)
+			if ip_address is not None:
+				print("DEBUG: IP address is", ip_address)
+	return interface_status
+
+def connectToAp(): # Connect to a network
 	saved_file = netconfdir + parse.quote_plus(ssid) + ".conf"
 	if os.path.exists(saved_file):
-		shutil.copy2(saved_file, sysconfdir+"config-"+iface+".conf")
+		shutil.copy2(saved_file, sysconfdir+"config-"+wlan+".conf")
 
-	if checkinterfacestatus(iface):
-		disconnect(iface)
+	iface_status = checkInterfaceStatus()
+	if iface_status == True:
+		disconnectFromAp()
+	else:
+		enableIface()
 
 	modal("Connecting...")
-	if not ifup(wlan):
-		modal('Connection failed!', wait=True)
-		return False
+	ifUp()
+	
+	connected_to_network = getCurrentSSID()
+	if connected_to_network == True:
+		modal('Connected!', timeout=True)
+	else:
+		modal('Connection failed!', timeout=True)
 
-	modal('Connected!', timeout=True)
 	pygame.display.update()
-	drawstatusbar()
-	drawinterfacestatus()
+	drawStatusBar()
+	drawInterfaceStatus()
 	return True
 
-def disconnect(iface):
-	if checkinterfacestatus(iface):
-		modal("Disconnecting...")
-		ifdown(iface)
+def disconnectFromAp():
+	modal("Disconnecting...")
+	ifDown()
+	disableIface()
+	
+	pygame.display.update()
+	drawStatusBar()
+	drawInterfaceStatus()
 
-def getnetworks(iface): # Run iwlist to get a list of networks in range
-	wasnotenabled = enableiface(iface)
+
+# This appears to list all available APs in range
+# def getCurrentSSID(iface):  # What network are we connected to?
+# 	ssid = None
+# 	if checkInterfaceStatus(iface) == True:
+# 		with open(os.devnull, "w") as fnull:
+# 		output = SU.Popen(['iw', iface, 'scan', 'dump'],
+#                     stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
+# 		if output is not None:
+# 			for line in output:
+# 				if line.decode("utf-8").strip().startswith('SSID'):
+# 					ssid = line.decode("utf-8").split()[1]
+
+# 					print("DEBUG: ", ssid)
+# 	return ssid
+
+def getnetworks(): # Run iwlist to get a list of networks in range
+	wasnotenabled = enableIface()
 	modal("Scanning...")
 
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['sudo', '/usr/sbin/iw', iface, 'scan'],
+		output = SU.Popen(['sudo', '/usr/sbin/iw', wlan, 'scan'],
 				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
 	
 	print(output) # FIXME: AP scanning is pretty broken right now.
@@ -221,7 +263,7 @@ def getnetworks(iface): # Run iwlist to get a list of networks in range
 	redraw()
 
 	if wasnotenabled:
-		disableiface(iface)
+		disableIface()
 	return networks
 
 def listuniqssids():
@@ -318,7 +360,7 @@ class hint:
 			buttoncenter = straightbox.center
 			if self.button == 'select':
 				straightbox.y = lbox.center[1]
-			straightbox.height = (straightbox.height + 1) / 2
+			straightbox.height = int(round((straightbox.height + 1) / 2))
 			pygame.draw.rect(surface, colors["black"], straightbox)
 
 			roundedbox = Rect(lbox.midtop, (rbox.midtop[0] - lbox.midtop[0], lbox.height - straightbox.height))
@@ -397,7 +439,8 @@ class LogoBar(object):
 		rect2.topleft = rect1.topright
 		surface.blit(self.text2, rect2)
 
-def drawstatusbar(): # Set up the status bar
+def drawStatusBar():  # Set up the status bar
+	connected_to_network = getCurrentSSID()
 	global colors
 	pygame.draw.rect(surface, colors['lightbg'], (0,224,320,16))
 	pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
@@ -406,13 +449,13 @@ def drawstatusbar(): # Set up the status bar
 	wlan_text.topleft = (2, 225)
 	surface.blit(wlantext, wlan_text)
 
-def drawinterfacestatus(): # Interface status badge
+def drawInterfaceStatus(): # Interface status badge
 	global colors
-	wlanstatus = checkinterfacestatus(wlan)
+	wlanstatus = checkInterfaceStatus()
 	if not wlanstatus:
 		wlanstatus = wlan+" is off."
 	else:
-		wlanstatus = getcurrentssid(wlan)
+		wlanstatus = getCurrentSSID()
 
 	wlantext = font_mono_small.render(wlanstatus, True, colors['white'], colors['lightbg'])
 	wlan_text = wlantext.get_rect()
@@ -421,15 +464,15 @@ def drawinterfacestatus(): # Interface status badge
 
 	# Note that the leading space here is intentional, to more cleanly overdraw any overly-long
 	# strings written to the screen beneath it (i.e. a very long ESSID)
-	if checkinterfacestatus(wlan):
-		text = font_mono_small.render(" "+getip(wlan), True, colors['white'], colors['lightbg'])
+	if checkInterfaceStatus():
+		text = font_mono_small.render(" "+getIp(), True, colors['white'], colors['lightbg'])
 		interfacestatus_text = text.get_rect()
 		interfacestatus_text.topright = (317, 225)
 		surface.blit(text, interfacestatus_text)
 	else:
 		mac = mac_addresses.get(wlan)  # grabbed by enableiface()
 		if mac is not None:
-			text = font_mono_small.render(" "+mac, True, colors['white'], colors['lightbg'])
+			text = font_mono_small.render(" "+mac.decode("utf-8"), True, colors['white'], colors['lightbg'])
 			interfacestatus_text = text.get_rect()
 			interfacestatus_text.topright = (317, 225)
 			surface.blit(text, interfacestatus_text)
@@ -452,8 +495,8 @@ def redraw():
 	if active_menu == "saved":
 		hint("y", "Forget", 195, 210)
 
-	drawstatusbar()
-	drawinterfacestatus()
+	drawStatusBar()
+	drawInterfaceStatus()
 	pygame.display.update()
 
 def modal(text, wait=False, timeout=False, query=False):
@@ -533,8 +576,8 @@ def writeconfig(): # Write wireless configuration to disk
 ## HostAP
 def startap():
 	global wlan
-	if checkinterfacestatus(wlan):
-		disconnect(wlan)
+	if checkInterfaceStatus():
+		disconnectFromAp()
 
 	modal("Creating AP...")
 	if SU.Popen(['sudo', '/usr/sbin/ap', '--start'], close_fds=True).wait() == 0:
@@ -811,7 +854,7 @@ def softkeyinput(keyboard, kind, ssid):
 				if ssid == '':
 					return False
 				writeconfig()
-				connect(wlan)
+				connectToAp(wlan)
 				return True
 
 			if event.key == K_UP:		# Move cursor up
@@ -1075,7 +1118,7 @@ class Menu:
 	def render_element(self, menu_surface, element, left, top):
 		render = self.font.render(element, 1, self.text_color)
 		spacing = 5
-		menu_surface.blit(render, (left + spacing, top + spacing, render.get_rect().width, render.get_rect().height))
+		menu_surface.blit(render, (int(round(left + spacing)), int(round(top + spacing)), render.get_rect().width, render.get_rect().height))
 
 class NetworksMenu(Menu):
 	def set_elements(self, elements):
@@ -1140,11 +1183,10 @@ class NetworksMenu(Menu):
 		#qual = font_small.render(element[1], 1, colors["lightgrey"])
 		spacing = 2
 
-		menu_surface.blit(ssid, (left + spacing, top))
-		menu_surface.blit(enc, (left + enc_img.get_rect().width + 12, top + 18))
-		# FIXME: DeprecationWarning: an integer is required (got type float).  Implicit conversion to integers using __int__ is deprecated, and may be removed in a future version of Python.
-		menu_surface.blit(enc_img, (left + 8, (top + 24) -
-                              (enc_img.get_rect().height / 2)))
+		menu_surface.blit(ssid, (int(round(left + spacing)), int(round(top))))
+		menu_surface.blit(enc, (int(round(left + enc_img.get_rect().width + 12)), int(round(top + 18))))
+		menu_surface.blit(enc_img, (int(round(left + 8)), int(round((top + 24) -
+                            (enc_img.get_rect().height / 2)))))
 		# menu_surface.blit(strength, (left + 137, top + 18, strength.get_rect().width, strength.get_rect().height))
 		qual_x = left + 200 - qual_img.get_rect().width - 3
 		qual_y = top + 7 + 6 
@@ -1219,18 +1261,16 @@ def mainmenu():
 	elems = ['Quit']
 
 	try:
-		ap = getcurrentssid(wlan).split("-")[1]
-		file = open('/sys/class/net/wlan0/address', 'r')
-		mac = file.read().strip('\n').replace(":", "")
-		file.close()
-		if mac == ap:
+		ap = getCurrentSSID()
+		
+		if ap is not None:
 			elems = ['AP info'] + elems
 	except:
 		elems = ['Create AP'] + elems
 
 	elems = ["Saved Networks", 'Scan for APs', "Manual Setup"] + elems
 
-	if checkinterfacestatus(wlan):
+	if checkInterfaceStatus():
 		elems = ['Disconnect'] + elems
 
 	menu.init(elems, surface)
@@ -1240,11 +1280,9 @@ def apinfo():
 	global wlan
 
 	try:
-		ap = getcurrentssid(wlan).split("-")[1]
-		file = open('/sys/class/net/wlan0/address', 'r')
-		mac = file.read().strip('\n').replace(":", "")
-		file.close()
-		if mac == ap:
+		ssid = getCurrentSSID()
+
+		if ssid is not None:
 			ssidlabel = "SSID"
 			renderedssidlabel = font_huge.render(ssidlabel, True, colors["lightbg"], colors["darkbg"])
 			ssidlabelelement = renderedssidlabel.get_rect()
@@ -1252,7 +1290,6 @@ def apinfo():
 			ssidlabelelement.top = 34
 			surface.blit(renderedssidlabel, ssidlabelelement)
 
-			ssid = getcurrentssid(wlan)
 			renderedssid = font_mono_small.render(ssid, True, colors["white"], colors["darkbg"])
 			ssidelement = renderedssid.get_rect()
 			ssidelement.right = 315
@@ -1266,7 +1303,8 @@ def apinfo():
 			enclabelelement.top = 114
 			surface.blit(renderedenclabel, enclabelelement)
 
-			renderedencp = font_mono_small.render(mac, True, colors["white"], colors["darkbg"])
+			# FIXME: mac should be the BSSID, i think
+			renderedencp = font_mono_small.render(ssid, True, colors["white"], colors["darkbg"])
 			encpelement = renderedencp.get_rect()
 			encpelement.right = 315
 			encpelement.top = 180
@@ -1375,7 +1413,7 @@ if __name__ == "__main__":
 	active_menu = "main"
 
 	try:
-		createpaths()
+		createPaths()
 	except:
 		pass ## Can't create directories. Great for debugging on a pc.
 	else:
@@ -1451,11 +1489,11 @@ if __name__ == "__main__":
 					# Main menu
 					if active_menu == "main":
 						if menu.get_selected() == 'Disconnect':
-							disconnect(wlan)
+							disconnectFromAp()
 							redraw()
 						elif menu.get_selected() == 'Scan for APs':
 							try:
-								getnetworks(wlan)
+								getnetworks()
 								uniq = listuniqssids()
 							except:
 								uniq = {}
@@ -1533,7 +1571,7 @@ if __name__ == "__main__":
 									encryption = "none"
 									redraw()
 									writeconfig()
-									connect(wlan)
+									connectToAp()
 								try:
 									encryption
 								except NameError:
@@ -1568,7 +1606,7 @@ if __name__ == "__main__":
 									conf = netconfdir + parse.quote_plus(ssid) + ".conf"
 									encryption = "WPA2"
 									passphrase = ssid.split("-")[1]
-									connect(wlan)
+									connectToAp()
 								else:
 									ssid = detail['ESSID']
 									conf = netconfdir + parse.quote_plus(ssid) + ".conf"
@@ -1578,7 +1616,7 @@ if __name__ == "__main__":
 											passphrase = "none"
 											encryption = "none"
 											writeconfig()
-											connect(wlan)
+											connectToAp()
 										elif encryption == "WEP-40" or encryption == "WEP-128":
 											passphrase = ''
 											selected_key = ''
@@ -1595,7 +1633,7 @@ if __name__ == "__main__":
 											drawkeyboard("qwertyNormal")
 											passphrase = getinput("qwertyNormal", "key", ssid)
 									else:
-										connect(wlan)
+										connectToAp()
 								break
 
 					# Saved Networks menu
@@ -1609,7 +1647,7 @@ if __name__ == "__main__":
 								shutil.copy2(netconfdir + parse.quote_plus(ssid) +
 								             ".conf", sysconfdir+"config-"+wlan+".conf")
 								passphrase = detail['Key']
-								connect(wlan)
+								connectToAp()
 								break
 
 				elif event.key == K_ESCAPE:
