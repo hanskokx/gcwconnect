@@ -106,8 +106,8 @@ def createPaths(): # Create paths, if necessary
 
 ## Interface management
 def ifDown():
-	SU.Popen(['sudo', '/usr/sbin/ap', '--stop'], close_fds=True).wait()
 	SU.Popen(['sudo', '/usr/sbin/ifdown', wlan], close_fds=True).wait()
+	SU.Popen(['sudo', '/usr/sbin/ap', '--stop'], close_fds=True).wait()
 
 def ifUp():
 	SU.Popen(['sudo', '/usr/sbin/ifup', wlan], close_fds=True).wait() == 0
@@ -117,7 +117,7 @@ def ifUp():
 # Returns False if the interface was previously enabled
 def enableIface():
 	check = checkInterfaceStatus()
-	if check:
+	if check is not False:
 		return False
 
 	modal("Enabling WiFi...")
@@ -128,9 +128,7 @@ def enableIface():
 		if SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', wlan, 'up'], close_fds=True).wait() == 0:
 			break
 		time.sleep(0.1);
-	# Let's grab the MAC address while we're here. If, on redraw, the
-	# interface is disabled, GCW Connect would otherwise be unable to grab it.
-	mac_addresses[wlan] = getMacAddress()
+
 	return True
 
 def disableIface():
@@ -158,7 +156,7 @@ def getMacAddress():
 def getCurrentSSID():  # What network are we connected to?
 	ssid = None
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['iw', 'dev', wlan, 'link'],
+		output = SU.Popen(['/usr/sbin/iw', 'dev', wlan, 'link'],
 				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
 	if output is not None:
 		for line in output:
@@ -167,20 +165,30 @@ def getCurrentSSID():  # What network are we connected to?
 
 	return ssid
 
-def checkInterfaceStatus(): #FIXME: this section needs work
+def checkIfInterfaceIsDormant():
+	operstate = False
+	try:
+		with open("/sys/class/net/" + wlan + "/dormant", "rb") as state:
+			return True
+	except IOError:
+		return False  # WiFi is disabled
+
+def checkInterfaceStatus():
 	interface_status = False
 
-	interface_is_up = getMacAddress()
+	interface_is_up = checkIfInterfaceIsDormant()
 	connected_to_network = getCurrentSSID()
 	ip_address = getIp()
 
-	if interface_is_up != False:
-		print("DEBUG:",wlan,"is enabled")
-		interface_status = True
+	if interface_is_up == True:
+		print("DEBUG:", wlan, "is enabled")
+		interface_status = "Up"
 		if connected_to_network is not None:
-			print("DEBUG: Connected to",connected_to_network)
+			print("DEBUG: Connected to", connected_to_network)
+			interface_status = "Associated"
 			if ip_address is not None:
 				print("DEBUG: IP address is", ip_address)
+				interface_status = "Connected"
 	return interface_status
 
 def connectToAp(): # Connect to a network
@@ -441,10 +449,12 @@ class LogoBar(object):
 
 def drawStatusBar():  # Set up the status bar
 	connected_to_network = getCurrentSSID()
+	if connected_to_network is None:
+		connected_to_network = "Not connected"
 	global colors
 	pygame.draw.rect(surface, colors['lightbg'], (0,224,320,16))
 	pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
-	wlantext = font_mono_small.render("...", True, colors['white'], colors['lightbg'])
+	wlantext = font_mono_small.render(connected_to_network, True, colors['white'], colors['lightbg'])
 	wlan_text = wlantext.get_rect()
 	wlan_text.topleft = (2, 225)
 	surface.blit(wlantext, wlan_text)
@@ -465,7 +475,10 @@ def drawInterfaceStatus(): # Interface status badge
 	# Note that the leading space here is intentional, to more cleanly overdraw any overly-long
 	# strings written to the screen beneath it (i.e. a very long ESSID)
 	if checkInterfaceStatus():
-		text = font_mono_small.render(" "+getIp(), True, colors['white'], colors['lightbg'])
+		ip_address = getIp()
+		if ip_address is None:
+			ip_address = ''
+		text = font_mono_small.render(" "+ip_address, True, colors['white'], colors['lightbg'])
 		interfacestatus_text = text.get_rect()
 		interfacestatus_text.topright = (317, 225)
 		surface.blit(text, interfacestatus_text)
@@ -1270,7 +1283,8 @@ def mainmenu():
 
 	elems = ["Saved Networks", 'Scan for APs', "Manual Setup"] + elems
 
-	if checkInterfaceStatus():
+	interface_status = checkInterfaceStatus()
+	if interface_status == "Connected":
 		elems = ['Disconnect'] + elems
 
 	menu.init(elems, surface)
