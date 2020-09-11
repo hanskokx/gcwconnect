@@ -238,7 +238,9 @@ def scanForNetworks(): # Run iwlist to get a list of networks in range
 				item = item.strip()
 				if item[-1] == ',':
 					item = item[0:-1]
-				aps.append(json.loads(item))
+				
+				if len(json.loads(item)['ssid']) != '': #for now, we're going to ignore hidden networks
+					aps.append(json.loads(item))
 			except:
 				pass
 		else:
@@ -925,41 +927,40 @@ class NetworksMenu(Menu):
 
 	def render_element(self, menu_surface, element, left, top):
 		the_ssid = element[0]
-		if len(the_ssid) > 0:
-			## Wifi signal icons
-			percent = element[1]
+		## Wifi signal icons
+		percent = element[1]
 
-			if percent >= 6 and percent <= 24:
-				signal_icon = 'wifi-0.png'
-			elif percent >= 25 and percent <= 49:
-				signal_icon = 'wifi-1.png'
-			elif percent >= 50 and percent <= 74:
-				signal_icon = 'wifi-2.png'
-			elif percent >= 75:
-				signal_icon = 'wifi-3.png'
-			else:
-				signal_icon = 'transparent.png'
-
-			qual_img = pygame.image.load((os.path.join(datadir, signal_icon))).convert_alpha()
-			# enc_img = pygame.image.load((os.path.join(datadir, enc_icon))).convert_alpha()
-
-			ssid = font_mono_small.render(the_ssid, 1, self.text_color)
-			# enc = font_small.render(enc_type, 1, colors["lightgrey"])
-			strength = font_small.render(str(str(percent) + "%").rjust(4), 1, colors["lightgrey"])
-			# qual = font_small.render(element[1], 1, colors["lightgrey"])
-			spacing = 2
-
-			menu_surface.blit(ssid, (int(round(left + spacing)), int(round(top))))
-			# menu_surface.blit(enc, (int(round(left + enc_img.get_rect().width + 12)), int(round(top + 18))))
-			# menu_surface.blit(enc_img, (int(round(left + 8)), int(round((top + 24) -
-								# (enc_img.get_rect().height / 2)))))
-			menu_surface.blit(strength, (left + 137, top + 18, strength.get_rect().width, strength.get_rect().height))
-			qual_x = left + 200 - qual_img.get_rect().width - 3
-			qual_y = top + 7 + 6 
-			menu_surface.blit(qual_img, (qual_x, qual_y))
-			pygame.display.update()
+		if percent >= 6 and percent <= 24:
+			signal_icon = 'wifi-0.png'
+		elif percent >= 25 and percent <= 49:
+			signal_icon = 'wifi-1.png'
+		elif percent >= 50 and percent <= 74:
+			signal_icon = 'wifi-2.png'
+		elif percent >= 75:
+			signal_icon = 'wifi-3.png'
 		else:
-			pass
+			signal_icon = 'transparent.png'
+
+		qual_img = pygame.image.load((os.path.join(datadir, signal_icon))).convert_alpha()
+		# enc_img = pygame.image.load((os.path.join(datadir, enc_icon))).convert_alpha()
+
+		ssid = font_mono_small.render(the_ssid, 1, self.text_color)
+		# enc = font_small.render(enc_type, 1, colors["lightgrey"])
+		strength = font_small.render(str(str(percent) + "%").rjust(4), 1, colors["lightgrey"])
+		# qual = font_small.render(element[1], 1, colors["lightgrey"])
+		spacing = 2
+
+		menu_surface.blit(ssid, (int(round(left + spacing)), int(round(top))))
+		# menu_surface.blit(enc, (int(round(left + enc_img.get_rect().width + 12)), int(round(top + 18))))
+		# menu_surface.blit(enc_img, (int(round(left + 8)), int(round((top + 24) -
+							# (enc_img.get_rect().height / 2)))))
+		menu_surface.blit(strength, (left + 137, top + 18, strength.get_rect().width, strength.get_rect().height))
+		qual_x = left + 200 - qual_img.get_rect().width - 3
+		qual_y = top + 7 + 6 
+		qual_y = top + 7 + 6 
+		qual_y = top + 7 + 6 
+		menu_surface.blit(qual_img, (qual_x, qual_y))
+		pygame.display.update()
 
 	def draw(self,move=0):
 		if len(self.elements) == 0:
@@ -1171,8 +1172,7 @@ def convert_file_names():
 
 if __name__ == "__main__":
 	# Persistent variables
-	networks = {}
-	uniqssids = {}
+	access_points = {}
 	active_menu = "main"
 
 	try:
@@ -1345,7 +1345,7 @@ if __name__ == "__main__":
 					# SSID menu
 					elif active_menu == "ssid":
 						ssid = ""
-						for network, detail in aps.iteritems():
+						for network, detail in access_points:
 							position = str(wirelessmenu.get_position())
 							if str(detail['menu']) == position:
 								if detail['ssid'].split("-")[0] == "gcwzero":
@@ -1384,7 +1384,7 @@ if __name__ == "__main__":
 					# Saved Networks menu
 					elif active_menu == "saved":
 						ssid = ''
-						for network, detail in iter(aps.items()):
+						for network, detail in access_points:
 							position = str(wirelessmenu.get_position()+1)
 							if str(detail['menu']) == position:
 								encryption = detail['Encryption']
@@ -1398,7 +1398,7 @@ if __name__ == "__main__":
 				elif event.key == K_ESCAPE:
 					if active_menu == "ssid": # Allow us to edit the existing key
 						ssid = ""
-						for network, detail in iter(aps.items()):
+						for network, detail in access_points:
 							position = str(wirelessmenu.get_position())
 							if str(detail['menu']) == position:
 								ssid = network
@@ -1423,11 +1423,11 @@ if __name__ == "__main__":
 					if active_menu == "saved": # Allow us to edit the existing key
 						ssid = ''
 
-						for network, detail in iter(aps.items()):
+						for network, detail in access_points:
 							position = str(wirelessmenu.get_position()+1)
 							if str(detail['menu']) == position:
 								ssid = network
-								passphrase = aps[network]['Key']
+								passphrase = access_points[network]['Key']
 								# encryption = aps[network]['Encryption'].upper()
 								# if uniq[network]['Encryption'] == "none":
 								# 	pass
