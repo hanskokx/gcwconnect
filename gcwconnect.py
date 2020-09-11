@@ -2,7 +2,7 @@
 
 #	gcwconnect.py
 #
-#	Requires: pygame, urllib
+#	Requires: pygame, urllib, json
 #
 #	Copyright (c) 2013-2020 Hans Kokx
 #
@@ -35,6 +35,7 @@ from pygame.locals import *
 import pygame.gfxdraw
 from os import listdir
 from urllib import parse
+import json
 
 # What is our wireless interface?
 wlan = "wlan0"
@@ -181,13 +182,10 @@ def checkInterfaceStatus():
 	ip_address = getIp()
 
 	if interface_is_up != False:
-		print("DEBUG:", wlan, "is enabled")
 		interface_status = "Up"
 		if connected_to_network is not None:
-			print("DEBUG: Connected to", connected_to_network)
 			interface_status = "Associated"
 			if ip_address is not None:
-				print("DEBUG: IP address is", ip_address)
 				interface_status = "Connected"
 	return interface_status
 
@@ -224,104 +222,33 @@ def disconnectFromAp():
 	drawStatusBar()
 	drawInterfaceStatus()
 
-
-# This appears to list all available APs in range
-# def getCurrentSSID(iface):  # What network are we connected to?
-# 	ssid = None
-# 	if checkInterfaceStatus(iface) == True:
-# 		with open(os.devnull, "w") as fnull:
-# 		output = SU.Popen(['iw', iface, 'scan', 'dump'],
-#                     stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
-# 		if output is not None:
-# 			for line in output:
-# 				if line.decode("utf-8").strip().startswith('SSID'):
-# 					ssid = line.decode("utf-8").split()[1]
-
-# 					print("DEBUG: ", ssid)
-# 	return ssid
-
-def getnetworks(): # Run iwlist to get a list of networks in range
+def scanForNetworks(): # Run iwlist to get a list of networks in range
 	wasnotenabled = enableIface()
 	modal("Scanning...")
 
 	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['sudo', '/usr/sbin/iw', wlan, 'scan'],
-				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
-	
-	print(output) # FIXME: AP scanning is pretty broken right now.
+		output = SU.Popen(['sudo', '/usr/sbin/wlan-scan', wlan],
+				stdout=SU.PIPE, stderr=fnull, close_fds=True, encoding="utf-8").stdout.readlines()
+
+	aps = []
+
 	for item in output:
-		if item.strip().startswith('BSS'):
-			# network is the current list corresponding to a MAC address {MAC:[]}
-			network = networks.setdefault(parsemac(item), dict())
-			print(network.first())
+		if len(item) > 2:
+			try:
+				item = item.strip()
+				if item[-1] == ',':
+					item = item[0:-1]
+				aps.append(json.loads(item))
+			except:
+				pass
+		else:
+			pass
 
-		elif item.strip().startswith('SSID:'):
-			network["ESSID"] = (parseessid(item))
-			print(network["ESSID"])
-
-		elif item.strip().startswith('* Pairwise ciphers:'):
-			network["Encryption"] = (parseencryption(item))
-			print(network["Encryption"])
-
-		elif item.strip().startswith('signal:'):
-			network["Quality"] = (parsequality(item))
-			print(network["Quality"])
-		# Now the loop is over, we will probably find a MAC address and a new "network" will be created.
 	redraw()
 
 	if wasnotenabled:
 		disableIface()
-	return networks
-
-def listuniqssids():
-	menuposition = 0
-	uniqssid = {}
-	uniqssids = {}
-
-	for network, detail in networks.iteritems():
-		if detail['ESSID'] not in uniqssids and detail['ESSID']:
-			uniqssid = uniqssids.setdefault(detail['ESSID'], detail)
-			uniqssid["menu"] = menuposition
-			uniqssid["Encryption"] = detail['Encryption']
-			menuposition += 1
-	return uniqssids
-
-## Parsing iw scan output for various components
-def parsemac(macin):
-	mac=str.strip(macin[macin.find("BSS")+len("BSS "):macin.find("(on wlan0)\n")+len("(on wlan0)\n")])
-	return mac
-
-def parseessid(essid):
-	essid = str.strip(essid[essid.find('SSID: ')+len('SSID: '):essid.find('\n')+len('\n')].rstrip('\n'))
-	return essid
-
-def parsequality(quality):
-	quality = quality[quality.find("signal: ")+len("signal: "):quality.find(".\d\d dBm\n")+len(".\d\d dBm\n")].rstrip(".\d\d dBm\n")
-
-	if(quality >= -66): quality = 'Amazing';
-	if(quality <= -67 and quality >= -69): quality = 'Very Good';
-	if(quality <= -70 and quality >= -79): quality = 'Okay';
-	if(quality <= -80 and quality >= -89): quality = 'Poor';
-	if(quality <= -90): quality = 'Unusable';
-
-	# if len(quality) < 1:
-	# 	quality = '0/100'
-	return quality
-
-def parseencryption(encryption):
-	encryption = str.strip(encryption)
-
-	if encryption.startswith('Encryption key:off'):
-	 	encryption = "none"
-	elif encryption.startswith('Encryption key:on'):
-		encryption = "WEP-40"
-	elif encryption.startswith("IE: WPA"):
-		encryption = "WPA"
-	elif encryption.startswith("IE: IEEE 802.11i/WPA2"):
-		encryption = "WPA2"
-	else:
-		encryption = "Encrypted (unknown)"
-	return encryption
+	return aps
 
 def aafilledcircle(surface, color, center, radius):
 	'''Helper function to draw anti-aliased circles using an interface similar
@@ -553,11 +480,6 @@ def modal(text, wait=False, timeout=False, query=False):
 ## Connect to a network
 def writeconfig(): # Write wireless configuration to disk
 	global passphrase
-	global encryption
-	try:
-		encryption
-	except NameError:
-		encryption = uniq[ssid]['Encryption']
 
 	if passphrase:
 		if passphrase == "none":
@@ -566,23 +488,10 @@ def writeconfig(): # Write wireless configuration to disk
 	conf = netconfdir + parse.quote_plus(ssid) + ".conf"
 
 	f = open(conf, "w")
-	f.write('WLAN_ESSID="'+ssid+'"\n')
-
-	if encryption == "WEP-128":
-		encryption = "wep"
-		f.write('WLAN_PASSPHRASE="s:'+passphrase+'"\n')
-	else:
-		f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
-		if encryption == "WEP-40":
-			encryption = "wep"
-		elif encryption == "WPA":
-			encryption = "wpa"
-		elif encryption == "WPA2":
-			encryption = "wpa2"
-
-
-	f.write('WLAN_ENCRYPTION="'+encryption+'"\n')
-	f.write('WLAN_DHCP_RETRIES=20\n')
+	f.write('network={\n')
+	f.write('\tssid="'+ssid+'"\n')
+	f.write('\tpsk="'+passphrase+'"\n')
+	f.write('}')
 	f.close()
 
 ## HostAP
@@ -1150,13 +1059,8 @@ class NetworksMenu(Menu):
 	def render_element(self, menu_surface, element, left, top):
 		the_ssid = element[0]
 
-		def qualityPercent(x):
-			percent = (float(x.split("/")[0]) / float(x.split("/")[1])) * 100
-			if percent > 100:
-				percent = 100
-			return int(percent)
 		## Wifi signal icons
-		percent = qualityPercent(element[1])
+		percent = element[1]
 
 		if percent >= 6 and percent <= 24:
 			signal_icon = 'wifi-0.png'
@@ -1169,36 +1073,19 @@ class NetworksMenu(Menu):
 		else:
 			signal_icon = 'transparent.png'
 
-		## Encryption information
-		enc_type = element[2]
-		if enc_type == "NONE" or enc_type == '':
-			enc_icon = "open.png"
-			enc_type = "Open"
-		elif enc_type == "WPA" or enc_type == "wpa":
-			enc_icon = "closed.png"
-		elif enc_type == "WPA2" or enc_type == "wpa2":
-			enc_icon = "closed.png"
-		elif enc_type == "WEP-40" or enc_type == "WEP-128" or enc_type == "wep" or enc_type == "WEP":
-			enc_icon = "closed.png"
-			enc_type = "WEP"
-		else:
-			enc_icon = "unknown.png"
-			enc_type = "(Unknown)"
-
-
 		qual_img = pygame.image.load((os.path.join(datadir, signal_icon))).convert_alpha()
-		enc_img = pygame.image.load((os.path.join(datadir, enc_icon))).convert_alpha()
+		# enc_img = pygame.image.load((os.path.join(datadir, enc_icon))).convert_alpha()
 
 		ssid = font_mono_small.render(the_ssid, 1, self.text_color)
-		enc = font_small.render(enc_type, 1, colors["lightgrey"])
-		#strength = font_small.render(str(str(percent) + "%").rjust(4), 1, colors["lightgrey"])
-		#qual = font_small.render(element[1], 1, colors["lightgrey"])
+		# enc = font_small.render(enc_type, 1, colors["lightgrey"])
+		strength = font_small.render(str(str(percent) + "%").rjust(4), 1, colors["lightgrey"])
+		# qual = font_small.render(element[1], 1, colors["lightgrey"])
 		spacing = 2
 
 		menu_surface.blit(ssid, (int(round(left + spacing)), int(round(top))))
-		menu_surface.blit(enc, (int(round(left + enc_img.get_rect().width + 12)), int(round(top + 18))))
-		menu_surface.blit(enc_img, (int(round(left + 8)), int(round((top + 24) -
-                            (enc_img.get_rect().height / 2)))))
+		# menu_surface.blit(enc, (int(round(left + enc_img.get_rect().width + 12)), int(round(top + 18))))
+		# menu_surface.blit(enc_img, (int(round(left + 8)), int(round((top + 24) -
+                            # (enc_img.get_rect().height / 2)))))
 		# menu_surface.blit(strength, (left + 137, top + 18, strength.get_rect().width, strength.get_rect().height))
 		qual_x = left + 200 - qual_img.get_rect().width - 3
 		qual_y = top + 7 + 6 
@@ -1354,7 +1241,6 @@ def create_saved_networks_menu():
 
 		detail = {
 			'ESSID': ssid,
-			'Encryption': '',
 			'Key': '',
 			'Quality': '0/1',
 			'menu': menu,
@@ -1367,13 +1253,10 @@ def create_saved_networks_menu():
 					value = value.strip()
 					if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
 						value = value[1:-1]
-
+					#FIXME: This needs to be re-written
 					if key == 'WLAN_ESSID':
 						detail['ESSID'] = value
-					elif key == 'WLAN_ENCRYPTION':
-						detail['Encryption'] = value
 					elif key == 'WLAN_PASSPHRASE':
-						# TODO: fix for 128-bit wep
 						detail['Key'] = value
 		except IOError as ex:
 			print('Error reading conf:', ex)
@@ -1481,7 +1364,7 @@ if __name__ == "__main__":
 					if active_menu == "ssid" or active_menu == "saved":
 						destroy_wireless_menu()
 						active_menu = to_menu("main")
-						del uniq
+						del aps
 						redraw()
 					elif event.key == K_LALT:
 						pygame.display.quit()
@@ -1494,7 +1377,7 @@ if __name__ == "__main__":
 								netconfdir+parse.quote_plus(str(wirelessmenu.get_selected()[0]))+".conf")
 						create_saved_networks_menu()
 						redraw()
-						if len(uniq) < 1:
+						if len(aps) < 1:
 							destroy_wireless_menu()
 							active_menu = to_menu("main")
 							redraw()
@@ -1506,10 +1389,8 @@ if __name__ == "__main__":
 							redraw()
 						elif menu.get_selected() == 'Scan for APs':
 							try:
-								getnetworks()
-								uniq = listuniqssids()
+								aps = scanForNetworks()
 							except:
-								uniq = {}
 								text = ":("
 								renderedtext = font_huge.render(text, True, colors["lightbg"], colors["darkbg"])
 								textelement = renderedtext.get_rect()
@@ -1519,7 +1400,7 @@ if __name__ == "__main__":
 								pygame.display.update()
 
 							l = []
-							if len(uniq) < 1:
+							if len(aps) < 1:
 								text = ":("
 								renderedtext = font_huge.render(text, True, colors["lightbg"], colors["darkbg"])
 								textelement = renderedtext.get_rect()
@@ -1528,20 +1409,20 @@ if __name__ == "__main__":
 								surface.blit(renderedtext, textelement)
 								pygame.display.update()
 							else:
-								for item in sorted(uniq.iterkeys(), key=lambda x: uniq[x]['menu']):
-									for network, detail in uniq.iteritems():
-										if network == item:
-											try:
-												detail['Quality']
-											except KeyError:
-												detail['Quality'] = "0/1"
-											try:
-												detail['Encryption']
-											except KeyError:
-												detail['Encryption'] = ""
+								# for item in sorted(uniq, key=lambda x: uniq[x]['menu']):
+								for ap in aps:
+									menuitem = [ ap['ssid'], ap['quality']]
+									l.append(menuitem)
+									# for network, details in uniq:
 
-											menuitem = [ detail['ESSID'], detail['Quality'], detail['Encryption']]
-											l.append(menuitem)
+										# if network == item:
+										# 	try:
+										# 		network['quality']
+										# 	except KeyError:
+										# 		network['quality'] = "0/1"
+											
+										# 	menuitem = [ network['ssid'], network['quality']]
+										# 	l.append(menuitem)
 
 								create_wireless_menu()
 								wirelessmenu.init(l, surface)
@@ -1611,19 +1492,17 @@ if __name__ == "__main__":
 					# SSID menu
 					elif active_menu == "ssid":
 						ssid = ""
-						for network, detail in uniq.iteritems():
+						for network, detail in aps.iteritems():
 							position = str(wirelessmenu.get_position())
 							if str(detail['menu']) == position:
-								if detail['ESSID'].split("-")[0] == "gcwzero":
-									ssid = detail['ESSID']
+								if detail['ssid'].split("-")[0] == "gcwzero":
+									ssid = detail['ssid']
 									conf = netconfdir + parse.quote_plus(ssid) + ".conf"
-									encryption = "WPA2"
 									passphrase = ssid.split("-")[1]
 									connectToAp()
 								else:
-									ssid = detail['ESSID']
+									ssid = detail['ssid']
 									conf = netconfdir + parse.quote_plus(ssid) + ".conf"
-									encryption = detail['Encryption']
 									if not os.path.exists(conf):
 										if encryption == "none":
 											passphrase = "none"
@@ -1652,7 +1531,7 @@ if __name__ == "__main__":
 					# Saved Networks menu
 					elif active_menu == "saved":
 						ssid = ''
-						for network, detail in iter(uniq.items()):
+						for network, detail in iter(aps.items()):
 							position = str(wirelessmenu.get_position()+1)
 							if str(detail['menu']) == position:
 								encryption = detail['Encryption']
@@ -1666,54 +1545,54 @@ if __name__ == "__main__":
 				elif event.key == K_ESCAPE:
 					if active_menu == "ssid": # Allow us to edit the existing key
 						ssid = ""
-						for network, detail in iter(uniq.items()):
+						for network, detail in iter(aps.items()):
 							position = str(wirelessmenu.get_position())
 							if str(detail['menu']) == position:
 								ssid = network
 								encryption = detail['Encryption']
-								if detail['Encryption'] == "none":
-									pass
-								elif detail['Encryption'] == "wep":
-									passphrase = ''
-									selected_key = ''
-									securitykey = ''
-									displayinputlabel("key")
-									drawkeyboard("wep")
-									getinput("wep", "key", ssid)
-								else:
-									passphrase = ''
-									selected_key = ''
-									securitykey = ''
-									displayinputlabel("key")
-									drawkeyboard("qwertyNormal")
-									getinput("qwertyNormal", "key", ssid)
+								# if detail['Encryption'] == "none":
+								# 	pass
+								# elif detail['Encryption'] == "wep":
+								# 	passphrase = ''
+								# 	selected_key = ''
+								# 	securitykey = ''
+								# 	displayinputlabel("key")
+								# 	drawkeyboard("wep")
+								# 	getinput("wep", "key", ssid)
+								# else:
+								# 	passphrase = ''
+								# 	selected_key = ''
+								# 	securitykey = ''
+								# 	displayinputlabel("key")
+								# 	drawkeyboard("qwertyNormal")
+								# 	getinput("qwertyNormal", "key", ssid)
 
 					if active_menu == "saved": # Allow us to edit the existing key
 						ssid = ''
 
-						for network, detail in iter(uniq.items()):
+						for network, detail in iter(aps.items()):
 							position = str(wirelessmenu.get_position()+1)
 							if str(detail['menu']) == position:
 								ssid = network
-								passphrase = uniq[network]['Key']
-								encryption = uniq[network]['Encryption'].upper()
-								if uniq[network]['Encryption'] == "none":
-									pass
-								elif uniq[network]['Encryption'] == "wep":
-									passphrase = ''
-									selected_key = ''
-									securitykey = ''
-									encryption = "WEP-40"
-									displayinputlabel("key")
-									drawkeyboard("wep")
-									getinput("wep", "key", ssid)
-								else:
-									passphrase = ''
-									selected_key = ''
-									securitykey = ''
-									displayinputlabel("key")
-									drawkeyboard("qwertyNormal")
-									getinput("qwertyNormal", "key", ssid)
+								passphrase = aps[network]['Key']
+								# encryption = aps[network]['Encryption'].upper()
+								# if uniq[network]['Encryption'] == "none":
+								# 	pass
+								# elif uniq[network]['Encryption'] == "wep":
+								# 	passphrase = ''
+								# 	selected_key = ''
+								# 	securitykey = ''
+								# 	encryption = "WEP-40"
+								# 	displayinputlabel("key")
+								# 	drawkeyboard("wep")
+								# 	getinput("wep", "key", ssid)
+								# else:
+								# 	passphrase = ''
+								# 	selected_key = ''
+								# 	securitykey = ''
+								# 	displayinputlabel("key")
+								# 	drawkeyboard("qwertyNormal")
+								# 	getinput("qwertyNormal", "key", ssid)
 
 
 		pygame.display.update()
