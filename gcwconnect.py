@@ -280,14 +280,20 @@ class hint:
 			if self.button == 'l':
 				aaFilledCircle(surface, colors["black"], (self.x, self.y+5), 5)
 				pygame.draw.rect(surface, colors["black"], (self.x-5, self.y+6, 10, 5))
-
+				button = pygame.draw.rect(surface, colors["black"], (self.x, self.y, 15, 11))
 
 			if self.button == 'r':
-				aaFilledCircle(surface, colors["black"], (self.x+15, self.y+5), 5)
-				pygame.draw.rect(surface, colors["black"], (self.x+11, self.y+6, 10, 5))
+				aaFilledCircle(surface, colors["black"], (self.x+8, self.y+5), 5)
+				pygame.draw.rect(surface, colors["black"], (self.x+4, self.y+6, 10, 5))
+				button = pygame.draw.rect(surface, colors["black"], (self.x-5, self.y, 15, 11))
 
-			button = pygame.draw.rect(surface, colors["black"], (self.x, self.y, 15, 11))
-			text = font_tiny.render(self.button.upper(), True, colors["white"], colors["black"])
+			labeltext = font_tiny.render(self.button.upper(), True, colors["white"], colors["black"])
+			buttontext = labeltext.get_rect()
+			buttontext.center = button.center
+			surface.blit(labeltext, buttontext)
+
+			button = pygame.draw.rect(surface, colors["lightbg"], (self.x+26, self.y+5, 1, 1))
+			text = font_tiny.render(self.text, True, colors["white"], colors["lightbg"])
 			buttontext = text.get_rect()
 			buttontext.center = button.center
 			surface.blit(text, buttontext)
@@ -626,12 +632,12 @@ def drawKeyboard(board):
 	pygame.draw.rect(surface, colors['lightbg'], (0,224,320,16))
 	pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
 
-	hint("select", "Cancel", 4, 227, colors['lightbg'])
-	hint("start", "Finish", 75, 227, colors['lightbg'])
-	hint("x", "Delete", 155, 227, colors['lightbg'])
-	hint("y", "Shift", 200, 227, colors['lightbg'])
-
-	hint("a", "Enter", 285, 227, colors['lightbg'])
+	#    Button		Label		x-pos	y-pos	Background color
+	hint("select", 	"Cancel", 	4, 		227, 	colors['lightbg'])
+	hint("start", 	"Finish", 	75, 	227, 	colors['lightbg'])
+	hint("x", 		"Delete",	155, 	227, 	colors['lightbg'])
+	hint("y", 		"Shift", 	200, 	227, 	colors['lightbg'])
+	hint("a", 		"Enter", 	285, 	227, 	colors['lightbg'])
 
 	# Draw the keys
 	z = key()
@@ -714,7 +720,7 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 		label.center = labelblock.center
 		surface.blit(labeltext, label)
 		
-		hintblock = pygame.draw.rect(surface, colors['darkbg'], (0, 100, 320, 34))
+	hintblock = pygame.draw.rect(surface, colors['darkbg'], (0, 100, 320, 34))
 
 
 	# Input area
@@ -1311,28 +1317,10 @@ if __name__ == "__main__":
 								displayinputlabel("key")
 
 								# Get key from the user
-								if not encryption == 'None':
-									if encryption == "WPA":
-										drawKeyboard("qwertyNormal")
-										securitykey = getSoftKeyInput("qwertyNormal", "key", ssid)
-									elif encryption == "WPA2":
-										drawKeyboard("qwertyNormal")
-										securitykey = getSoftKeyInput("qwertyNormal", "key", ssid)
-									elif encryption == "WEP-40":
-										drawKeyboard("wep")
-										securitykey = getSoftKeyInput("wep", "key", ssid)
-									elif encryption == 'cancel':
-										del encryption, ssid, securitykey
-										redraw()
-								else:
-									encryption = "none"
-									redraw()
-									writeConfigToDisk(ssid)
-									connectToAp(ssid)
-								try:
-									encryption
-								except NameError:
-									pass
+								securitykey = getSoftKeyInput("qwertyNormal", ssid)
+								redraw()
+								writeConfigToDisk(ssid)
+								connectToAp(ssid)
 
 						elif menu.get_selected() == 'Saved Networks':
 							createSavedNetworksMenu()
