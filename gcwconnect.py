@@ -469,16 +469,18 @@ def writeConfigToDisk(ssid): # Write wireless configuration to disk
 ## HostAP
 def startap():
 	global wlan
-	if checkInterfaceStatus():
+	if checkInterfaceStatus() != False:
 		disconnectFromAp()
 
 	modal("Creating AP...")
 	if SU.Popen(['sudo', '/usr/sbin/ap', '--start'], close_fds=True).wait() == 0:
 		modal('AP created!', timeout=True)
+		redraw()
+		return True
 	else:
 		modal('Failed to create AP...', wait=True)
-	redraw()
-	return True
+		redraw()
+		return False
 
 ## Input methods
 
@@ -1039,12 +1041,10 @@ def mainMenu():
 	global wlan
 	elems = ['Quit']
 
-	try:
-		ap = getCurrentSSID()
-		
-		if ap is not None:
-			elems = ['AP info'] + elems
-	except:
+	ap = getCurrentSSID()
+	if ap is not None:
+		elems = ['AP info'] + elems
+	else:
 		elems = ['Create AP'] + elems
 
 	elems = ["Saved Networks", 'Scan for APs', "Manual Setup"] + elems
