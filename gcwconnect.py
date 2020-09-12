@@ -28,14 +28,18 @@ TODO:
 '''
 
 
+import json
+import os
+import shutil
 import subprocess as SU
-import sys, time, os, shutil
-import pygame
-from pygame.locals import *
-import pygame.gfxdraw
+import sys
+import time
 from os import listdir
 from urllib import parse
-import json
+
+import pygame
+import pygame.gfxdraw
+from pygame.locals import *
 
 # What is our wireless interface?
 wlan = "wlan0"
