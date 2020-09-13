@@ -153,23 +153,30 @@ def getIp(): # Returns the current IP address of the wlan interface
 def getMacAddress(): # Returns the wlan MAC address, or False if the interface is disabled
 	try:
 		with open("/sys/class/net/" + wlan + "/address", "rb") as mac_file:
-			return mac_file.readline(17)
+			return mac_file.readline(17).decode("utf-8").strip()
 	except IOError:
 		return False  # WiFi is disabled
 
 def getCurrentSSID():  # What network are we connected to?
 	ssid = None
-	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['/usr/sbin/iw', 'dev', wlan, 'link'],
-				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
-	if output is not None:
-		for line in output:
-			if line.decode("utf-8").strip().startswith('SSID'):
-				ssid = line.decode("utf-8").split()[1]
+	is_broadcasting_ap = isApStarted()
+	mac_address = getMacAddress().replace(":", "")
+
+	if is_broadcasting_ap != False:
+		ssid = "gcwzero-"+mac_address
+
+	else:
+		with open(os.devnull, "w") as fnull:
+			output = SU.Popen(['/usr/sbin/iw', 'dev', wlan, 'link'],
+					stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
+		if output is not None:
+			for line in output:
+				if line.decode("utf-8").strip().startswith('SSID'):
+					ssid = line.decode("utf-8").split()[1]
 
 	return ssid
 
-def getSavedNetworkKey(ssid):  # What's the key for a given saved network?
+def getSavedNetworkKey(ssid):  # What's the key for a given saved network?s
 	key = None
 	conf = netconfdir + parse.quote_plus(ssid) + ".conf"
 	output = open(conf, "r")
@@ -179,7 +186,6 @@ def getSavedNetworkKey(ssid):  # What's the key for a given saved network?
 				key = str(line.strip().split("=")[1])[1:-1]
 
 	return key
-
 
 def checkIfInterfaceIsDormant(): # Returns True/False depending on whether interface is dormant
 	operstate = False
@@ -195,13 +201,17 @@ def checkInterfaceStatus():  # Returns a str() containing the interface status; 
 	interface_is_up = checkIfInterfaceIsDormant()
 	connected_to_network = getCurrentSSID()
 	ip_address = getIp()
+	ap_is_broadcasting = isApStarted()
 
-	if interface_is_up != False:
-		interface_status = "Up"
-		if connected_to_network is not None:
-			interface_status = "Associated"
-			if ip_address is not None:
-				interface_status = "Connected"
+	if ap_is_broadcasting:
+		interface_status = "Broacasting"
+	else:
+		if interface_is_up != False:
+			interface_status = "Up"
+			if connected_to_network is not None:
+				interface_status = "Associated"
+				if ip_address is not None:
+					interface_status = "Connected"
 	return interface_status
 
 def connectToAp(ssid): # Connect to network (ssid)
@@ -471,20 +481,38 @@ def writeConfigToDisk(ssid): # Write wireless configuration to disk
 	f.close()
 
 ## HostAP
-def startap():
+def startAp():
 	global wlan
-	if checkInterfaceStatus() != False:
+	interface_status = checkInterfaceStatus()
+	if interface_status != False:
 		disconnectFromAp()
+	else:
+		enableIface()
 
 	modal("Creating AP...")
 	if SU.Popen(['sudo', '/usr/sbin/ap', '--start'], close_fds=True).wait() == 0:
-		modal('AP created!', timeout=True)
-		redraw()
-		return True
+		if isApStarted() == True:
+			modal('AP created!', timeout=True)
+			redraw()
+			return True
+		else:
+			modal('Failed to create AP...', wait=True)
+			redraw()
+			return False
 	else:
 		modal('Failed to create AP...', wait=True)
 		redraw()
 		return False
+
+def isApStarted():  # Returns True if we are hosting an AP, otherwise returns False
+	with open(os.devnull, "w") as fnull:
+		output = SU.Popen(['sudo', '/usr/sbin/ap', '--status'],
+				stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+	for line in output:
+		if line.decode("utf-8").strip() == 'ap is running':
+			return True
+		else:
+			return False
 
 ## Input methods
 
@@ -1065,7 +1093,12 @@ def apInfo():
 
 	try:
 		ssid = getCurrentSSID()
-		key  = getSavedNetworkKey(ssid)
+
+		try:
+			key = getSavedNetworkKey(ssid)
+		except:
+			mac_address = getMacAddress().replace(":", "")
+			key = "gcwzero-"+mac_address
 
 		if ssid is not None:
 			ssidlabel = "SSID"
@@ -1335,7 +1368,7 @@ if __name__ == "__main__":
 								active_menu = navigateToMenu("main")
 
 						elif menu.get_selected() == 'Create AP':
-							startap()
+							startAp()
 
 						elif menu.get_selected() == 'AP info':
 							apInfo()
