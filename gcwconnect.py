@@ -463,7 +463,6 @@ def redraw():
 	drawInterfaceStatus()
 	pygame.display.update()
 
-
 ## Connect to a network
 def writeConfigToDisk(ssid): # Write wireless configuration to disk
 	global passphrase
@@ -502,6 +501,16 @@ def startAp():
 	else:
 		modal('Failed to create AP...', wait=True)
 		redraw()
+		return False
+
+def stopAp(): # Stops hosting an access point
+	try:
+		if isApStarted():
+			print("Shutting down AP...")
+			return True
+		else:
+			return False
+	except:
 		return False
 
 def isApStarted():  # Returns True if we are hosting an AP, otherwise returns False
@@ -1074,6 +1083,7 @@ def mainMenu():
 	elems = ['Quit']
 
 	ap = getCurrentSSID()
+	is_hosting_ap = isApStarted()
 	if ap is not None:
 		elems = ['AP info'] + elems
 	else:
@@ -1082,7 +1092,7 @@ def mainMenu():
 	elems = ["Saved Networks", 'Scan for APs', "Manual Setup"] + elems
 
 	interface_status = checkInterfaceStatus()
-	if interface_status == "Connected":
+	if interface_status == "Connected" or is_hosting_ap:
 		elems = ['Disconnect'] + elems
 
 	menu.init(elems, surface)
