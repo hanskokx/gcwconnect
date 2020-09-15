@@ -18,16 +18,6 @@
 #	See the License for the specific language governing permissions and
 #	limitations under the License.
 
-
-'''
-
-TODO:
-* Add option to cancel connecting to a network
-* Clean up host ap info display. It's ugly.
-
-'''
-
-
 import json
 import os
 import shutil
@@ -48,42 +38,42 @@ wlan = "wlan0"
 screen_width 	= 320
 screen_height 	= 240
 
-# That's it for options. Everything else below shouldn't be edited.
-confdir = os.environ['HOME'] + "/.local/share/gcwconnect/"
-netconfdir = confdir+"networks/"
-sysconfdir = "/usr/local/etc/network/"
-datadir = "/usr/share/gcwconnect/"
-if not os.path.exists(datadir):
-    datadir = "data/"
-
-surface = pygame.display.set_mode((screen_width, screen_height))
+###############################################################################
+#                                                                             #
+#                             Global variables                                #
+#                                                                             #
+###############################################################################
 selected_key = ''
 passphrase = ''
 active_menu = ''
 
 colors = {
-    "darkbg": (41, 41, 41),
-    "lightbg": (84, 84, 84),
-    "activeselbg": (160, 24, 24),
-    "inactiveselbg": (84, 84, 84),
-    "activetext": (255, 255, 255),
-    "inactivetext": (128, 128, 128),
-    "lightgrey": (200, 200, 200),
-    'logogcw': (255, 255, 255),
-    'logoconnect': (216, 32, 32),
-    "color": (255, 255, 255),
-    "yellow": (128, 128, 0),
-    "blue": (0, 0, 128),
-    "red": (128, 0, 0),
-    "green": (0, 128, 0),
-    "black": (0, 0, 0),
-    "white": (255, 255, 255),
+    "darkbg":           (41, 41, 41),
+    "lightbg":          (84, 84, 84),
+    "activeselbg":      (160, 24, 24),
+    "inactiveselbg":    (84, 84, 84),
+    "activetext":       (255, 255, 255),
+    "inactivetext":     (128, 128, 128),
+    "lightgrey":        (200, 200, 200),
+    "logogcw":          (255, 255, 255),
+    "logoconnect":      (216, 32, 32),
+    "yellow":           (128, 128, 0),
+    "blue":             (0, 0, 128),
+    "red":              (128, 0, 0),
+    "green":            (0, 128, 0),
+    "black":            (0, 0, 0),
+    "white":            (255, 255, 255),
 }
 
-mac_addresses = {}
-
+###############################################################################
+#                                                                             #
+#                       Application initialization                            #
+#                                                                             #
+###############################################################################
 
 # Initialize the display, for pygame
+surface = pygame.display.set_mode((screen_width, screen_height))
+
 if not pygame.display.get_init():
     pygame.display.init()
 if not pygame.font.get_init():
@@ -94,20 +84,31 @@ pygame.mouse.set_visible(False)
 pygame.key.set_repeat(199, 69)  # (delay,interval)
 
 # Fonts
-font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
-font_tiny = pygame.font.Font(font_path, 8)
-font_small = pygame.font.Font(font_path, 10)
-font_medium = pygame.font.Font(font_path, 12)
-font_large = pygame.font.Font(font_path, 16)
-font_huge = pygame.font.Font(font_path, 48)
-gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
+font_path       = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+font_tiny       = pygame.font.Font(font_path, 8)
+font_small      = pygame.font.Font(font_path, 10)
+font_medium     = pygame.font.Font(font_path, 12)
+font_large      = pygame.font.Font(font_path, 16)
+font_huge       = pygame.font.Font(font_path, 48)
+gcw_font        = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
 font_mono_small = pygame.font.Font(
     os.path.join(datadir, 'Inconsolata.otf'), 11)
 
-# File management
+###############################################################################
+#                                                                             #
+#                     Configuration file management                           #
+#                                                                             #
+###############################################################################
 
+confdir = os.environ['HOME'] + "/.local/share/gcwconnect/"
+netconfdir = confdir+"networks/"
+sysconfdir = "/usr/local/etc/network/"
+datadir = "/usr/share/gcwconnect/"
+if not os.path.exists(datadir):
+    datadir = "data/"
 
-def createPaths():  # Create paths, if necessary
+# Create configuration directories, if necessary
+def createPaths():  
     if not os.path.exists(confdir):
         os.makedirs(confdir)
     if not os.path.exists(netconfdir):
@@ -115,21 +116,48 @@ def createPaths():  # Create paths, if necessary
     if not os.path.exists(sysconfdir):
         os.makedirs(sysconfdir)
 
-# Interface management
+# Rename older style configuration files to the updated format
+def convertFileNames():
+    """In the directory containing WiFi network configuration files, removes
+    backslashes from file names created by older versions of GCW Connect."""
+    try:
+        confNames = listdir(netconfdir)
+    except IOError as ex:
+        print("Failed to list files in '%s': %s", (netconfdir, ex))
+    else:
+        for confName in confNames:
+            if not confName.endswith('.conf'):
+                continue
+            if '\\' in confName:
+                old, new = confName, parse.quote_plus(
+                    confName.replace('\\', ''))
+                try:
+                    os.rename(  os.path.join(netconfdir, old),
+                                os.path.join(netconfdir, new))
+                except IOError as ex:
+                    print("Failed to rename old-style network configuration file '%s' to '%s': %s" % (
+                        os.path.join(netconfdir, old), new, ex))
 
+###############################################################################
+#                                                                             #
+#                           Interface management                              #
+#                                                                             #
+###############################################################################
 
-def ifDown():  # Disconnect from wifi / bring down the hosted AP
+# Disconnect from wifi / bring down the hosted AP
+def ifDown():  
     SU.Popen(['sudo', '/usr/sbin/ifdown', wlan], close_fds=True).wait()
     SU.Popen(['sudo', '/usr/sbin/ap', '--stop'], close_fds=True).wait()
 
-
-def ifUp():  # Try to connect the wlan interface to wifi
+# Try to connect the wlan interface to wifi
+def ifUp():  
     SU.Popen(['sudo', '/usr/sbin/ifup', wlan], close_fds=True).wait() == 0
     status = checkInterfaceStatus()
     return status
 
-
-def enableIface():  # Enables the wlan interface. Returns False if the interface was previously enabled
+# Enables the wlan interface.
+# Returns False if the interface was previously enabled, otherwise returns True
+def enableIface():  
     check = checkInterfaceStatus()
     if check is not False:
         return False
@@ -139,72 +167,20 @@ def enableIface():  # Enables the wlan interface. Returns False if the interface
     pygame.display.update()
 
     while True:
-        if SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', wlan, 'up'], close_fds=True).wait() == 0:
+        if SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', wlan, 'up'],
+                close_fds=True).wait() == 0:
             break
         time.sleep(0.1)
 
     return True
 
-
-def disableIface():  # Disables the wlan interface
+# Disables the wlan interface
+def disableIface():
     SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set',
-              wlan, 'down'], close_fds=True).wait()
+            wlan, 'down'], close_fds=True).wait()
 
-
-def getIp():  # Returns the current IP address of the wlan interface
-    ip = None
-    with open(os.devnull, "w") as fnull:
-        output = SU.Popen(['/usr/sbin/ip', '-4', 'a', 'show', wlan],
-                          stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
-
-    for line in output:
-        if line.decode("utf-8").strip().startswith("inet"):
-            ip = line.decode("utf-8").split()[1].split("/")[0]
-
-    return ip
-
-
-def getMacAddress():  # Returns the wlan MAC address, or False if the interface is disabled
-    try:
-        with open("/sys/class/net/" + wlan + "/address", "rb") as mac_file:
-            return mac_file.readline(17).decode("utf-8").strip()
-    except IOError:
-        return False  # WiFi is disabled
-
-
-def getCurrentSSID():  # What network are we connected to?
-    ssid = None
-    is_broadcasting_ap = isApStarted()
-    mac_address = getMacAddress().replace(":", "")
-
-    if is_broadcasting_ap != False:
-        ssid = "gcwzero-"+mac_address
-
-    else:
-        with open(os.devnull, "w") as fnull:
-            output = SU.Popen(['/usr/sbin/iw', 'dev', wlan, 'link'],
-                              stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
-        if output is not None:
-            for line in output:
-                if line.decode("utf-8").strip().startswith('SSID'):
-                    ssid = line.decode("utf-8").split()[1]
-
-    return ssid
-
-
-def getSavedNetworkKey(ssid):  # What's the key for a given saved network?s
-    key = None
-    conf = netconfdir + parse.quote_plus(ssid) + ".conf"
-    output = open(conf, "r")
-    if output is not None:
-        for line in output:
-            if line.strip().startswith('WLAN_PASSPHRASE'):
-                key = str(line.strip().split("=")[1])[1:-1]
-
-    return key
-
-
-def checkIfInterfaceIsDormant():  # Returns True/False depending on whether interface is dormant
+# Returns True/False depending on whether interface is dormant
+def checkIfInterfaceIsDormant():  
     operstate = False
     try:
         with open("/sys/class/net/" + wlan + "/dormant", "rb") as state:
@@ -212,8 +188,8 @@ def checkIfInterfaceIsDormant():  # Returns True/False depending on whether inte
     except IOError:
         return False  # WiFi is disabled
 
-
-def checkInterfaceStatus():  # Returns a str() containing the interface status; False if interface is down
+# Returns a str() containing the interface status; False if interface is down
+def checkInterfaceStatus():  
     interface_status = False
 
     interface_is_up = checkIfInterfaceIsDormant()
@@ -232,8 +208,62 @@ def checkInterfaceStatus():  # Returns a str() containing the interface status; 
                     interface_status = "Connected"
     return interface_status
 
+###############################################################################
+#                                                                             #
+#              Hardware address, IP address, and SSID grabbers                #
+#                                                                             #
+###############################################################################
 
-def connectToAp(ssid):  # Connect to network (ssid)
+# Returns the current IP address of the wlan interface
+def getIp():  
+    ip = None
+    with open(os.devnull, "w") as fnull:
+        output = SU.Popen(['/usr/sbin/ip', '-4', 'a', 'show', wlan],
+            stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+
+    for line in output:
+        if line.decode("utf-8").strip().startswith("inet"):
+            ip = line.decode("utf-8").split()[1].split("/")[0]
+
+    return ip
+
+# Returns the wlan MAC address, or False if the interface is disabled
+def getMacAddress():
+    try:
+        with open("/sys/class/net/" + wlan + "/address", "rb") as mac_file:
+            return mac_file.readline(17).decode("utf-8").strip()
+    except IOError:
+        return False  # WiFi is disabled
+
+# Returns the SSID of the network currently associated with; otherwise returns
+# None if no network is associated.
+def getCurrentSSID():  
+    ssid = None
+    is_broadcasting_ap = isApStarted()
+    mac_address = getMacAddress().replace(":", "")
+
+    if is_broadcasting_ap != False:
+        ssid = "gcwzero-"+mac_address
+
+    else:
+        with open(os.devnull, "w") as fnull:
+            output = SU.Popen(['/usr/sbin/iw', 'dev', wlan, 'link'],
+                stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
+        if output is not None:
+            for line in output:
+                if line.decode("utf-8").strip().startswith('SSID'):
+                    ssid = line.decode("utf-8").split()[1]
+
+    return ssid
+
+###############################################################################
+#                                                                             #
+#                        Wireless network management                          #
+#                                                                             #
+###############################################################################
+
+# Associate with the given access point
+def connectToAp(ssid):  
     saved_file = netconfdir + parse.quote_plus(ssid) + ".conf"
     if os.path.exists(saved_file):
         shutil.copy2(saved_file, sysconfdir+"config-"+wlan+".conf")
@@ -258,8 +288,8 @@ def connectToAp(ssid):  # Connect to network (ssid)
     drawInterfaceStatus()
     return True
 
-
-def disconnectFromAp():  # Disconnect from the currently associated access point
+# Disconnect from the currently associated access point
+def disconnectFromAp():
     modal("Disconnecting...")
     ifDown()
 
@@ -267,14 +297,15 @@ def disconnectFromAp():  # Disconnect from the currently associated access point
     drawStatusBar()
     drawInterfaceStatus()
 
-
-def scanForNetworks():  # Returns a list of networks in range
-    wasnotenabled = enableIface()
+# Scans for access points in range, and returns them as a list
+def scanForNetworks():  
+    interface_was_not_enabled = enableIface()
     modal("Scanning...")
 
     with open(os.devnull, "w") as fnull:
         output = SU.Popen(['sudo', '/usr/sbin/wlan-scan', wlan],
-                          stdout=SU.PIPE, stderr=fnull, close_fds=True, encoding="utf-8").stdout.readlines()
+            stdout=SU.PIPE, stderr=fnull,
+            close_fds=True, encoding="utf-8").stdout.readlines()
 
     aps = []
 
@@ -285,7 +316,11 @@ def scanForNetworks():  # Returns a list of networks in range
                 if item[-1] == ',':
                     item = item[0:-1]
 
-                # FIXME: for now, we're going to ignore hidden networks
+                # FIXME: for now, we're going to ignore hidden networks.
+                # In the future, we should probably display "<Hidden>" in the
+                # list, and use the BSSID instead of the ESSID in the
+                # configuration file.  I haven't looked into how to format that,
+                # though.
                 if len(json.loads(item)['ssid'].strip()) != 0:
                     aps.append(json.loads(item))
             except:
@@ -293,17 +328,316 @@ def scanForNetworks():  # Returns a list of networks in range
         else:
             pass
 
-    # sort by quality
+    # Sort by quality
     final = sorted(aps, key=lambda x: x['quality'], reverse=True)
     redraw()
 
-    # if wasnotenabled:
-    # disableIface()
+    if interface_was_not_enabled:
+        ifDown()
+        disableIface()
     return final
 
-# Draw interface elements
+# Write a configuration file to disk
+def writeConfigToDisk(ssid):  
+    global passphrase
 
+    if passphrase:
+        if passphrase == "none":
+            passphrase = ""
 
+    conf = netconfdir + parse.quote_plus(ssid) + ".conf"
+
+    f = open(conf, "w")
+    f.write('WLAN_ESSID="'+ssid+'"\n')
+    f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
+    f.write('WLAN_ENCRYPTION="wpa2"\n') # Default to WPA2
+                                        # FIXME: People might want WPA, WEP,
+                                        # unencrypted, etc. Right now, we don't
+                                        # know of a way to determine the type
+                                        # of encryption on a given network.
+                                        # Ideally, we would have a way to
+                                        # determine the type of encryption, and
+                                        # write the configuration file in a way
+                                        # that is appropriate for that.
+    f.close()
+
+# Return the unencrypted password of a saved network.
+def getSavedNetworkKey(ssid):  
+    key = None
+    conf = netconfdir + parse.quote_plus(ssid) + ".conf"
+    output = open(conf, "r")
+    if output is not None:
+        for line in output:
+            if line.strip().startswith('WLAN_PASSPHRASE'):
+                key = str(line.strip().split("=")[1])[1:-1]
+
+    return key
+
+# Display information about the current access point
+def apInfo():
+    global wlan
+
+    try:
+        ssid = getCurrentSSID()
+
+        try:
+            key = getSavedNetworkKey(ssid)
+        except:
+            mac_address = getMacAddress().replace(":", "")
+            key = "gcwzero-"+mac_address
+
+        if ssid is not None:
+            ssidlabel = "SSID"
+            renderedssidlabel = font_huge.render(
+                ssidlabel, True, colors["lightbg"], colors["darkbg"])
+            ssidlabelelement = renderedssidlabel.get_rect()
+            ssidlabelelement.right = 318
+            ssidlabelelement.top = 36
+            surface.blit(renderedssidlabel, ssidlabelelement)
+
+            renderedssid = font_mono_small.render(
+                ssid, True, colors["white"], colors["darkbg"])
+            ssidelement = renderedssid.get_rect()
+            ssidelement.right = 315
+            ssidelement.top = 98
+            surface.blit(renderedssid, ssidelement)
+
+            enclabel = "Key"
+            renderedenclabel = font_huge.render(
+                enclabel, True, colors["lightbg"], colors["darkbg"])
+            enclabelelement = renderedenclabel.get_rect()
+            # Drawn a bit leftwards versus "SSID" text, so both right-align pixel-perfectly
+            enclabelelement.right = 314
+            enclabelelement.top = 116
+            surface.blit(renderedenclabel, enclabelelement)
+
+            renderedencp = font_mono_small.render(
+                key, True, colors["white"], colors["darkbg"])
+            encpelement = renderedencp.get_rect()
+            encpelement.right = 315
+            encpelement.top = 182
+            surface.blit(renderedencp, encpelement)
+
+            pygame.display.update()
+    except:
+        text = ":("
+        renderedtext = font_huge.render(
+            text, True, colors["lightbg"], colors["darkbg"])
+        textelement = renderedtext.get_rect()
+        textelement.left = 192
+        textelement.top = 98
+        surface.blit(renderedtext, textelement)
+        pygame.display.update()
+
+###############################################################################
+#                                                                             #
+#                            Peer-to-peer hosted AP                           #
+#                                                                             #
+###############################################################################
+
+# Return True if we are hosting an access point, otherwise return False
+def isApStarted():
+    with open(os.devnull, "w") as fnull:
+        output = SU.Popen(['sudo', '/usr/sbin/ap', '--status'],
+            stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+    for line in output:
+        if line.decode("utf-8").strip() == 'ap is running':
+            return True
+        else:
+            return False
+
+# Create an access point for peer-to-peer connections
+def startAp():
+    global wlan
+    interface_status = checkInterfaceStatus()
+    if interface_status != False:
+        disconnectFromAp()
+    else:
+        enableIface()
+
+    modal("Creating AP...")
+
+    if SU.Popen(['sudo', '/usr/sbin/ap', '--start'], close_fds=True).wait() == 0:
+        if isApStarted() == True:
+            modal('AP created!', timeout=True)
+            redraw()
+            return True
+        else:
+            modal('Failed to create AP...', wait=True)
+            redraw()
+            return False
+    else:
+        modal('Failed to create AP...', wait=True)
+        redraw()
+        return False
+
+# Stop broadcasting the peer-to-peer access point
+def stopAp():  
+    try:
+        if isApStarted():
+            modal("Stopping AP...")
+            if SU.Popen(['sudo', '/usr/sbin/ap', '--stop'],
+                close_fds=True).wait() == 0:
+                
+                if isApStarted() == False:
+                    redraw()
+                    return True
+                else:
+                    modal('Failed to stop AP...', wait=True)
+                    redraw()
+                    return False
+            else:
+                modal('Failed to stop AP...', wait=True)
+                redraw()
+                return False
+            return True
+        else:
+            return False
+    except:
+        return False
+
+###############################################################################
+#                                                                             #
+#                             Interface elements                              #
+#                                                                             #
+###############################################################################
+
+# Draw the application name at the top of the screen
+class LogoBar(object):
+    def __init__(self):
+        self.text1 = gcw_font.render(
+            'GCW', True, colors['logogcw'], colors['lightbg'])
+        self.text2 = gcw_font.render(
+            'CONNECT', True, colors['logoconnect'], colors['lightbg'])
+
+    def draw(self):
+        pygame.draw.rect(surface, colors['lightbg'], (0, 0, 320, 34))
+        pygame.draw.line(surface, colors['white'], (0, 34), (320, 34))
+
+        rect1 = self.text1.get_rect()
+        rect1.topleft = (8 + 5 + 1, 5)
+        surface.blit(self.text1, rect1)
+
+        rect2 = self.text2.get_rect()
+        rect2.topleft = rect1.topright
+        surface.blit(self.text2, rect2)
+
+# Draw the status bar on the bottom of the screen
+def drawStatusBar():
+    connected_to_network = getCurrentSSID()
+    if connected_to_network is None:
+        connected_to_network = "Not connected"
+    global colors
+    pygame.draw.rect(surface, colors['lightbg'], (0, 224, 320, 16))
+    pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
+    wlantext = font_mono_small.render(
+        connected_to_network, True, colors['white'], colors['lightbg'])
+    wlan_text = wlantext.get_rect()
+    wlan_text.topleft = (2, 225)
+    surface.blit(wlantext, wlan_text)
+
+# Draw the status of the wlan interface on the status bar
+def drawInterfaceStatus():  
+    global colors
+    wlanstatus = checkInterfaceStatus()
+    if not wlanstatus:
+        wlanstatus = wlan+" is off."
+    else:
+        wlanstatus = getCurrentSSID()
+
+    wlantext = font_mono_small.render(
+        wlanstatus, True, colors['white'], colors['lightbg'])
+    wlan_text = wlantext.get_rect()
+    wlan_text.topleft = (2, 225)
+    surface.blit(wlantext, wlan_text)
+
+    # Note that the leading space here is intentional, to more cleanly overdraw
+    # any overly-long strings written to the screen beneath it (i.e. a very
+    # long ESSID)
+    if checkInterfaceStatus():
+        ip_address = getIp()
+        if ip_address is None:
+            ip_address = ''
+        text = font_mono_small.render(
+            " "+ip_address, True, colors['white'], colors['lightbg'])
+        interfacestatus_text = text.get_rect()
+        interfacestatus_text.topright = (317, 225)
+        surface.blit(text, interfacestatus_text)
+    else:
+        mac = mac_addresses.get(wlan)
+        if mac is not None:
+            text = font_mono_small.render(
+                " " + mac.decode("utf-8"),
+                True, colors['white'], colors['lightbg'])
+            interfacestatus_text = text.get_rect()
+            interfacestatus_text.topright = (317, 225)
+            surface.blit(text, interfacestatus_text)
+
+# Draw a modal window in the middle of the screen
+def modal(text, wait=False, timeout=False, query=False):
+    global colors
+    dialog = pygame.draw.rect(surface, colors['lightbg'], (64, 88, 192, 72))
+    pygame.draw.rect(surface, colors['white'], (62, 86, 194, 74), 2)
+
+    text = font_medium.render(text, True, colors['white'], colors['lightbg'])
+    modal_text = text.get_rect()
+    modal_text.center = dialog.center
+
+    surface.blit(text, modal_text)
+    pygame.display.update()
+
+    if wait:
+        abutton = hint("a", "Continue", 205, 145, colors['lightbg'])
+        pygame.display.update()
+    elif timeout:
+        time.sleep(2.5)
+        redraw()
+    elif query:
+        abutton = hint("a", "Confirm", 150, 145, colors['lightbg'])
+        bbutton = hint("b", "Cancel", 205, 145, colors['lightbg'])
+        pygame.display.update()
+        while True:
+            for event in pygame.event.get():
+                if event.type == KEYDOWN:
+                    if event.key == K_LCTRL:
+                        return True
+                    elif event.key == K_LALT:
+                        return
+
+    if not wait:
+        return
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == KEYDOWN and event.key == K_LCTRL:
+                redraw()
+                return
+
+# Clear the display completely, and redraws it with all of the elements which
+# are appropriate for the current context.
+def redraw():
+    global colors
+    surface.fill(colors['darkbg'])
+    logoBar.draw()
+    mainMenu()
+    if wirelessmenu is not None:
+        wirelessmenu.draw()
+        pygame.draw.rect(surface, colors['darkbg'], (0, 208, 320, 16))
+        hint("select", "Edit", 4, 210)
+        hint("a", "Connect", 75, 210)
+        hint("b", "/", 130, 210)
+        hint("left", "Back", 145, 210)
+    if active_menu == "main":
+        pygame.draw.rect(surface, colors['darkbg'], (0, 208, 320, 16))
+        hint("a", "Select", 8, 210)
+    if active_menu == "saved":
+        hint("y", "Forget", 195, 210)
+
+    drawStatusBar()
+    drawInterfaceStatus()
+    pygame.display.update()
+
+# Draw colorful button icons and labels
 class hint:
     global colors
 
@@ -433,230 +767,17 @@ class hint:
                 self.text, True, (255, 255, 255), self.bg)
             surface.blit(labeltext, labelblock)
 
+# Draw an anti-aliased, filled circle of a given radius
+def aaFilledCircle(surface, color, center, radius):
+    '''Helper function to draw anti-aliased circles using an interface similar
+    to pygame.draw.circle.
+    '''
+    x, y = center
+    pygame.gfxdraw.aacircle(surface, x, y, radius, color)
+    pygame.gfxdraw.filled_circle(surface, x, y, radius, color)
+    return Rect(x - radius, y - radius, radius * 2 + 1, radius * 2 + 1)
 
-class LogoBar(object):
-    '''The logo area at the top of the screen.'''
-
-    def __init__(self):
-        self.text1 = gcw_font.render(
-            'GCW', True, colors['logogcw'], colors['lightbg'])
-        self.text2 = gcw_font.render(
-            'CONNECT', True, colors['logoconnect'], colors['lightbg'])
-
-    def draw(self):
-        pygame.draw.rect(surface, colors['lightbg'], (0, 0, 320, 34))
-        pygame.draw.line(surface, colors['white'], (0, 34), (320, 34))
-
-        rect1 = self.text1.get_rect()
-        rect1.topleft = (8 + 5 + 1, 5)
-        surface.blit(self.text1, rect1)
-
-        rect2 = self.text2.get_rect()
-        rect2.topleft = rect1.topright
-        surface.blit(self.text2, rect2)
-
-
-def drawStatusBar():  # Set up the status bar
-    connected_to_network = getCurrentSSID()
-    if connected_to_network is None:
-        connected_to_network = "Not connected"
-    global colors
-    pygame.draw.rect(surface, colors['lightbg'], (0, 224, 320, 16))
-    pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
-    wlantext = font_mono_small.render(
-        connected_to_network, True, colors['white'], colors['lightbg'])
-    wlan_text = wlantext.get_rect()
-    wlan_text.topleft = (2, 225)
-    surface.blit(wlantext, wlan_text)
-
-
-def drawInterfaceStatus():  # Interface status badge
-    global colors
-    wlanstatus = checkInterfaceStatus()
-    if not wlanstatus:
-        wlanstatus = wlan+" is off."
-    else:
-        wlanstatus = getCurrentSSID()
-
-    wlantext = font_mono_small.render(
-        wlanstatus, True, colors['white'], colors['lightbg'])
-    wlan_text = wlantext.get_rect()
-    wlan_text.topleft = (2, 225)
-    surface.blit(wlantext, wlan_text)
-
-    # Note that the leading space here is intentional, to more cleanly overdraw any overly-long
-    # strings written to the screen beneath it (i.e. a very long ESSID)
-    if checkInterfaceStatus():
-        ip_address = getIp()
-        if ip_address is None:
-            ip_address = ''
-        text = font_mono_small.render(
-            " "+ip_address, True, colors['white'], colors['lightbg'])
-        interfacestatus_text = text.get_rect()
-        interfacestatus_text.topright = (317, 225)
-        surface.blit(text, interfacestatus_text)
-    else:
-        mac = mac_addresses.get(wlan)
-        if mac is not None:
-            text = font_mono_small.render(
-                " "+mac.decode("utf-8"), True, colors['white'], colors['lightbg'])
-            interfacestatus_text = text.get_rect()
-            interfacestatus_text.topright = (317, 225)
-            surface.blit(text, interfacestatus_text)
-
-
-def redraw():
-    global colors
-    surface.fill(colors['darkbg'])
-    logoBar.draw()
-    mainMenu()
-    if wirelessmenu is not None:
-        wirelessmenu.draw()
-        pygame.draw.rect(surface, colors['darkbg'], (0, 208, 320, 16))
-        hint("select", "Edit", 4, 210)
-        hint("a", "Connect", 75, 210)
-        hint("b", "/", 130, 210)
-        hint("left", "Back", 145, 210)
-    if active_menu == "main":
-        pygame.draw.rect(surface, colors['darkbg'], (0, 208, 320, 16))
-        hint("a", "Select", 8, 210)
-    if active_menu == "saved":
-        hint("y", "Forget", 195, 210)
-
-    drawStatusBar()
-    drawInterfaceStatus()
-    pygame.display.update()
-
-# Connect to a network
-
-
-def writeConfigToDisk(ssid):  # Write wireless configuration to disk
-    global passphrase
-
-    if passphrase:
-        if passphrase == "none":
-            passphrase = ""
-
-    conf = netconfdir + parse.quote_plus(ssid) + ".conf"
-
-    f = open(conf, "w")
-    f.write('WLAN_ESSID="'+ssid+'"\n')
-    f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
-    f.write('WLAN_ENCRYPTION="wpa2"\n')  # Default to WPA2, because it's 2020.
-    f.close()
-
-# HostAP
-
-
-def startAp():
-    global wlan
-    interface_status = checkInterfaceStatus()
-    if interface_status != False:
-        disconnectFromAp()
-    else:
-        enableIface()
-
-    modal("Creating AP...")
-    if SU.Popen(['sudo', '/usr/sbin/ap', '--start'], close_fds=True).wait() == 0:
-        if isApStarted() == True:
-            modal('AP created!', timeout=True)
-            redraw()
-            return True
-        else:
-            modal('Failed to create AP...', wait=True)
-            redraw()
-            return False
-    else:
-        modal('Failed to create AP...', wait=True)
-        redraw()
-        return False
-
-
-def stopAp():  # Stops hosting an access point
-    try:
-        if isApStarted():
-            print("Shutting down AP...")
-            return True
-        else:
-            return False
-    except:
-        return False
-
-
-def isApStarted():  # Returns True if we are hosting an AP, otherwise returns False
-    with open(os.devnull, "w") as fnull:
-        output = SU.Popen(['sudo', '/usr/sbin/ap', '--status'],
-                          stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
-    for line in output:
-        if line.decode("utf-8").strip() == 'ap is running':
-            return True
-        else:
-            return False
-
-# Input methods
-
-
-keyLayouts = {
-    'qwertyNormal': (
-        ('`', '1', '2', '3', '4', '5', '6',
-         '7', '8', '9', '0', '-', '='),
-        ('q', 'w', 'e', 'r', 't', 'y', 'u',
-         'i', 'o', 'p', '[', ']', '\\'),
-        ('a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\''),
-        ('z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'),
-    ),
-    'qwertyShift': (
-        ('~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+'),
-        ('Q', 'W', 'E', 'R', 'T', 'Y', 'U',
-         'I', 'O', 'P', '{', '}', '|'),
-        ('A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'),
-        ('Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'),
-    )
-}
-keyboardCycleOrder = ('qwertyNormal', 'qwertyShift')
-
-
-def nextKeyboard(board):
-    return keyboardCycleOrder[
-        (keyboardCycleOrder.index(board) + 1) % len(keyboardCycleOrder)
-    ]
-
-
-class key:
-    global colors
-
-    def __init__(self):
-        self.key = []
-        self.selection_color = colors['activeselbg']
-        self.text_color = colors['activetext']
-        self.selection_position = (0, 0)
-        self.selected_item = 0
-
-    def init(self, key, row, column):
-        self.key = key
-        self.row = row
-        self.column = column
-        self.drawkey()
-
-    def drawkey(self):
-        key_width = 16
-        key_height = 16
-
-        top = 136 + self.row * 20
-        left = 32 + self.column * 20
-
-        if len(self.key) > 1:
-            key_width = 36
-        keybox = pygame.draw.rect(
-            surface, colors['lightbg'], (left, top, key_width, key_height))
-        text = font_medium.render(
-            self.key, True, colors['white'], colors['lightbg'])
-        label = text.get_rect()
-        label.center = keybox.center
-        label.y -= 1
-        surface.blit(text, label)
-
-
+# Draw a standard radio button
 class radio:
     global colors
 
@@ -691,67 +812,77 @@ class radio:
         label.top = radiobutton.top + 4
         surface.blit(text, label)
 
+###############################################################################
+#                                                                             #
+#                               Soft Keyboard                                 #
+#                                                                             #
+###############################################################################
 
-def aaFilledCircle(surface, color, center, radius):  # Draws a filled circle
-    '''Helper function to draw anti-aliased circles using an interface similar
-    to pygame.draw.circle.
-    '''
-    x, y = center
-    pygame.gfxdraw.aacircle(surface, x, y, radius, color)
-    pygame.gfxdraw.filled_circle(surface, x, y, radius, color)
-    return Rect(x - radius, y - radius, radius * 2 + 1, radius * 2 + 1)
+# Define key layouts for the soft keyboard
+keyLayouts = {
+    'qwertyNormal': (
+        ('`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='),
+        ('q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'),
+        ('a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\''),
+        ('z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'),
+    ),
+    'qwertyShift': (
+        ('~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+'),
+        ('Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|'),
+        ('A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'),
+        ('Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'),
+    )
 
+    # TODO: We might want an international keyboard for our overseas friends.
+    # If you find this message because you're unable to enter your key, please
+    # open an issue on GitHub
+}
 
-def modal(text, wait=False, timeout=False, query=False):
+# Define which order the keyboards are cycled in
+keyboardCycleOrder = ('qwertyNormal', 'qwertyShift')
+
+# Cycle the keyboard keys through keyLayouts using keyboardCycleOrder
+def nextKeyboard(board):
+    return keyboardCycleOrder[
+        (keyboardCycleOrder.index(board) + 1) % len(keyboardCycleOrder)
+    ]
+
+# Draw a single key on the keyboard
+class key:
     global colors
-    dialog = pygame.draw.rect(surface, colors['lightbg'], (64, 88, 192, 72))
-    pygame.draw.rect(surface, colors['white'], (62, 86, 194, 74), 2)
 
-    text = font_medium.render(text, True, colors['white'], colors['lightbg'])
-    modal_text = text.get_rect()
-    modal_text.center = dialog.center
+    def __init__(self):
+        self.key = []
+        self.selection_color = colors['activeselbg']
+        self.text_color = colors['activetext']
+        self.selection_position = (0, 0)
+        self.selected_item = 0
 
-    surface.blit(text, modal_text)
-    pygame.display.update()
+    def init(self, key, row, column):
+        self.key = key
+        self.row = row
+        self.column = column
+        self.drawkey()
 
-    if wait:
-        abutton = hint("a", "Continue", 205, 145, colors['lightbg'])
-        pygame.display.update()
-    elif timeout:
-        time.sleep(2.5)
-        redraw()
-    elif query:
-        abutton = hint("a", "Confirm", 150, 145, colors['lightbg'])
-        bbutton = hint("b", "Cancel", 205, 145, colors['lightbg'])
-        pygame.display.update()
-        while True:
-            for event in pygame.event.get():
-                if event.type == KEYDOWN:
-                    if event.key == K_LCTRL:
-                        return True
-                    elif event.key == K_LALT:
-                        return
+    def drawkey(self):
+        key_width = 16
+        key_height = 16
 
-    if not wait:
-        return
+        top = 136 + self.row * 20
+        left = 32 + self.column * 20
 
-    while True:
-        for event in pygame.event.get():
-            if event.type == KEYDOWN and event.key == K_LCTRL:
-                redraw()
-                return
+        if len(self.key) > 1:
+            key_width = 36
+        keybox = pygame.draw.rect(
+            surface, colors['lightbg'], (left, top, key_width, key_height))
+        text = font_medium.render(
+            self.key, True, colors['white'], colors['lightbg'])
+        label = text.get_rect()
+        label.center = keybox.center
+        label.y -= 1
+        surface.blit(text, label)
 
-
-def getSSID():
-    global passphrase
-    displayinputlabel("ssid")
-    drawKeyboard("qwertyNormal")
-    getSoftKeyInput("qwertyNormal", "ssid")
-    ssid = passphrase
-    passphrase = ''
-    return ssid
-
-
+# Draw the keyboard
 def drawKeyboard(board):
     global colors
 
@@ -760,7 +891,7 @@ def drawKeyboard(board):
 
     # Draw bottom background
     pygame.draw.rect(surface, colors['lightbg'], (0, 224, 320, 16))
-    pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
+    pygame.draw.line(surface, colors['white'],      (0, 223), (320, 223))
 
     #    Button		Label		x-pos	y-pos	Background color
     hint("select", 	"Cancel", 	4, 		227, 	colors['lightbg'])
@@ -777,25 +908,40 @@ def drawKeyboard(board):
 
     pygame.display.update()
 
+# Get an SSID entered via the keyboard
+# TODO: Is this necessary? We have getSoftKeyInput(), so maybe not? It's only
+# used in one place, so it could probably be refactored...
+def getSSID():
+    global passphrase
+    displayInputLabel("ssid")
+    drawKeyboard("qwertyNormal")
+    getSoftKeyInput("qwertyNormal", "ssid")
+    ssid = passphrase
+    passphrase = ''
+    return ssid
+
 
 def getSoftKeyInput(board, kind, ssid=""):
-    selectkey(board, kind)
+    selectKey(board, kind)
     return softKeyInput(board, kind, ssid)
 
-
+# Monolithic function to navigate the keyboard, get input from the user, invoke
+# saving the configuration to disk, and connecting to the access point.
+# TODO: This appears to function similarly to getSSID().  Can we retire
+# getSSID() and replace it with this?
 def softKeyInput(keyboard, kind, ssid):
     global passphrase
     global securitykey
 
     def update():
-        displayinputlabel("key")
+        displayInputLabel("key")
 
     while True:
         event = pygame.event.wait()
 
         if event.type == KEYDOWN:
             if event.key == K_RETURN:		# finish input
-                selectkey(keyboard, kind, "enter")
+                selectKey(keyboard, kind, "enter")
                 redraw()
                 if ssid == '':
                     return False
@@ -804,23 +950,23 @@ def softKeyInput(keyboard, kind, ssid):
                 return True
 
             if event.key == K_UP:		# Move cursor up
-                selectkey(keyboard, kind, "up")
+                selectKey(keyboard, kind, "up")
             if event.key == K_DOWN:		# Move cursor down
-                selectkey(keyboard, kind, "down")
+                selectKey(keyboard, kind, "down")
             if event.key == K_LEFT:		# Move cursor left
-                selectkey(keyboard, kind, "left")
+                selectKey(keyboard, kind, "left")
             if event.key == K_RIGHT:  # Move cursor right
-                selectkey(keyboard, kind, "right")
+                selectKey(keyboard, kind, "right")
             if event.key == K_LCTRL:  # A button
-                selectkey(keyboard, kind, "select")
+                selectKey(keyboard, kind, "select")
             if event.key == K_LALT:		# B button
-                selectkey(keyboard, kind, "space")
+                selectKey(keyboard, kind, "space")
             if event.key == K_SPACE:  # Y button (swap keyboards)
                 keyboard = nextKeyboard(keyboard)
                 drawKeyboard(keyboard)
-                selectkey(keyboard, kind, "swap")
+                selectKey(keyboard, kind, "swap")
             if event.key == K_LSHIFT:  # X button
-                selectkey(keyboard, kind, "delete")
+                selectKey(keyboard, kind, "delete")
             if event.key == K_ESCAPE:  # Select key
                 passphrase = ''
 
@@ -833,8 +979,8 @@ def softKeyInput(keyboard, kind, ssid):
                 redraw()
                 return False
 
-
-def displayinputlabel(kind, size=24):  # Display passphrase on screen
+# Display text entered using the soft keyboard on the display
+def displayInputLabel(kind, size=24):  
     global colors
 
     if kind == "ssid":
@@ -869,8 +1015,8 @@ def displayinputlabel(kind, size=24):  # Display passphrase on screen
     surface.blit(pw, pwtext)
     pygame.display.update()
 
-
-def selectkey(keyboard, kind, direction=""):
+# Determine what key is selected on the soft keyboard and update the display
+def selectKey(keyboard, kind, direction=""):
     def highlightkey(keyboard, pos='[0,0]'):
         drawKeyboard(keyboard)
         pygame.display.update()
@@ -930,28 +1076,59 @@ def selectkey(keyboard, kind, direction=""):
         passphrase += layout[selected_key[1]][selected_key[0]]
         if len(passphrase) > 20:
             logoBar.draw()
-            displayinputlabel(kind, 12)
+            displayInputLabel(kind, 12)
         else:
-            displayinputlabel(kind)
+            displayInputLabel(kind)
     elif direction == "space":
         passphrase += ' '
         if len(passphrase) > 20:
             logoBar.draw()
-            displayinputlabel(kind, 12)
+            displayInputLabel(kind, 12)
         else:
-            displayinputlabel(kind)
+            displayInputLabel(kind)
     elif direction == "delete":
         if len(passphrase) > 0:
             passphrase = passphrase[:-1]
             logoBar.draw()
             if len(passphrase) > 20:
-                displayinputlabel(kind, 12)
+                displayInputLabel(kind, 12)
             else:
-                displayinputlabel(kind)
+                displayInputLabel(kind)
 
     highlightkey(keyboard, selected_key)
 
+###############################################################################
+#                                                                             #
+#                                    Menus                                    #
+#                                                                             #
+###############################################################################
 
+wirelessmenu = None
+menu = Menu()
+menu.move_menu(3, 41)
+
+# Define items which appear in the main menu
+def mainMenu():
+    global wlan
+    elems = ['Quit']
+
+    ap = getCurrentSSID()
+    is_hosting_ap = isApStarted()
+    if ap is not None:
+        elems = ['AP info'] + elems
+    else:
+        elems = ['Create AP'] + elems
+
+    elems = ["Saved Networks", 'Scan for APs', "Manual Setup"] + elems
+
+    interface_status = checkInterfaceStatus()
+    if interface_status == "Connected" or is_hosting_ap:
+        elems = ['Disconnect'] + elems
+
+    menu.init(elems, surface)
+    menu.draw()
+
+# Draw the main menu
 class Menu:
     font = font_medium
     dest_surface = surface
@@ -1009,15 +1186,15 @@ class Menu:
                 (len(self.elements) - len(visible_elements))
         else:  # The list is larger than 5 elements, and we're in the middle
             visible_elements = self.elements[self.selected_item -
-                                             2:self.selected_item + 3]
+                                            2:self.selected_item + 3]
             selected_within_visible = 2
 
         # What width does everything have?
         max_width = max([self.get_item_width(visible_element)
-                         for visible_element in visible_elements])
+                        for visible_element in visible_elements])
         # And now the height
         heights = [self.get_item_height(visible_element)
-                   for visible_element in visible_elements]
+                    for visible_element in visible_elements]
         total_height = sum(heights)
 
         # Background
@@ -1060,7 +1237,7 @@ class Menu:
         menu_surface.blit(render, (int(round(left + spacing)), int(
             round(top + spacing)), render.get_rect().width, render.get_rect().height))
 
-
+# Draw a list of access points in a given Menu
 class NetworksMenu(Menu):
     def set_elements(self, elements):
         self.elements = elements
@@ -1112,7 +1289,7 @@ class NetworksMenu(Menu):
         # (enc_img.get_rect().height / 2)))))
         if type(percent) == int:
             menu_surface.blit(strength, (left + 137, top + 18,
-                                         strength.get_rect().width, strength.get_rect().height))
+                                        strength.get_rect().width, strength.get_rect().height))
         qual_x = left + 200 - qual_img.get_rect().width - 3
         qual_y = top + 7 + 6
         qual_y = top + 7 + 6
@@ -1142,14 +1319,14 @@ class NetworksMenu(Menu):
                 (len(self.elements) - len(visible_elements))
         else:  # The list is larger than 5 elements, and we're in the middle
             visible_elements = self.elements[self.selected_item -
-                                             2:self.selected_item + 3]
+                                            2:self.selected_item + 3]
             selected_within_visible = 2
 
         max_width = 320 - self.origin[0] - 3
 
         # And now the height
         heights = [self.get_item_height(visible_element)
-                   for visible_element in visible_elements]
+                    for visible_element in visible_elements]
         total_height = sum(heights)
 
         # Background
@@ -1172,7 +1349,7 @@ class NetworksMenu(Menu):
         self.dest_surface.blit(menu_surface, self.origin)
         return self.selected_item
 
-
+# Highlight the selected menu item
 def navigateToMenu(new_menu):
     global colors
     if new_menu == "main":
@@ -1188,100 +1365,24 @@ def navigateToMenu(new_menu):
             colors['activetext'], colors['activeselbg'], colors['darkbg'])
     return new_menu
 
-
-wirelessmenu = None
-menu = Menu()
-menu.move_menu(3, 41)
-
-
-def mainMenu():
-    global wlan
-    elems = ['Quit']
-
-    ap = getCurrentSSID()
-    is_hosting_ap = isApStarted()
-    if ap is not None:
-        elems = ['AP info'] + elems
-    else:
-        elems = ['Create AP'] + elems
-
-    elems = ["Saved Networks", 'Scan for APs', "Manual Setup"] + elems
-
-    interface_status = checkInterfaceStatus()
-    if interface_status == "Connected" or is_hosting_ap:
-        elems = ['Disconnect'] + elems
-
-    menu.init(elems, surface)
-    menu.draw()
-
-
-def apInfo():
-    global wlan
-
-    try:
-        ssid = getCurrentSSID()
-
-        try:
-            key = getSavedNetworkKey(ssid)
-        except:
-            mac_address = getMacAddress().replace(":", "")
-            key = "gcwzero-"+mac_address
-
-        if ssid is not None:
-            ssidlabel = "SSID"
-            renderedssidlabel = font_huge.render(
-                ssidlabel, True, colors["lightbg"], colors["darkbg"])
-            ssidlabelelement = renderedssidlabel.get_rect()
-            ssidlabelelement.right = 318
-            ssidlabelelement.top = 36
-            surface.blit(renderedssidlabel, ssidlabelelement)
-
-            renderedssid = font_mono_small.render(
-                ssid, True, colors["white"], colors["darkbg"])
-            ssidelement = renderedssid.get_rect()
-            ssidelement.right = 315
-            ssidelement.top = 98
-            surface.blit(renderedssid, ssidelement)
-
-            enclabel = "Key"
-            renderedenclabel = font_huge.render(
-                enclabel, True, colors["lightbg"], colors["darkbg"])
-            enclabelelement = renderedenclabel.get_rect()
-            # Drawn a bit leftwards versus "SSID" text, so both right-align pixel-perfectly
-            enclabelelement.right = 314
-            enclabelelement.top = 116
-            surface.blit(renderedenclabel, enclabelelement)
-
-            renderedencp = font_mono_small.render(
-                key, True, colors["white"], colors["darkbg"])
-            encpelement = renderedencp.get_rect()
-            encpelement.right = 315
-            encpelement.top = 182
-            surface.blit(renderedencp, encpelement)
-
-            pygame.display.update()
-    except:
-        text = ":("
-        renderedtext = font_huge.render(
-            text, True, colors["lightbg"], colors["darkbg"])
-        textelement = renderedtext.get_rect()
-        textelement.left = 192
-        textelement.top = 98
-        surface.blit(renderedtext, textelement)
-        pygame.display.update()
-
-
+# Create a menu for wireless networks
 def createWirelessMenu():
     global wirelessmenu
     wirelessmenu = NetworksMenu()
     wirelessmenu.move_menu(116, 40)
 
-
+# Dispose of the menu for wireless networks
 def destroyWirelessMenu():
     global wirelessmenu
     wirelessmenu = None
 
+###############################################################################
+#                                                                             #
+#                           Saved Network Management                          #
+#                                                                             #
+###############################################################################
 
+# Return a list of all saved networks on disk
 def getSavedNetworks():
     saved_network = {}
     index = 0
@@ -1318,7 +1419,7 @@ def getSavedNetworks():
 
     return saved_network
 
-
+# Create a menu of all saved networks on disk
 def createSavedNetworksMenu():
     saved_networks = getSavedNetworks()
     uniq = saved_networks
@@ -1341,28 +1442,11 @@ def createSavedNetworksMenu():
         surface.blit(renderedtext, textelement)
         pygame.display.update()
 
-
-def convertFileNames():
-    """In the directory containing WiFi network configuration files, removes
-    backslashes from file names created by older versions of GCW Connect."""
-    try:
-        confNames = listdir(netconfdir)
-    except IOError as ex:
-        print("Failed to list files in '%s': %s", (netconfdir, ex))
-    else:
-        for confName in confNames:
-            if not confName.endswith('.conf'):
-                continue
-            if '\\' in confName:
-                old, new = confName, parse.quote_plus(
-                    confName.replace('\\', ''))
-                try:
-                    os.rename(os.path.join(netconfdir, old),
-                              os.path.join(netconfdir, new))
-                except IOError as ex:
-                    print("Failed to rename old-style network configuration file '%s' to '%s': %s" % (
-                        os.path.join(netconfdir, old), new, ex))
-
+###############################################################################
+#                                                                             #
+#                               Main Application                              #
+#                                                                             #
+###############################################################################
 
 if __name__ == "__main__":
     # Persistent variables
@@ -1433,19 +1517,24 @@ if __name__ == "__main__":
                     elif event.key == K_LALT:
                         pygame.display.quit()
                         sys.exit()
-                elif event.key == K_SPACE:		# Y key pressed
+
+                # Y key pressed
+                elif event.key == K_SPACE:
                     if active_menu == "saved":
                         confirm = modal("Forget AP configuration?", query=True)
                         if confirm:
                             os.remove(
-                                netconfdir+parse.quote_plus(str(wirelessmenu.get_selected()[0]))+".conf")
+                                netconfdir+parse.quote_plus(str(
+                                    wirelessmenu.get_selected()[0]))+".conf")
                         createSavedNetworksMenu()
                         redraw()
                         if len(access_points) < 1:
                             destroyWirelessMenu()
                             active_menu = navigateToMenu("main")
                             redraw()
-                elif event.key == K_LCTRL or event.key == K_RETURN:  # A key pressed
+
+                # A key pressed
+                elif event.key == K_LCTRL or event.key == K_RETURN:  
                     # Main menu
                     if active_menu == "main":
                         if menu.get_selected() == 'Disconnect':
@@ -1454,11 +1543,14 @@ if __name__ == "__main__":
                         elif menu.get_selected() == 'Scan for APs':
                             try:
                                 access_points = scanForNetworks()
-                            except:  # No access points found
+                            
+                            # No access points found
+                            except:
                                 access_points = {}
                                 text = ":("
                                 renderedtext = font_huge.render(
-                                    text, True, colors["lightbg"], colors["darkbg"])
+                                    text, True, colors["lightbg"],
+                                                colors["darkbg"])
                                 textelement = renderedtext.get_rect()
                                 textelement.left = 192
                                 textelement.top = 96
@@ -1469,7 +1561,8 @@ if __name__ == "__main__":
                             if len(access_points) < 1:
                                 text = ":("
                                 renderedtext = font_huge.render(
-                                    text, True, colors["lightbg"], colors["darkbg"])
+                                    text, True, colors["lightbg"],
+                                                colors["darkbg"])
                                 textelement = renderedtext.get_rect()
                                 textelement.left = 192
                                 textelement.top = 96
@@ -1497,7 +1590,7 @@ if __name__ == "__main__":
                             if ssid == '':
                                 pass
                             else:
-                                displayinputlabel("key")
+                                displayInputLabel("key")
 
                                 # Get key from the user
                                 securitykey = getSoftKeyInput(
@@ -1543,7 +1636,7 @@ if __name__ == "__main__":
                                     passphrase = ''
                                     selected_key = ''
                                     securitykey = ''
-                                    displayinputlabel("key")
+                                    displayInputLabel("key")
                                     drawKeyboard("qwertyNormal")
                                     passphrase = getSoftKeyInput(
                                         "qwertyNormal", "key", ssid)
@@ -1558,13 +1651,14 @@ if __name__ == "__main__":
                             position = int(wirelessmenu.get_position())
                             ssid = saved_networks[position]['ESSID']
                             shutil.copy2(netconfdir + parse.quote_plus(ssid) +
-                                         ".conf", sysconfdir+"config-"+wlan+".conf")
+                                    ".conf", sysconfdir+"config-"+wlan+".conf")
                             passphrase = saved_networks[position]['Key']
                             connectToAp(ssid)
                             break
 
                 elif event.key == K_ESCAPE:
-                    if active_menu == "ssid":  # Allow us to edit the existing key
+                    # Allow us to edit the existing key
+                    if active_menu == "ssid":  
                         ssid = ""
                         for network in access_points:
                             position = int(wirelessmenu.get_position())
@@ -1572,18 +1666,19 @@ if __name__ == "__main__":
                             passphrase = ''
                             selected_key = ''
                             securitykey = ''
-                            displayinputlabel("key")
+                            displayInputLabel("key")
                             drawKeyboard("qwertyNormal")
                             getSoftKeyInput("qwertyNormal", "key", ssid)
-
-                    if active_menu == "saved":  # Allow us to edit the existing key
+                    
+                    # Allow us to edit the existing key
+                    if active_menu == "saved":  
                         saved_networks = getSavedNetworks()
                         position = int(wirelessmenu.get_position())
                         ssid = saved_networks[position]['ESSID']
                         passphrase = saved_networks[position]['Key']
                         selected_key = ''
                         securitykey = ''
-                        displayinputlabel("key")
+                        displayInputLabel("key")
                         drawKeyboard("qwertyNormal")
                         getSoftKeyInput("qwertyNormal", "key", ssid)
 
