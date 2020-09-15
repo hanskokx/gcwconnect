@@ -65,6 +65,15 @@ colors = {
     "white":            (255, 255, 255),
 }
 
+confdir = os.environ['HOME'] + "/.local/share/gcwconnect/"
+netconfdir = confdir+"networks/"
+sysconfdir = "/usr/local/etc/network/"
+datadir = "/usr/share/gcwconnect/"
+if not os.path.exists(datadir):
+    datadir = "data/"
+
+mac_addresses = {}
+
 ###############################################################################
 #                                                                             #
 #                       Application initialization                            #
@@ -99,13 +108,6 @@ font_mono_small = pygame.font.Font(
 #                     Configuration file management                           #
 #                                                                             #
 ###############################################################################
-
-confdir = os.environ['HOME'] + "/.local/share/gcwconnect/"
-netconfdir = confdir+"networks/"
-sysconfdir = "/usr/local/etc/network/"
-datadir = "/usr/share/gcwconnect/"
-if not os.path.exists(datadir):
-    datadir = "data/"
 
 # Create configuration directories, if necessary
 def createPaths():  
@@ -349,16 +351,19 @@ def writeConfigToDisk(ssid):
 
     f = open(conf, "w")
     f.write('WLAN_ESSID="'+ssid+'"\n')
-    f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
-    f.write('WLAN_ENCRYPTION="wpa2"\n') # Default to WPA2
-                                        # FIXME: People might want WPA, WEP,
-                                        # unencrypted, etc. Right now, we don't
-                                        # know of a way to determine the type
-                                        # of encryption on a given network.
-                                        # Ideally, we would have a way to
-                                        # determine the type of encryption, and
-                                        # write the configuration file in a way
-                                        # that is appropriate for that.
+    if len(passphrase) > 0:
+        f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
+        f.write('WLAN_ENCRYPTION="wpa2"\n') # Default to WPA2
+        # FIXME: People might want WPA, WEP, unencrypted, etc. Right now, we 
+        # don't know of a way to determine the type of encryption on a given 
+        # network. Ideally, we would have a way to determine the type of 
+        # encryption, and write the configuration file in a way that is 
+        # appropriate for that.
+    else:
+        pass
+        # FIXME: This is the wrong syntax for the config file.  Need to figure
+        # out what it's supposed to be.
+        # f.write('key_mgmt=NONE\n') # For open networks
     f.close()
 
 # Return the unencrypted password of a saved network.
@@ -1103,31 +1108,6 @@ def selectKey(keyboard, kind, direction=""):
 #                                                                             #
 ###############################################################################
 
-wirelessmenu = None
-menu = Menu()
-menu.move_menu(3, 41)
-
-# Define items which appear in the main menu
-def mainMenu():
-    global wlan
-    elems = ['Quit']
-
-    ap = getCurrentSSID()
-    is_hosting_ap = isApStarted()
-    if ap is not None:
-        elems = ['AP info'] + elems
-    else:
-        elems = ['Create AP'] + elems
-
-    elems = ["Saved Networks", 'Scan for APs', "Manual Setup"] + elems
-
-    interface_status = checkInterfaceStatus()
-    if interface_status == "Connected" or is_hosting_ap:
-        elems = ['Disconnect'] + elems
-
-    menu.init(elems, surface)
-    menu.draw()
-
 # Draw the main menu
 class Menu:
     font = font_medium
@@ -1349,6 +1329,31 @@ class NetworksMenu(Menu):
         self.dest_surface.blit(menu_surface, self.origin)
         return self.selected_item
 
+wirelessmenu = None
+menu = Menu()
+menu.move_menu(3, 41)
+
+# Define items which appear in the main menu
+def mainMenu():
+    global wlan
+    elems = ['Quit']
+
+    ap = getCurrentSSID()
+    is_hosting_ap = isApStarted()
+    if ap is not None:
+        elems = ['AP info'] + elems
+    else:
+        elems = ['Create AP'] + elems
+
+    elems = ["Saved Networks", 'Scan for APs', "Manual Setup"] + elems
+
+    interface_status = checkInterfaceStatus()
+    if interface_status == "Connected" or is_hosting_ap:
+        elems = ['Disconnect'] + elems
+
+    menu.init(elems, surface)
+    menu.draw()
+
 # Highlight the selected menu item
 def navigateToMenu(new_menu):
     global colors
@@ -1528,11 +1533,14 @@ if __name__ == "__main__":
                                     wirelessmenu.get_selected()[0]))+".conf")
                         createSavedNetworksMenu()
                         redraw()
-                        if len(access_points) < 1:
+                        try:
+                            if len(access_points) < 1:
+                                destroyWirelessMenu()
+                        except NameError:
                             destroyWirelessMenu()
-                            active_menu = navigateToMenu("main")
-                            redraw()
 
+                        active_menu = navigateToMenu("main")
+                        redraw()
                 # A key pressed
                 elif event.key == K_LCTRL or event.key == K_RETURN:  
                     # Main menu
