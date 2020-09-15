@@ -224,11 +224,11 @@ def getIp():
             stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 
     for line in output:
-        if line.decode("utf-8").strip().startswith("inet"):
-            ip = line.decode("utf-8").split()[1].split("/")[0]
-
-            if ip.startswith('169.254'):
-                ip = None
+        line = line.decode("utf-8").strip()
+        if line.startswith("inet"):
+            tmp = line.split()[1].split("/")[0]
+            if not tmp.startswith("169.254"):
+                ip = tmp
 
     return ip
 
@@ -1659,7 +1659,7 @@ if __name__ == "__main__":
                     elif active_menu == "saved":
                         saved_networks = getSavedNetworks()
                         for network in saved_networks:
-                            position = int(wirelessmenu.get_position())
+                            position = int(wirelessmenu.get_position() - 1)
                             ssid = saved_networks[position]['ESSID']
                             shutil.copy2(netconfdir + parse.quote_plus(ssid) +
                                     ".conf", sysconfdir+"config-"+wlan+".conf")
