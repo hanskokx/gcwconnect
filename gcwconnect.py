@@ -274,7 +274,7 @@ def connectToAp(ssid):
         shutil.copy2(saved_file, sysconfdir+"config-"+wlan+".conf")
 
     iface_status = checkInterfaceStatus()
-    if iface_status == True:
+    if iface_status != False:
         disconnectFromAp()
     else:
         enableIface()
@@ -927,7 +927,6 @@ def getSSID():
     ssid = passphrase
     passphrase = ''
     return ssid
-
 
 def getSoftKeyInput(board, kind, ssid=""):
     selectKey(board, kind)
