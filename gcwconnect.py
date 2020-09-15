@@ -227,6 +227,9 @@ def getIp():
         if line.decode("utf-8").strip().startswith("inet"):
             ip = line.decode("utf-8").split()[1].split("/")[0]
 
+            if ip.startswith('169.254'):
+                ip = None
+
     return ip
 
 # Returns the wlan MAC address, or False if the interface is disabled
