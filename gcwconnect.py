@@ -268,7 +268,7 @@ def getCurrentSSID():
 ###############################################################################
 
 # Associate with the given access point
-def connectToAp(ssid):  
+def connectToAp(ssid):
     saved_file = netconfdir + parse.quote_plus(ssid) + ".conf"
     if os.path.exists(saved_file):
         shutil.copy2(saved_file, sysconfdir+"config-"+wlan+".conf")
@@ -277,7 +277,12 @@ def connectToAp(ssid):
     if iface_status != False:
         disconnectFromAp()
     else:
-        enableIface()
+        try:
+            enableIface()
+        except:
+            ifDown()
+            disableIface()
+            enableIface()
 
     modal("Connecting...")
     ifUp()
@@ -1393,7 +1398,7 @@ def destroyWirelessMenu():
 def getSavedNetworks():
     saved_network = {}
     index = 0
-    for confName in sorted(listdir(netconfdir)):
+    for confName in sorted(listdir(netconfdir), reverse=True):
         if not confName.endswith('.conf'):
             continue
         ssid = parse.unquote_plus(confName[:-5])
@@ -1429,12 +1434,12 @@ def getSavedNetworks():
 # Create a menu of all saved networks on disk
 def createSavedNetworksMenu():
     saved_networks = getSavedNetworks()
-    uniq = saved_networks
 
-    if uniq:
+    if len(saved_networks) > 0:
         l = []
-        for item in sorted(iter(uniq.keys()), key=lambda x: uniq[x]['ESSID']):
-            detail = uniq[item]
+        for item in sorted(iter(saved_networks.keys()),
+                            key=lambda x: saved_networks[x]['ESSID']):
+            detail = saved_networks[item]
             l.append([detail['ESSID'], detail['Key']])
         createWirelessMenu()
         wirelessmenu.init(l, surface)
@@ -1658,7 +1663,7 @@ if __name__ == "__main__":
                     elif active_menu == "saved":
                         saved_networks = getSavedNetworks()
                         for network in saved_networks:
-                            position = int(wirelessmenu.get_position() - 1)
+                            position = int(wirelessmenu.get_position())
                             ssid = saved_networks[position]['ESSID']
                             shutil.copy2(netconfdir + parse.quote_plus(ssid) +
                                     ".conf", sysconfdir+"config-"+wlan+".conf")
