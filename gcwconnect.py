@@ -99,7 +99,6 @@ font_small      = pygame.font.Font(font_path, 10)
 font_medium     = pygame.font.Font(font_path, 12)
 font_large      = pygame.font.Font(font_path, 16)
 font_huge       = pygame.font.Font(font_path, 48)
-gcw_font        = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
 
 font_mono_path  = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'
 font_mono_small = pygame.font.Font(font_mono_path, 11)
@@ -519,22 +518,16 @@ def stopAp():
 # Draw the application name at the top of the screen
 class LogoBar(object):
     def __init__(self):
-        self.text1 = gcw_font.render(
-            'GCW', True, colors['logogcw'], colors['lightbg'])
-        self.text2 = gcw_font.render(
-            'CONNECT', True, colors['logoconnect'], colors['lightbg'])
+        self.surface = pygame.image.load(
+                (os.path.join(datadir, 'gcwconnect.png'))).convert_alpha()
 
     def draw(self):
         pygame.draw.rect(surface, colors['lightbg'], (0, 0, 320, 34))
         pygame.draw.line(surface, colors['white'], (0, 34), (320, 34))
 
-        rect1 = self.text1.get_rect()
-        rect1.topleft = (8 + 5 + 1, 5)
-        surface.blit(self.text1, rect1)
-
-        rect2 = self.text2.get_rect()
-        rect2.topleft = rect1.topright
-        surface.blit(self.text2, rect2)
+        rect = self.surface.get_rect()
+        rect.topleft = (8 + 5 + 1, 9)
+        surface.blit(self.surface, rect)
 
 # Draw the status bar on the bottom of the screen
 def drawStatusBar():
