@@ -148,12 +148,12 @@ def convertFileNames():
 
 # Disconnect from wifi / bring down the hosted AP
 def ifDown():  
-    SU.Popen(['sudo', '/usr/sbin/ifdown', wlan], close_fds=True).wait()
+    SU.Popen(['sudo', '/sbin/ifdown', wlan], close_fds=True).wait()
     SU.Popen(['sudo', '/usr/sbin/ap', '--stop'], close_fds=True).wait()
 
 # Try to connect the wlan interface to wifi
 def ifUp():  
-    SU.Popen(['sudo', '/usr/sbin/ifup', wlan], close_fds=True).wait() == 0
+    SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
     status = checkInterfaceStatus()
     return status
 
@@ -169,7 +169,7 @@ def enableIface():
     pygame.display.update()
 
     while True:
-        if SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', wlan, 'up'],
+        if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'up'],
                 close_fds=True).wait() == 0:
             break
         time.sleep(0.1)
@@ -178,7 +178,7 @@ def enableIface():
 
 # Disables the wlan interface
 def disableIface():
-    SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set',
+    SU.Popen(['sudo', '/sbin/ip', 'link', 'set',
             wlan, 'down'], close_fds=True).wait()
 
 # Returns True/False depending on whether interface is dormant
@@ -220,7 +220,7 @@ def checkInterfaceStatus():
 def getIp():  
     ip = None
     with open(os.devnull, "w") as fnull:
-        output = SU.Popen(['/usr/sbin/ip', '-4', 'a', 'show', wlan],
+        output = SU.Popen(['/sbin/ip', '-4', 'a', 'show', wlan],
             stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 
     for line in output:
@@ -252,7 +252,7 @@ def getCurrentSSID():
 
     else:
         with open(os.devnull, "w") as fnull:
-            output = SU.Popen(['/usr/sbin/iw', 'dev', wlan, 'link'],
+            output = SU.Popen(['/sbin/iw', 'dev', wlan, 'link'],
                 stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
         if output is not None:
             for line in output:
