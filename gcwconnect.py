@@ -100,8 +100,9 @@ font_medium     = pygame.font.Font(font_path, 12)
 font_large      = pygame.font.Font(font_path, 16)
 font_huge       = pygame.font.Font(font_path, 48)
 gcw_font        = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
-font_mono_small = pygame.font.Font(
-    os.path.join(datadir, 'Inconsolata.otf'), 11)
+
+font_mono_path  = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'
+font_mono_small = pygame.font.Font(font_mono_path, 11)
 
 ###############################################################################
 #                                                                             #
