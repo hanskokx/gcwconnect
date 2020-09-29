@@ -35,8 +35,8 @@ from pygame.locals import *
 wlan = "wlan0"
 
 # What is our screen resolution?
-screen_width 	= 320
-screen_height 	= 240
+screen_width = 320
+screen_height = 240
 
 ###############################################################################
 #                                                                             #
@@ -93,13 +93,13 @@ pygame.mouse.set_visible(False)
 pygame.key.set_repeat(199, 69)  # (delay,interval)
 
 # Fonts
-font_path       = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
-font_tiny       = pygame.font.Font(font_path, 8)
-font_small      = pygame.font.Font(font_path, 10)
-font_medium     = pygame.font.Font(font_path, 12)
-font_large      = pygame.font.Font(font_path, 16)
-font_huge       = pygame.font.Font(font_path, 48)
-gcw_font        = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
+font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+font_tiny = pygame.font.Font(font_path, 8)
+font_small = pygame.font.Font(font_path, 10)
+font_medium = pygame.font.Font(font_path, 12)
+font_large = pygame.font.Font(font_path, 16)
+font_huge = pygame.font.Font(font_path, 48)
+gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
 font_mono_small = pygame.font.Font(
     os.path.join(datadir, 'Inconsolata.otf'), 11)
 
@@ -109,8 +109,11 @@ font_mono_small = pygame.font.Font(
 #                                                                             #
 ###############################################################################
 
-# Create configuration directories, if necessary
-def createPaths():  
+
+def createPaths():
+    """
+    Create configuration directories, if necessary
+    """
     if not os.path.exists(confdir):
         os.makedirs(confdir)
     if not os.path.exists(netconfdir):
@@ -118,7 +121,7 @@ def createPaths():
     if not os.path.exists(sysconfdir):
         os.makedirs(sysconfdir)
 
-# Rename older style configuration files to the updated format
+
 def convertFileNames():
     """In the directory containing WiFi network configuration files, removes
     backslashes from file names created by older versions of GCW Connect."""
@@ -134,8 +137,8 @@ def convertFileNames():
                 old, new = confName, parse.quote_plus(
                     confName.replace('\\', ''))
                 try:
-                    os.rename(  os.path.join(netconfdir, old),
-                                os.path.join(netconfdir, new))
+                    os.rename(os.path.join(netconfdir, old),
+                              os.path.join(netconfdir, new))
                 except IOError as ex:
                     print("Failed to rename old-style network configuration file '%s' to '%s': %s" % (
                         os.path.join(netconfdir, old), new, ex))
@@ -146,20 +149,34 @@ def convertFileNames():
 #                                                                             #
 ###############################################################################
 
-# Disconnect from wifi / bring down the hosted AP
-def ifDown():  
+
+def ifDown():
+    """
+    Disconnect from wifi and/or bring down the hosted AP
+    """
     SU.Popen(['sudo', '/usr/sbin/ifdown', wlan], close_fds=True).wait()
     SU.Popen(['sudo', '/usr/sbin/ap', '--stop'], close_fds=True).wait()
 
-# Try to connect the wlan interface to wifi
-def ifUp():  
+
+def ifUp():
+    """
+    Attmept to connect the wlan interface to the wifi access point
+
+    Returns:
+        bool/str: Returns False if connection is unsuccessful or connection status otherwise.
+    """
     SU.Popen(['sudo', '/usr/sbin/ifup', wlan], close_fds=True).wait() == 0
     status = checkInterfaceStatus()
     return status
 
-# Enables the wlan interface.
-# Returns False if the interface was previously enabled, otherwise returns True
-def enableIface():  
+
+def enableIface():
+    """
+    Enables the wlan interface.
+
+    Returns:
+        bool: Returns False if the interface was previously enabled, otherwise returns True
+    """
     check = checkInterfaceStatus()
     if check is not False:
         return False
@@ -170,19 +187,28 @@ def enableIface():
 
     while True:
         if SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', wlan, 'up'],
-                close_fds=True).wait() == 0:
+                    close_fds=True).wait() == 0:
             break
         time.sleep(0.1)
 
     return True
 
-# Disables the wlan interface
-def disableIface():
-    SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set',
-            wlan, 'down'], close_fds=True).wait()
 
-# Returns True/False depending on whether interface is dormant
-def checkIfInterfaceIsDormant():  
+def disableIface():
+    """
+    Disables the wlan interface
+    """
+    SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set',
+              wlan, 'down'], close_fds=True).wait()
+
+
+def checkIfInterfaceIsDormant():
+    """
+    Cheecks if the wlan interface is dormant
+
+    Returns:
+        bool: False if the interface is dormant, otherwise True.
+    """
     operstate = False
     try:
         with open("/sys/class/net/" + wlan + "/dormant", "rb") as state:
@@ -190,8 +216,14 @@ def checkIfInterfaceIsDormant():
     except IOError:
         return False  # WiFi is disabled
 
-# Returns a str() containing the interface status; False if interface is down
-def checkInterfaceStatus():  
+
+def checkInterfaceStatus():
+    """
+    Determine the status of the wlan interface and its connection state.
+
+    Returns:
+        bool/str: Returns a str containing the interface status or False if interface is down
+    """
     interface_status = False
 
     interface_is_up = checkIfInterfaceIsDormant()
@@ -216,12 +248,18 @@ def checkInterfaceStatus():
 #                                                                             #
 ###############################################################################
 
-# Returns the current IP address of the wlan interface
-def getIp():  
+
+def getIp():
+    """
+    Determine the IP address of the wlan interface
+
+    Returns:
+        str: The IP address of the interface, or None if unavailable.
+    """
     ip = None
     with open(os.devnull, "w") as fnull:
         output = SU.Popen(['/usr/sbin/ip', '-4', 'a', 'show', wlan],
-            stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+                          stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 
     for line in output:
         line = line.decode("utf-8").strip()
@@ -232,17 +270,28 @@ def getIp():
 
     return ip
 
-# Returns the wlan MAC address, or False if the interface is disabled
+
 def getMacAddress():
+    """
+    Acquire the wlan MAC address
+
+    Returns:
+        bool/str: Returns the wlan MAC address, or False if the interface is disabled
+    """
     try:
         with open("/sys/class/net/" + wlan + "/address", "rb") as mac_file:
             return mac_file.readline(17).decode("utf-8").strip()
     except IOError:
         return False  # WiFi is disabled
 
-# Returns the SSID of the network currently associated with; otherwise returns
-# None if no network is associated.
-def getCurrentSSID():  
+
+def getCurrentSSID():
+    """
+    Determine which SSID the device is currently associated with
+
+    Returns:
+        str: Returns the SSID of the network currently associated with; otherwise returns None if no network is associated.
+    """
     ssid = None
     is_broadcasting_ap = isApStarted()
     mac_address = getMacAddress().replace(":", "")
@@ -253,7 +302,7 @@ def getCurrentSSID():
     else:
         with open(os.devnull, "w") as fnull:
             output = SU.Popen(['/usr/sbin/iw', 'dev', wlan, 'link'],
-                stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
+                              stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
         if output is not None:
             for line in output:
                 if line.decode("utf-8").strip().startswith('SSID'):
@@ -267,8 +316,18 @@ def getCurrentSSID():
 #                                                                             #
 ###############################################################################
 
-# Associate with the given access point
+
 def connectToAp(ssid):
+    """
+    Associates the device with a given access point
+
+    Args:
+        ssid (str): The SSID with which to attempt a connection
+
+    Returns:
+        bool: True if connection was successful, False otherwise
+    """
+    return_status = False
     saved_file = netconfdir + parse.quote_plus(ssid) + ".conf"
     if os.path.exists(saved_file):
         shutil.copy2(saved_file, sysconfdir+"config-"+wlan+".conf")
@@ -290,16 +349,21 @@ def connectToAp(ssid):
     connected_to_network = getCurrentSSID()
     if connected_to_network != None:
         modal('Connected!', timeout=True)
+        return_status = True
     else:
         modal('Connection failed!', timeout=True)
+        return_status = False
 
     pygame.display.update()
     drawStatusBar()
     drawInterfaceStatus()
-    return True
+    return return_status
 
-# Disconnect from the currently associated access point
+
 def disconnectFromAp():
+    """
+    Disconnect from the currently associated access point
+    """
     modal("Disconnecting...")
     ifDown()
 
@@ -307,15 +371,21 @@ def disconnectFromAp():
     drawStatusBar()
     drawInterfaceStatus()
 
-# Scans for access points in range, and returns them as a list
-def scanForNetworks():  
+
+def scanForNetworks():
+    """
+    Scans for access points in range
+
+    Returns:
+        List: A list of access points in range
+    """
     interface_was_not_enabled = enableIface()
     modal("Scanning...")
 
     with open(os.devnull, "w") as fnull:
         output = SU.Popen(['sudo', '/usr/sbin/wlan-scan', wlan],
-            stdout=SU.PIPE, stderr=fnull,
-            close_fds=True, encoding="utf-8").stdout.readlines()
+                          stdout=SU.PIPE, stderr=fnull,
+                          close_fds=True, encoding="utf-8").stdout.readlines()
 
     aps = []
 
@@ -347,8 +417,14 @@ def scanForNetworks():
         disableIface()
     return final
 
-# Write a configuration file to disk
-def writeConfigToDisk(ssid):  
+
+def writeConfigToDisk(ssid):
+    """
+    Write a configuration file to disk
+
+    Args:
+        ssid (str): The SSID to write a configuration file for
+    """
     global passphrase
 
     if passphrase:
@@ -361,11 +437,11 @@ def writeConfigToDisk(ssid):
     f.write('WLAN_ESSID="'+ssid+'"\n')
     if len(passphrase) > 0:
         f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
-        f.write('WLAN_ENCRYPTION="wpa2"\n') # Default to WPA2
-        # FIXME: People might want WPA, WEP, unencrypted, etc. Right now, we 
-        # don't know of a way to determine the type of encryption on a given 
-        # network. Ideally, we would have a way to determine the type of 
-        # encryption, and write the configuration file in a way that is 
+        f.write('WLAN_ENCRYPTION="wpa2"\n')  # Default to WPA2
+        # FIXME: People might want WPA, WEP, unencrypted, etc. Right now, we
+        # don't know of a way to determine the type of encryption on a given
+        # network. Ideally, we would have a way to determine the type of
+        # encryption, and write the configuration file in a way that is
         # appropriate for that.
     else:
         pass
@@ -374,8 +450,17 @@ def writeConfigToDisk(ssid):
         # f.write('key_mgmt=NONE\n') # For open networks
     f.close()
 
-# Return the unencrypted password of a saved network.
-def getSavedNetworkKey(ssid):  
+
+def getSavedNetworkKey(ssid):
+    """
+    Retreive the network key from a saved configuration file
+
+    Args:
+        ssid (str): The SSID of the network to retrieve the key for
+
+    Returns:
+        str: The unencrypted network key for the given SSID
+    """
     key = None
     conf = netconfdir + parse.quote_plus(ssid) + ".conf"
     output = open(conf, "r")
@@ -386,8 +471,11 @@ def getSavedNetworkKey(ssid):
 
     return key
 
-# Display information about the current access point
+
 def apInfo():
+    """
+    Draw information about the currently associated access point to the display
+    """
     global wlan
 
     try:
@@ -448,19 +536,31 @@ def apInfo():
 #                                                                             #
 ###############################################################################
 
-# Return True if we are hosting an access point, otherwise return False
+
 def isApStarted():
+    """
+    Determine status of hosting an access point
+
+    Returns:
+        bool: Return True if we are hosting an access point, otherwise return False
+    """
     with open(os.devnull, "w") as fnull:
         output = SU.Popen(['sudo', '/usr/sbin/ap', '--status'],
-            stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+                          stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
     for line in output:
         if line.decode("utf-8").strip() == 'ap is running':
             return True
         else:
             return False
 
-# Create an access point for peer-to-peer connections
+
 def startAp():
+    """
+    Create an access point for peer-to-peer connections
+
+    Returns:
+        bool: Returns True if the hosted AP was created successfully, or False otherwise
+    """
     global wlan
     interface_status = checkInterfaceStatus()
     if interface_status != False:
@@ -484,14 +584,20 @@ def startAp():
         redraw()
         return False
 
-# Stop broadcasting the peer-to-peer access point
-def stopAp():  
+
+def stopAp():
+    """
+    Stop broadcasting the peer-to-peer access point
+
+    Returns:
+        bool: True if able to tear down the AP, False otherwise
+    """
     try:
         if isApStarted():
             modal("Stopping AP...")
             if SU.Popen(['sudo', '/usr/sbin/ap', '--stop'],
-                close_fds=True).wait() == 0:
-                
+                        close_fds=True).wait() == 0:
+
                 if isApStarted() == False:
                     redraw()
                     return True
@@ -515,8 +621,15 @@ def stopAp():
 #                                                                             #
 ###############################################################################
 
-# Draw the application name at the top of the screen
+
 class LogoBar(object):
+    """
+    Draw the application name at the top of the screen
+
+    Args:
+        object ([type]): [description]
+    """
+
     def __init__(self):
         self.text1 = gcw_font.render(
             'GCW', True, colors['logogcw'], colors['lightbg'])
@@ -536,6 +649,8 @@ class LogoBar(object):
         surface.blit(self.text2, rect2)
 
 # Draw the status bar on the bottom of the screen
+
+
 def drawStatusBar():
     connected_to_network = getCurrentSSID()
     if connected_to_network is None:
@@ -550,7 +665,9 @@ def drawStatusBar():
     surface.blit(wlantext, wlan_text)
 
 # Draw the status of the wlan interface on the status bar
-def drawInterfaceStatus():  
+
+
+def drawInterfaceStatus():
     global colors
     wlanstatus = checkInterfaceStatus()
     if not wlanstatus:
@@ -587,6 +704,8 @@ def drawInterfaceStatus():
             surface.blit(text, interfacestatus_text)
 
 # Draw a modal window in the middle of the screen
+
+
 def modal(text, wait=False, timeout=False, query=False):
     global colors
     dialog = pygame.draw.rect(surface, colors['lightbg'], (64, 88, 192, 72))
@@ -628,6 +747,8 @@ def modal(text, wait=False, timeout=False, query=False):
 
 # Clear the display completely, and redraws it with all of the elements which
 # are appropriate for the current context.
+
+
 def redraw():
     global colors
     surface.fill(colors['darkbg'])
@@ -651,6 +772,8 @@ def redraw():
     pygame.display.update()
 
 # Draw colorful button icons and labels
+
+
 class hint:
     global colors
 
@@ -781,6 +904,8 @@ class hint:
             surface.blit(labeltext, labelblock)
 
 # Draw an anti-aliased, filled circle of a given radius
+
+
 def aaFilledCircle(surface, color, center, radius):
     '''Helper function to draw anti-aliased circles using an interface similar
     to pygame.draw.circle.
@@ -791,6 +916,8 @@ def aaFilledCircle(surface, color, center, radius):
     return Rect(x - radius, y - radius, radius * 2 + 1, radius * 2 + 1)
 
 # Draw a standard radio button
+
+
 class radio:
     global colors
 
@@ -831,6 +958,7 @@ class radio:
 #                                                                             #
 ###############################################################################
 
+
 # Define key layouts for the soft keyboard
 keyLayouts = {
     'qwertyNormal': (
@@ -855,12 +983,16 @@ keyLayouts = {
 keyboardCycleOrder = ('qwertyNormal', 'qwertyShift')
 
 # Cycle the keyboard keys through keyLayouts using keyboardCycleOrder
+
+
 def nextKeyboard(board):
     return keyboardCycleOrder[
         (keyboardCycleOrder.index(board) + 1) % len(keyboardCycleOrder)
     ]
 
 # Draw a single key on the keyboard
+
+
 class key:
     global colors
 
@@ -896,6 +1028,8 @@ class key:
         surface.blit(text, label)
 
 # Draw the keyboard
+
+
 def drawKeyboard(board):
     global colors
 
@@ -924,6 +1058,8 @@ def drawKeyboard(board):
 # Get an SSID entered via the keyboard
 # TODO: Is this necessary? We have getSoftKeyInput(), so maybe not? It's only
 # used in one place, so it could probably be refactored...
+
+
 def getSSID():
     global passphrase
     displayInputLabel("ssid")
@@ -933,6 +1069,7 @@ def getSSID():
     passphrase = ''
     return ssid
 
+
 def getSoftKeyInput(board, kind, ssid=""):
     selectKey(board, kind)
     return softKeyInput(board, kind, ssid)
@@ -941,6 +1078,8 @@ def getSoftKeyInput(board, kind, ssid=""):
 # saving the configuration to disk, and connecting to the access point.
 # TODO: This appears to function similarly to getSSID().  Can we retire
 # getSSID() and replace it with this?
+
+
 def softKeyInput(keyboard, kind, ssid):
     global passphrase
     global securitykey
@@ -992,7 +1131,9 @@ def softKeyInput(keyboard, kind, ssid):
                 return False
 
 # Display text entered using the soft keyboard on the display
-def displayInputLabel(kind, size=24):  
+
+
+def displayInputLabel(kind, size=24):
     global colors
 
     if kind == "ssid":
@@ -1028,6 +1169,8 @@ def displayInputLabel(kind, size=24):
     pygame.display.update()
 
 # Determine what key is selected on the soft keyboard and update the display
+
+
 def selectKey(keyboard, kind, direction=""):
     def highlightkey(keyboard, pos='[0,0]'):
         drawKeyboard(keyboard)
@@ -1116,6 +1259,8 @@ def selectKey(keyboard, kind, direction=""):
 ###############################################################################
 
 # Draw the main menu
+
+
 class Menu:
     font = font_medium
     dest_surface = surface
@@ -1173,15 +1318,15 @@ class Menu:
                 (len(self.elements) - len(visible_elements))
         else:  # The list is larger than 5 elements, and we're in the middle
             visible_elements = self.elements[self.selected_item -
-                                            2:self.selected_item + 3]
+                                             2:self.selected_item + 3]
             selected_within_visible = 2
 
         # What width does everything have?
         max_width = max([self.get_item_width(visible_element)
-                        for visible_element in visible_elements])
+                         for visible_element in visible_elements])
         # And now the height
         heights = [self.get_item_height(visible_element)
-                    for visible_element in visible_elements]
+                   for visible_element in visible_elements]
         total_height = sum(heights)
 
         # Background
@@ -1225,6 +1370,8 @@ class Menu:
             round(top + spacing)), render.get_rect().width, render.get_rect().height))
 
 # Draw a list of access points in a given Menu
+
+
 class NetworksMenu(Menu):
     def set_elements(self, elements):
         self.elements = elements
@@ -1276,7 +1423,7 @@ class NetworksMenu(Menu):
         # (enc_img.get_rect().height / 2)))))
         if type(percent) == int:
             menu_surface.blit(strength, (left + 137, top + 18,
-                                        strength.get_rect().width, strength.get_rect().height))
+                                         strength.get_rect().width, strength.get_rect().height))
         qual_x = left + 200 - qual_img.get_rect().width - 3
         qual_y = top + 7 + 6
         qual_y = top + 7 + 6
@@ -1306,14 +1453,14 @@ class NetworksMenu(Menu):
                 (len(self.elements) - len(visible_elements))
         else:  # The list is larger than 5 elements, and we're in the middle
             visible_elements = self.elements[self.selected_item -
-                                            2:self.selected_item + 3]
+                                             2:self.selected_item + 3]
             selected_within_visible = 2
 
         max_width = 320 - self.origin[0] - 3
 
         # And now the height
         heights = [self.get_item_height(visible_element)
-                    for visible_element in visible_elements]
+                   for visible_element in visible_elements]
         total_height = sum(heights)
 
         # Background
@@ -1336,11 +1483,14 @@ class NetworksMenu(Menu):
         self.dest_surface.blit(menu_surface, self.origin)
         return self.selected_item
 
+
 wirelessmenu = None
 menu = Menu()
 menu.move_menu(3, 41)
 
 # Define items which appear in the main menu
+
+
 def mainMenu():
     global wlan
     elems = ['Quit']
@@ -1362,6 +1512,8 @@ def mainMenu():
     menu.draw()
 
 # Highlight the selected menu item
+
+
 def navigateToMenu(new_menu):
     global colors
     if new_menu == "main":
@@ -1378,12 +1530,16 @@ def navigateToMenu(new_menu):
     return new_menu
 
 # Create a menu for wireless networks
+
+
 def createWirelessMenu():
     global wirelessmenu
     wirelessmenu = NetworksMenu()
     wirelessmenu.move_menu(116, 40)
 
 # Dispose of the menu for wireless networks
+
+
 def destroyWirelessMenu():
     global wirelessmenu
     wirelessmenu = None
@@ -1395,6 +1551,8 @@ def destroyWirelessMenu():
 ###############################################################################
 
 # Return a list of all saved networks on disk
+
+
 def getSavedNetworks():
     saved_network = {}
     index = 0
@@ -1432,13 +1590,15 @@ def getSavedNetworks():
     return saved_network
 
 # Create a menu of all saved networks on disk
+
+
 def createSavedNetworksMenu():
     saved_networks = getSavedNetworks()
 
     if len(saved_networks) > 0:
         l = []
         for item in sorted(iter(saved_networks.keys()),
-                            key=lambda x: saved_networks[x]['ESSID']):
+                           key=lambda x: saved_networks[x]['ESSID']):
             detail = saved_networks[item]
             l.append([detail['ESSID'], detail['Key']])
         createWirelessMenu()
@@ -1459,6 +1619,7 @@ def createSavedNetworksMenu():
 #                               Main Application                              #
 #                                                                             #
 ###############################################################################
+
 
 if __name__ == "__main__":
     # Persistent variables
@@ -1549,7 +1710,7 @@ if __name__ == "__main__":
                         active_menu = navigateToMenu("main")
                         redraw()
                 # A key pressed
-                elif event.key == K_LCTRL or event.key == K_RETURN:  
+                elif event.key == K_LCTRL or event.key == K_RETURN:
                     # Main menu
                     if active_menu == "main":
                         if menu.get_selected() == 'Disconnect':
@@ -1558,14 +1719,14 @@ if __name__ == "__main__":
                         elif menu.get_selected() == 'Scan for APs':
                             try:
                                 access_points = scanForNetworks()
-                            
+
                             # No access points found
                             except:
                                 access_points = {}
                                 text = ":("
                                 renderedtext = font_huge.render(
                                     text, True, colors["lightbg"],
-                                                colors["darkbg"])
+                                    colors["darkbg"])
                                 textelement = renderedtext.get_rect()
                                 textelement.left = 192
                                 textelement.top = 96
@@ -1577,7 +1738,7 @@ if __name__ == "__main__":
                                 text = ":("
                                 renderedtext = font_huge.render(
                                     text, True, colors["lightbg"],
-                                                colors["darkbg"])
+                                    colors["darkbg"])
                                 textelement = renderedtext.get_rect()
                                 textelement.left = 192
                                 textelement.top = 96
@@ -1666,14 +1827,14 @@ if __name__ == "__main__":
                             position = int(wirelessmenu.get_position())
                             ssid = saved_networks[position]['ESSID']
                             shutil.copy2(netconfdir + parse.quote_plus(ssid) +
-                                    ".conf", sysconfdir+"config-"+wlan+".conf")
+                                         ".conf", sysconfdir+"config-"+wlan+".conf")
                             passphrase = saved_networks[position]['Key']
                             connectToAp(ssid)
                             break
 
                 elif event.key == K_ESCAPE:
                     # Allow us to edit the existing key
-                    if active_menu == "ssid":  
+                    if active_menu == "ssid":
                         ssid = ""
                         for network in access_points:
                             position = int(wirelessmenu.get_position())
@@ -1684,9 +1845,9 @@ if __name__ == "__main__":
                             displayInputLabel("key")
                             drawKeyboard("qwertyNormal")
                             getSoftKeyInput("qwertyNormal", "key", ssid)
-                    
+
                     # Allow us to edit the existing key
-                    if active_menu == "saved":  
+                    if active_menu == "saved":
                         saved_networks = getSavedNetworks()
                         position = int(wirelessmenu.get_position())
                         ssid = saved_networks[position]['ESSID']
