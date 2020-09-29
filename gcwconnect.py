@@ -767,7 +767,7 @@ def drawInterfaceStatus():
         text = font_mono_small.render(
             " "+ip_address, True, colors['white'], colors['lightbg'])
         interfacestatus_text = text.get_rect()
-        interfacestatus_text.topright = (screen_width - 3, scn_height - 15)
+        interfacestatus_text.topright = (screen_width - 3, screen_height - 15)
         surface.blit(text, interfacestatus_text)
     else:
         mac = mac_addresses.get(wlan)
