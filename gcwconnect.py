@@ -99,9 +99,9 @@ font_small      = pygame.font.Font(font_path, 10)
 font_medium     = pygame.font.Font(font_path, 12)
 font_large      = pygame.font.Font(font_path, 16)
 font_huge       = pygame.font.Font(font_path, 48)
-gcw_font        = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
-font_mono_small = pygame.font.Font(
-    os.path.join(datadir, 'Inconsolata.otf'), 11)
+
+font_mono_path  = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'
+font_mono_small = pygame.font.Font(font_mono_path, 11)
 
 ###############################################################################
 #                                                                             #
@@ -148,12 +148,12 @@ def convertFileNames():
 
 # Disconnect from wifi / bring down the hosted AP
 def ifDown():  
-    SU.Popen(['sudo', '/usr/sbin/ifdown', wlan], close_fds=True).wait()
+    SU.Popen(['sudo', '/sbin/ifdown', wlan], close_fds=True).wait()
     SU.Popen(['sudo', '/usr/sbin/ap', '--stop'], close_fds=True).wait()
 
 # Try to connect the wlan interface to wifi
 def ifUp():  
-    SU.Popen(['sudo', '/usr/sbin/ifup', wlan], close_fds=True).wait() == 0
+    SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
     status = checkInterfaceStatus()
     return status
 
@@ -169,7 +169,7 @@ def enableIface():
     pygame.display.update()
 
     while True:
-        if SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', wlan, 'up'],
+        if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'up'],
                 close_fds=True).wait() == 0:
             break
         time.sleep(0.1)
@@ -178,7 +178,7 @@ def enableIface():
 
 # Disables the wlan interface
 def disableIface():
-    SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set',
+    SU.Popen(['sudo', '/sbin/ip', 'link', 'set',
             wlan, 'down'], close_fds=True).wait()
 
 # Returns True/False depending on whether interface is dormant
@@ -220,7 +220,7 @@ def checkInterfaceStatus():
 def getIp():  
     ip = None
     with open(os.devnull, "w") as fnull:
-        output = SU.Popen(['/usr/sbin/ip', '-4', 'a', 'show', wlan],
+        output = SU.Popen(['/sbin/ip', '-4', 'a', 'show', wlan],
             stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 
     for line in output:
@@ -252,7 +252,7 @@ def getCurrentSSID():
 
     else:
         with open(os.devnull, "w") as fnull:
-            output = SU.Popen(['/usr/sbin/iw', 'dev', wlan, 'link'],
+            output = SU.Popen(['/sbin/iw', 'dev', wlan, 'link'],
                 stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
         if output is not None:
             for line in output:
@@ -518,22 +518,16 @@ def stopAp():
 # Draw the application name at the top of the screen
 class LogoBar(object):
     def __init__(self):
-        self.text1 = gcw_font.render(
-            'GCW', True, colors['logogcw'], colors['lightbg'])
-        self.text2 = gcw_font.render(
-            'CONNECT', True, colors['logoconnect'], colors['lightbg'])
+        self.surface = pygame.image.load(
+                (os.path.join(datadir, 'gcwconnect.png'))).convert_alpha()
 
     def draw(self):
         pygame.draw.rect(surface, colors['lightbg'], (0, 0, 320, 34))
         pygame.draw.line(surface, colors['white'], (0, 34), (320, 34))
 
-        rect1 = self.text1.get_rect()
-        rect1.topleft = (8 + 5 + 1, 5)
-        surface.blit(self.text1, rect1)
-
-        rect2 = self.text2.get_rect()
-        rect2.topleft = rect1.topright
-        surface.blit(self.text2, rect2)
+        rect = self.surface.get_rect()
+        rect.topleft = (8 + 5 + 1, 9)
+        surface.blit(self.surface, rect)
 
 # Draw the status bar on the bottom of the screen
 def drawStatusBar():
