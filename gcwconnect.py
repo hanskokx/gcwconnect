@@ -92,6 +92,12 @@ surface.fill(colors["darkbg"])
 pygame.mouse.set_visible(False)
 pygame.key.set_repeat(199, 69)  # (delay,interval)
 
+# A scrim for the background of the modal
+scrim = pygame.Surface((screen_width, screen_height))
+scrim.fill((0, 0, 0))
+scrim.set_alpha(128)
+surface.blit(scrim, (0, 0))
+
 # Fonts
 font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
 font_tiny = pygame.font.Font(font_path, 8)
@@ -430,6 +436,14 @@ def scanForNetworks():
 
 
 def scanForAPs():
+    """Run when choosing the menu item "Scan for APs"; invokes the scan for nearby access points and builds a menu for wireless networks found in range.
+
+    Returns:
+        str: "ssid" if we were able to successfully scan for APs, otherwise "main"
+    """
+    global wirelessmenu
+    global active_menu
+    global access_points
     try:
         access_points = scanForNetworks()
 
@@ -469,7 +483,7 @@ def scanForAPs():
         wirelessmenu.draw()
 
         active_menu = "ssid"
-
+    
     return active_menu
 
 
@@ -768,6 +782,11 @@ def modal(text, wait=False, timeout=False, query=False):
         bool: Returns True once the modal window has been closed.
     """
     global colors
+
+    redraw()
+    scrim.set_alpha(128)
+    surface.blit(scrim, (0, 0))
+
     dialog = pygame.draw.rect(surface, colors['lightbg'], (64, 88, 192, 72))
     pygame.draw.rect(surface, colors['white'], (62, 86, 194, 74), 2)
 
@@ -792,18 +811,28 @@ def modal(text, wait=False, timeout=False, query=False):
             for event in pygame.event.get():
                 if event.type == KEYDOWN:
                     if event.key == K_LCTRL:
+                        scrim.set_alpha(256)
+                        pygame.display.update()
                         return True
                     elif event.key == K_LALT:
+                        scrim.set_alpha(256)
+                        pygame.display.update()
                         return True
 
     if not wait:
+        scrim.set_alpha(256)
+        pygame.display.update()
         return True
 
     while True:
         for event in pygame.event.get():
             if event.type == KEYDOWN and event.key == K_LCTRL:
+                scrim.set_alpha(256)
                 redraw()
                 return True
+
+    scrim.set_alpha(256)
+    pygame.display.update()
 
 
 def redraw():
@@ -1128,6 +1157,7 @@ def drawKeyboard(board):
     hint("start", 	"Finish", 	75, 	227, 	colors['lightbg'])
     hint("x", 		"Delete",	155, 	227, 	colors['lightbg'])
     hint("y", 		"Shift", 	200, 	227, 	colors['lightbg'])
+    hint("b", 		"Space", 	240, 	227, 	colors['lightbg'])
     hint("a", 		"Enter", 	285, 	227, 	colors['lightbg'])
 
     # Draw the keys
@@ -1747,6 +1777,7 @@ def navigateToMenu(new_menu):
         str: The name of the menu we have navigated to.
     """
     global colors
+    global wirelessmenu
     if new_menu == "main":
         menu.set_colors(colors['activetext'],
                         colors['activeselbg'], colors['darkbg'])
@@ -1758,7 +1789,6 @@ def navigateToMenu(new_menu):
                         colors['inactiveselbg'], colors['darkbg'])
         wirelessmenu.set_colors(
             colors['activetext'], colors['activeselbg'], colors['darkbg'])
-
     redraw()
     return new_menu
 
@@ -1989,10 +2019,9 @@ if __name__ == "__main__":
                             createSavedNetworksMenu()
                             try:
                                 active_menu = navigateToMenu("saved")
-
                             except:
                                 active_menu = navigateToMenu("main")
-
+                            redraw()
                         elif menu.get_selected() == 'Create AP':
                             startAp()
 
