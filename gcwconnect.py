@@ -444,6 +444,7 @@ def scanForAPs():
     global wirelessmenu
     global active_menu
     global access_points
+
     try:
         access_points = scanForNetworks()
 
@@ -483,7 +484,7 @@ def scanForAPs():
         wirelessmenu.draw()
 
         active_menu = "ssid"
-    
+
     return active_menu
 
 
@@ -507,16 +508,9 @@ def writeConfigToDisk(ssid):
     if len(passphrase) > 0:
         f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
         f.write('WLAN_ENCRYPTION="wpa2"\n')  # Default to WPA2
-        # FIXME: People might want WPA, WEP, unencrypted, etc. Right now, we
-        # don't know of a way to determine the type of encryption on a given
-        # network. Ideally, we would have a way to determine the type of
-        # encryption, and write the configuration file in a way that is
-        # appropriate for that.
+        # FIXME: People might want WPA-1 or WEP. Right now, we don't know of a way to determine the type of encryption on a given network. Ideally, we would have a way to determine the type of encryption, and write the configuration file in a way that is appropriate for that.
     else:
-        pass
-        # FIXME: This is the wrong syntax for the config file.  Need to figure
-        # out what it's supposed to be.
-        # f.write('key_mgmt=NONE\n') # For open networks
+        f.write('WLAN_ENCRYPTION="none"\n')  # Default to WPA2
     f.close()
 
 
