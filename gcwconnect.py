@@ -155,27 +155,22 @@ def convertFileNames():
 def ifDown():
     """
     Disconnect from wifi and/or bring down the hosted AP
-    """
-    SU.Popen(['sudo', '/sbin/ifdown', wlan], close_fds=True).wait()
-    SU.Popen(['sudo', '/sbin/ap', '--stop'], close_fds=True).wait()
-
-
-def ifUp():
-    """
-    Attmept to connect the wlan interface to the wifi access point
 
     Returns:
-        bool/str: Returns False if connection is unsuccessful or connection status otherwise.
+        bool/str: Returns a string with the status of the connection, False if not connected
     """
-    SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
+    try:
+        SU.Popen(['sudo', '/sbin/ap', '--stop'], close_fds=True).wait()
+    except:
+        pass
 
+    try:
+        SU.Popen(['sudo', '/sbin/ifdown', wlan], close_fds=True).wait()
+    except:
+        pass
 
-def ifDown():
-    """
-    Disconnect from wifi and/or bring down the hosted AP
-    """
-    SU.Popen(['sudo', '/sbin/ifdown', wlan], close_fds=True).wait()
-    SU.Popen(['sudo', '/sbin/ap', '--stop'], close_fds=True).wait()
+    status = checkInterfaceStatus()
+    return status
 
 
 def ifUp():
@@ -202,15 +197,11 @@ def enableIface():
         return False
 
     modal("Enabling WiFi...")
-    drawInterfaceStatus()
-    pygame.display.update()
-
     while True:
         if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'up'],
                     close_fds=True).wait() == 0:
             break
         time.sleep(0.1)
-
     return True
 
 
@@ -218,8 +209,13 @@ def disableIface():
     """
     Disables the wlan interface
     """
-    SU.Popen(['sudo', '/sbin/ip', 'link', 'set',
-              wlan, 'down'], close_fds=True).wait()
+
+    modal("Disabling WiFi...")
+    while True:
+        if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'down'],
+                    close_fds=True).wait() == 0:
+            break
+        time.sleep(0.1)
 
 
 def checkIfInterfaceIsDormant():
@@ -375,9 +371,7 @@ def connectToAp(ssid):
         modal('Connection failed!', timeout=True)
         return_status = False
 
-    pygame.display.update()
-    drawStatusBar()
-    drawInterfaceStatus()
+    redraw()
     return return_status
 
 
@@ -388,9 +382,7 @@ def disconnectFromAp():
     modal("Disconnecting...")
     ifDown()
 
-    pygame.display.update()
-    drawStatusBar()
-    drawInterfaceStatus()
+    redraw()
 
 
 def scanForNetworks():
@@ -431,12 +423,54 @@ def scanForNetworks():
 
     # Sort by quality
     final = sorted(aps, key=lambda x: x['quality'], reverse=True)
-    redraw()
-
     if interface_was_not_enabled:
         ifDown()
         disableIface()
     return final
+
+
+def scanForAPs():
+    try:
+        access_points = scanForNetworks()
+
+    # No access points found
+    except:
+        active_menu = "main"
+
+        access_points = {}
+        text = ":("
+        renderedtext = font_huge.render(
+            text, True, colors["lightbg"],
+            colors["darkbg"])
+        textelement = renderedtext.get_rect()
+        textelement.left = 192
+        textelement.top = 96
+        surface.blit(renderedtext, textelement)
+
+    l = []
+    if len(access_points) < 1:
+        active_menu = "main"
+
+        text = ":("
+        renderedtext = font_huge.render(
+            text, True, colors["lightbg"],
+            colors["darkbg"])
+        textelement = renderedtext.get_rect()
+        textelement.left = 192
+        textelement.top = 96
+        surface.blit(renderedtext, textelement)
+    else:
+        for network in access_points:
+            menuitem = [network['ssid'],
+                        network['quality']]
+            l.append(menuitem)
+        createWirelessMenu()
+        wirelessmenu.init(l, surface)
+        wirelessmenu.draw()
+
+        active_menu = "ssid"
+
+    return active_menu
 
 
 def writeConfigToDisk(ssid):
@@ -540,7 +574,6 @@ def apInfo():
             encpelement.top = 182
             surface.blit(renderedencp, encpelement)
 
-            pygame.display.update()
     except:
         text = ":("
         renderedtext = font_huge.render(
@@ -670,68 +703,8 @@ def drawStatusBar():
         connected_to_network = "Not connected"
     global colors
     pygame.draw.rect(surface, colors['lightbg'],
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-                                                                                                                                                                                                         (0, screen_height - 16, screen_width, 16))
+                     (0, screen_height - 16, screen_width, 16))
     pygame.draw.line(
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         surface, colors['white'], (0, screen_height - 17), (screen_width, screen_height - 17))
     wlantext = font_mono_small.render(
         connected_to_network, True, colors['white'], colors['lightbg'])
@@ -853,6 +826,8 @@ def redraw():
         hint("a", "Select", 8, 210)
     if active_menu == "saved":
         hint("y", "Forget", 195, 210)
+    if active_menu == "ssid":
+        hint("y", "Rescan", 195, 210)
 
     drawStatusBar()
     drawInterfaceStatus()
@@ -1769,7 +1744,7 @@ def navigateToMenu(new_menu):
         new_menu (str): The menu being navigated to; generally "main", "ssid", or "saved".
 
     Returns:
-        str: If successful, new menu.  Otherwise None if unsuccessful.
+        str: The name of the menu we have navigated to.
     """
     global colors
     if new_menu == "main":
@@ -1778,15 +1753,14 @@ def navigateToMenu(new_menu):
         if wirelessmenu is not None:
             wirelessmenu.set_colors(
                 colors['inactivetext'], colors['inactiveselbg'], colors['darkbg'])
-        return new_menu
     elif new_menu == "ssid" or new_menu == "saved":
         menu.set_colors(colors['inactivetext'],
                         colors['inactiveselbg'], colors['darkbg'])
         wirelessmenu.set_colors(
             colors['activetext'], colors['activeselbg'], colors['darkbg'])
-        return new_menu
-    else:
-        return None
+
+    redraw()
+    return new_menu
 
 
 def createWirelessMenu():
@@ -1874,7 +1848,7 @@ def createSavedNetworksMenu():
         textelement.left = 152
         textelement.top = 96
         surface.blit(renderedtext, textelement)
-        pygame.display.update()
+        redraw()
 
 ###############################################################################
 #                                                                             #
@@ -1970,7 +1944,14 @@ if __name__ == "__main__":
                             destroyWirelessMenu()
 
                         active_menu = navigateToMenu("main")
-                        redraw()
+
+                    elif active_menu == "ssid":
+                        active_menu = scanForAPs()
+                        if active_menu != "ssid":
+                            navigateToMenu(active_menu)
+                        else:
+                            redraw()
+
                 # A key pressed
                 elif event.key == K_LCTRL or event.key == K_RETURN:
                     # Main menu
@@ -1979,43 +1960,10 @@ if __name__ == "__main__":
                             disconnectFromAp()
                             redraw()
                         elif menu.get_selected() == 'Scan for APs':
-                            try:
-                                access_points = scanForNetworks()
-
-                            # No access points found
-                            except:
-                                access_points = {}
-                                text = ":("
-                                renderedtext = font_huge.render(
-                                    text, True, colors["lightbg"],
-                                    colors["darkbg"])
-                                textelement = renderedtext.get_rect()
-                                textelement.left = 192
-                                textelement.top = 96
-                                surface.blit(renderedtext, textelement)
-                                pygame.display.update()
-
-                            l = []
-                            if len(access_points) < 1:
-                                text = ":("
-                                renderedtext = font_huge.render(
-                                    text, True, colors["lightbg"],
-                                    colors["darkbg"])
-                                textelement = renderedtext.get_rect()
-                                textelement.left = 192
-                                textelement.top = 96
-                                surface.blit(renderedtext, textelement)
-                                pygame.display.update()
+                            active_menu = scanForAPs()
+                            if active_menu != "main":
+                                navigateToMenu(active_menu)
                             else:
-                                for network in access_points:
-                                    menuitem = [network['ssid'],
-                                                network['quality']]
-                                    l.append(menuitem)
-                                createWirelessMenu()
-                                wirelessmenu.init(l, surface)
-                                wirelessmenu.draw()
-
-                                active_menu = navigateToMenu("ssid")
                                 redraw()
                         elif menu.get_selected() == 'Manual Setup':
                             ssid = ''
@@ -2041,7 +1989,7 @@ if __name__ == "__main__":
                             createSavedNetworksMenu()
                             try:
                                 active_menu = navigateToMenu("saved")
-                                redraw()
+
                             except:
                                 active_menu = navigateToMenu("main")
 
