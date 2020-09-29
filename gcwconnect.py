@@ -99,9 +99,9 @@ font_small = pygame.font.Font(font_path, 10)
 font_medium = pygame.font.Font(font_path, 12)
 font_large = pygame.font.Font(font_path, 16)
 font_huge = pygame.font.Font(font_path, 48)
-gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
-font_mono_small = pygame.font.Font(
-    os.path.join(datadir, 'Inconsolata.otf'), 11)
+
+font_mono_path = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'
+font_mono_small = pygame.font.Font(font_mono_path, 11)
 
 ###############################################################################
 #                                                                             #
@@ -123,8 +123,10 @@ def createPaths():
 
 
 def convertFileNames():
-    """In the directory containing WiFi network configuration files, removes
-    backslashes from file names created by older versions of GCW Connect."""
+    """
+    In the directory containing WiFi network configuration files, removes
+    backslashes from file names created by older versions of GCW Connect.
+    """
     try:
         confNames = listdir(netconfdir)
     except IOError as ex:
@@ -154,8 +156,8 @@ def ifDown():
     """
     Disconnect from wifi and/or bring down the hosted AP
     """
-    SU.Popen(['sudo', '/usr/sbin/ifdown', wlan], close_fds=True).wait()
-    SU.Popen(['sudo', '/usr/sbin/ap', '--stop'], close_fds=True).wait()
+    SU.Popen(['sudo', '/sbin/ifdown', wlan], close_fds=True).wait()
+    SU.Popen(['sudo', '/sbin/ap', '--stop'], close_fds=True).wait()
 
 
 def ifUp():
@@ -165,7 +167,25 @@ def ifUp():
     Returns:
         bool/str: Returns False if connection is unsuccessful or connection status otherwise.
     """
-    SU.Popen(['sudo', '/usr/sbin/ifup', wlan], close_fds=True).wait() == 0
+    SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
+
+
+def ifDown():
+    """
+    Disconnect from wifi and/or bring down the hosted AP
+    """
+    SU.Popen(['sudo', '/sbin/ifdown', wlan], close_fds=True).wait()
+    SU.Popen(['sudo', '/sbin/ap', '--stop'], close_fds=True).wait()
+
+
+def ifUp():
+    """
+    Try to connect the wlan interface to wifi
+
+    Returns:
+        bool/str: Returns a string with the status of the connection, False if not connected
+    """
+    SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
     status = checkInterfaceStatus()
     return status
 
@@ -186,7 +206,7 @@ def enableIface():
     pygame.display.update()
 
     while True:
-        if SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set', wlan, 'up'],
+        if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'up'],
                     close_fds=True).wait() == 0:
             break
         time.sleep(0.1)
@@ -198,7 +218,7 @@ def disableIface():
     """
     Disables the wlan interface
     """
-    SU.Popen(['sudo', '/usr/sbin/ip', 'link', 'set',
+    SU.Popen(['sudo', '/sbin/ip', 'link', 'set',
               wlan, 'down'], close_fds=True).wait()
 
 
@@ -251,14 +271,14 @@ def checkInterfaceStatus():
 
 def getIp():
     """
-    Determine the IP address of the wlan interface
+    Determine the IP address of the wlan interface. Ignores 169.254.x.x addresses.
 
     Returns:
         str: The IP address of the interface, or None if unavailable.
     """
     ip = None
     with open(os.devnull, "w") as fnull:
-        output = SU.Popen(['/usr/sbin/ip', '-4', 'a', 'show', wlan],
+        output = SU.Popen(['/sbin/ip', '-4', 'a', 'show', wlan],
                           stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 
     for line in output:
@@ -301,7 +321,8 @@ def getCurrentSSID():
 
     else:
         with open(os.devnull, "w") as fnull:
-            output = SU.Popen(['/usr/sbin/iw', 'dev', wlan, 'link'],
+
+            output = SU.Popen(['/sbin/iw', 'dev', wlan, 'link'],
                               stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
         if output is not None:
             for line in output:
@@ -545,7 +566,7 @@ def isApStarted():
         bool: Return True if we are hosting an access point, otherwise return False
     """
     with open(os.devnull, "w") as fnull:
-        output = SU.Popen(['sudo', '/usr/sbin/ap', '--status'],
+        output = SU.Popen(['sudo', '/sbin/ap', '--status'],
                           stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
     for line in output:
         if line.decode("utf-8").strip() == 'ap is running':
@@ -570,7 +591,7 @@ def startAp():
 
     modal("Creating AP...")
 
-    if SU.Popen(['sudo', '/usr/sbin/ap', '--start'], close_fds=True).wait() == 0:
+    if SU.Popen(['sudo', '/sbin/ap', '--start'], close_fds=True).wait() == 0:
         if isApStarted() == True:
             modal('AP created!', timeout=True)
             redraw()
@@ -595,7 +616,7 @@ def stopAp():
     try:
         if isApStarted():
             modal("Stopping AP...")
-            if SU.Popen(['sudo', '/usr/sbin/ap', '--stop'],
+            if SU.Popen(['sudo', '/sbin/ap', '--stop'],
                         close_fds=True).wait() == 0:
 
                 if isApStarted() == False:
@@ -622,52 +643,107 @@ def stopAp():
 ###############################################################################
 
 
-class LogoBar(object):
+class LogoBar():
     """
-    Draw the application name at the top of the screen
-
-    Args:
-        object ([type]): [description]
+    Draw the application name at the top of the screen as a PNG image
     """
 
     def __init__(self):
-        self.text1 = gcw_font.render(
-            'GCW', True, colors['logogcw'], colors['lightbg'])
-        self.text2 = gcw_font.render(
-            'CONNECT', True, colors['logoconnect'], colors['lightbg'])
+        self.surface = pygame.image.load(
+            (os.path.join(datadir, 'gcwconnect.png'))).convert_alpha()
 
     def draw(self):
-        pygame.draw.rect(surface, colors['lightbg'], (0, 0, 320, 34))
-        pygame.draw.line(surface, colors['white'], (0, 34), (320, 34))
+        pygame.draw.rect(surface, colors['lightbg'], (0, 0, screen_width, 34))
+        pygame.draw.line(surface, colors['white'], (0, 34), (screen_width, 34))
 
-        rect1 = self.text1.get_rect()
-        rect1.topleft = (8 + 5 + 1, 5)
-        surface.blit(self.text1, rect1)
-
-        rect2 = self.text2.get_rect()
-        rect2.topleft = rect1.topright
-        surface.blit(self.text2, rect2)
-
-# Draw the status bar on the bottom of the screen
+        rect = self.surface.get_rect()
+        rect.topleft = (8 + 5 + 1, 9)
+        surface.blit(self.surface, rect)
 
 
 def drawStatusBar():
+    """
+    Draw the status bar on the bottom of the screen
+    """
     connected_to_network = getCurrentSSID()
     if connected_to_network is None:
         connected_to_network = "Not connected"
     global colors
-    pygame.draw.rect(surface, colors['lightbg'], (0, 224, 320, 16))
-    pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
+    pygame.draw.rect(surface, colors['lightbg'],
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+                                                                                                                                                                                                         (0, screen_height - 16, screen_width, 16))
+    pygame.draw.line(
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        surface, colors['white'], (0, screen_height - 17), (screen_width, screen_height - 17))
     wlantext = font_mono_small.render(
         connected_to_network, True, colors['white'], colors['lightbg'])
     wlan_text = wlantext.get_rect()
     wlan_text.topleft = (2, 225)
     surface.blit(wlantext, wlan_text)
 
-# Draw the status of the wlan interface on the status bar
-
 
 def drawInterfaceStatus():
+    """
+    Draw the status of the wlan interface on the status bar
+    """
     global colors
     wlanstatus = checkInterfaceStatus()
     if not wlanstatus:
@@ -678,7 +754,7 @@ def drawInterfaceStatus():
     wlantext = font_mono_small.render(
         wlanstatus, True, colors['white'], colors['lightbg'])
     wlan_text = wlantext.get_rect()
-    wlan_text.topleft = (2, 225)
+    wlan_text.topleft = (2, screen_height - 15)
     surface.blit(wlantext, wlan_text)
 
     # Note that the leading space here is intentional, to more cleanly overdraw
@@ -691,7 +767,7 @@ def drawInterfaceStatus():
         text = font_mono_small.render(
             " "+ip_address, True, colors['white'], colors['lightbg'])
         interfacestatus_text = text.get_rect()
-        interfacestatus_text.topright = (317, 225)
+        interfacestatus_text.topright = (screen_width - 3, scn_height - 15)
         surface.blit(text, interfacestatus_text)
     else:
         mac = mac_addresses.get(wlan)
@@ -700,13 +776,24 @@ def drawInterfaceStatus():
                 " " + mac.decode("utf-8"),
                 True, colors['white'], colors['lightbg'])
             interfacestatus_text = text.get_rect()
-            interfacestatus_text.topright = (317, 225)
+            interfacestatus_text.topright = (
+                screen_width - 3, screen_height - 15)
             surface.blit(text, interfacestatus_text)
-
-# Draw a modal window in the middle of the screen
 
 
 def modal(text, wait=False, timeout=False, query=False):
+    """
+    Draw a modal window in the middle of the screen
+
+    Args:
+        text (str): The modal window text to be displayed.
+        wait (bool, optional): Whether to wait for a button press to dismiss the modal window. Defaults to False.
+        timeout (bool, optional): Whether to automatically close the modal window after 2.5 seconds. Defaults to False.
+        query (bool, optional): Whether to wait for a button press to confirm or cancel. Defaults to False.
+
+    Returns:
+        bool: Returns True once the modal window has been closed.
+    """
     global colors
     dialog = pygame.draw.rect(surface, colors['lightbg'], (64, 88, 192, 72))
     pygame.draw.rect(surface, colors['white'], (62, 86, 194, 74), 2)
@@ -734,22 +821,22 @@ def modal(text, wait=False, timeout=False, query=False):
                     if event.key == K_LCTRL:
                         return True
                     elif event.key == K_LALT:
-                        return
+                        return True
 
     if not wait:
-        return
+        return True
 
     while True:
         for event in pygame.event.get():
             if event.type == KEYDOWN and event.key == K_LCTRL:
                 redraw()
-                return
-
-# Clear the display completely, and redraws it with all of the elements which
-# are appropriate for the current context.
+                return True
 
 
 def redraw():
+    """
+    Clear the display completely, and redraws it with all of the elements which are appropriate for the current context.
+    """
     global colors
     surface.fill(colors['darkbg'])
     logoBar.draw()
@@ -771,10 +858,11 @@ def redraw():
     drawInterfaceStatus()
     pygame.display.update()
 
-# Draw colorful button icons and labels
-
 
 class hint:
+    """
+    Draw colorful button icons and labels
+    """
     global colors
 
     def __init__(self, button, text, x, y, bg=colors["darkbg"]):
@@ -788,7 +876,7 @@ class hint:
     def drawhint(self):
         if self.button == 'l' or self.button == 'r':
             if self.button == 'l':
-                aaFilledCircle(surface, colors["black"], (self.x, self.y+5), 5)
+                aaFilledCircle(colors["black"], (self.x, self.y+5), 5)
                 pygame.draw.rect(
                     surface, colors["black"], (self.x-5, self.y+6, 10, 5))
                 button = pygame.draw.rect(
@@ -796,7 +884,7 @@ class hint:
 
             if self.button == 'r':
                 aaFilledCircle(
-                    surface, colors["black"], (self.x+8, self.y+5), 5)
+                    colors["black"], (self.x+8, self.y+5), 5)
                 pygame.draw.rect(
                     surface, colors["black"], (self.x+4, self.y+6, 10, 5))
                 button = pygame.draw.rect(
@@ -818,9 +906,9 @@ class hint:
 
         if self.button == "select" or self.button == "start":
             lbox = aaFilledCircle(
-                surface, colors["black"], (self.x+5, self.y+5), 6)
+                colors["black"], (self.x+5, self.y+5), 6)
             rbox = aaFilledCircle(
-                surface, colors["black"], (self.x+29, self.y+5), 6)
+                colors["black"], (self.x+29, self.y+5), 6)
             straightbox = lbox.union(rbox)
             buttoncenter = straightbox.center
             if self.button == 'select':
@@ -863,7 +951,7 @@ class hint:
             surface.blit(labeltext, labelblock)
 
             button = aaFilledCircle(
-                surface, color, (self.x, self.y+5), 6)  # (x, y)
+                color, (self.x, self.y+5), 6)  # (x, y)
             text = font_tiny.render(
                 self.button.upper(), True, colors["white"], color)
             buttontext = text.get_rect()
@@ -903,22 +991,31 @@ class hint:
                 self.text, True, (255, 255, 255), self.bg)
             surface.blit(labeltext, labelblock)
 
-# Draw an anti-aliased, filled circle of a given radius
 
-
-def aaFilledCircle(surface, color, center, radius):
-    '''Helper function to draw anti-aliased circles using an interface similar
+def aaFilledCircle(color, center, radius):
+    """
+    Helper function to draw anti-aliased circles using an interface similar
     to pygame.draw.circle.
-    '''
+
+    Args:
+        color (0-255, 0-255, 0-255): The color used to draw the circle.
+        center (int,int): The coordinates of the center of the circle.
+        radius (int): The distance to the center of the circle to the edge.
+
+    Returns:
+        [type]: [description]
+    """
+
     x, y = center
     pygame.gfxdraw.aacircle(surface, x, y, radius, color)
     pygame.gfxdraw.filled_circle(surface, x, y, radius, color)
     return Rect(x - radius, y - radius, radius * 2 + 1, radius * 2 + 1)
 
-# Draw a standard radio button
-
 
 class radio:
+    """
+    Draw a standard radio button
+    """
     global colors
 
     def __init__(self):
@@ -943,8 +1040,8 @@ class radio:
 
         if len(self.key) > 1:
             key_width = 64
-        radiobutton = aaFilledCircle(surface, colors['white'], (left, top), 8)
-        aaFilledCircle(surface, colors['darkbg'], (left, top), 6)
+        radiobutton = aaFilledCircle(colors['white'], (left, top), 8)
+        aaFilledCircle(colors['darkbg'], (left, top), 6)
         text = font_medium.render(
             self.key, True, (255, 255, 255), colors['darkbg'])
         label = text.get_rect()
@@ -982,18 +1079,26 @@ keyLayouts = {
 # Define which order the keyboards are cycled in
 keyboardCycleOrder = ('qwertyNormal', 'qwertyShift')
 
-# Cycle the keyboard keys through keyLayouts using keyboardCycleOrder
-
 
 def nextKeyboard(board):
+    """
+    Cycle the keyboard keys through keyLayouts using keyboardCycleOrder
+
+    Args:
+        board (str): The currently displayed keyboard layout.
+
+    Returns:
+        str: The next keyboard to be displayed.
+    """
     return keyboardCycleOrder[
         (keyboardCycleOrder.index(board) + 1) % len(keyboardCycleOrder)
     ]
 
-# Draw a single key on the keyboard
-
 
 class key:
+    """
+    Draw a single key on the keyboard
+    """
     global colors
 
     def __init__(self):
@@ -1027,10 +1132,13 @@ class key:
         label.y -= 1
         surface.blit(text, label)
 
-# Draw the keyboard
-
 
 def drawKeyboard(board):
+    """Draw the keyboard to the display
+
+    Args:
+        board (str): The name of the keyboard to draw, as defined in keyLayouts
+    """
     global colors
 
     # Draw keyboard background
@@ -1055,12 +1163,16 @@ def drawKeyboard(board):
 
     pygame.display.update()
 
-# Get an SSID entered via the keyboard
-# TODO: Is this necessary? We have getSoftKeyInput(), so maybe not? It's only
-# used in one place, so it could probably be refactored...
-
 
 def getSSID():
+    """Get an SSID entered via the keyboard
+
+    Returns:
+        str: The string entered via the software keyboard.
+    """
+
+    # TODO: Is this necessary? We have getSoftKeyInput(), so maybe not? It's only used in one place, so it could probably be refactored...
+
     global passphrase
     displayInputLabel("ssid")
     drawKeyboard("qwertyNormal")
@@ -1070,17 +1182,36 @@ def getSSID():
     return ssid
 
 
-def getSoftKeyInput(board, kind, ssid=""):
-    selectKey(board, kind)
-    return softKeyInput(board, kind, ssid)
+def getSoftKeyInput(keyboard, kind, ssid=""):
+    """Gets some input from the user via a software keyboard.
 
-# Monolithic function to navigate the keyboard, get input from the user, invoke
-# saving the configuration to disk, and connecting to the access point.
-# TODO: This appears to function similarly to getSSID().  Can we retire
-# getSSID() and replace it with this?
+    Args:
+        keyboard (str): The keyboard layout to display.
+        kind (str): The kind of input we're asking for; generally, "ssid" or "key".
+        ssid (str, optional): The SSID to pre-populate the input area with, useful for editing an exisiting SSID. Defaults to "".
+
+    Returns:
+        str: The text which was entered via the software keyboard.
+    """
+
+    # TODO: This appears to function similarly to getSSID().  Can we retire getSSID() and replace it with this?
+
+    selectKey(keyboard, kind)
+    return softKeyInput(keyboard, kind, ssid)
 
 
 def softKeyInput(keyboard, kind, ssid):
+    """
+    Monolithic function to navigate the keyboard, get input from the user, invoke saving the configuration to disk, and connecting to the access point.
+
+    Args:
+        keyboard (str): The keyboard layout to display.
+        kind (str): The kind of input we're asking for; generally, "ssid" or "key".
+        ssid (str): The SSID to pre-populate the input area with, useful for editing an exisiting SSID.
+
+    Returns:
+        bool: True if we are able to connect to the inputted network, False otherwise.
+    """
     global passphrase
     global securitykey
 
@@ -1130,10 +1261,15 @@ def softKeyInput(keyboard, kind, ssid):
                 redraw()
                 return False
 
-# Display text entered using the soft keyboard on the display
-
 
 def displayInputLabel(kind, size=24):
+    """
+    Display text entered using the soft keyboard on the display.
+
+    Args:
+        kind (str): The kind of input we're asking for; generally "ssid" or "key".
+        size (int, optional): Font size of the text to display. Defaults to 24.
+    """
     global colors
 
     if kind == "ssid":
@@ -1168,10 +1304,16 @@ def displayInputLabel(kind, size=24):
     surface.blit(pw, pwtext)
     pygame.display.update()
 
-# Determine what key is selected on the soft keyboard and update the display
-
 
 def selectKey(keyboard, kind, direction=""):
+    """
+    Determine what key is selected on the soft keyboard and update the display
+
+    Args:
+        keyboard (str): The currently displayed keyboard.
+        kind (str): The kind of input we're asking for; generally "ssid" or "key".
+        direction (str, optional): The direction to move on the keyboard: "up", "down", "left", "right", "select", "space", or "delete". Defaults to "".
+    """
     def highlightkey(keyboard, pos='[0,0]'):
         drawKeyboard(keyboard)
         pygame.display.update()
@@ -1258,10 +1400,10 @@ def selectKey(keyboard, kind, direction=""):
 #                                                                             #
 ###############################################################################
 
-# Draw the main menu
-
 
 class Menu:
+    """Draw a menu of selectable items.
+    """
     font = font_medium
     dest_surface = surface
     canvas_color = colors["darkbg"]
@@ -1279,31 +1421,74 @@ class Menu:
         self.font = font_medium
 
     def move_menu(self, top, left):
+        """Move the menu to a given position on the display, e.g. for a submenu
+
+        Args:
+            top (int): The position of the top of the menu.
+            left (int): The position of the left of the menu.
+        """
         self.origin = (top, left)
 
     def set_colors(self, text, selection, background):
+        """Define the colors to draw the menu with.
+
+        Args:
+            text (0-255, 0-255, 0-255): The color to use for the menu item text.
+            selection (0-255, 0-255, 0-255): The color to use for the selected menu item background.
+            background (0-255, 0-255, 0-255): The color to use for the unselected menu items.
+        """
         self.text_color = text
         self.selection_color = selection
 
     def set_elements(self, elements):
+        """Define the menu items to be displayed.
+
+        Args:
+            elements (list): The list of elements to be displayed.
+        """
         self.elements = elements
 
     def get_position(self):
+        """Get the position of the currently selected menu item in the list.
+
+        Returns:
+            int: The position of the currently selected menu item in the list, starting from 0.
+        """
         return self.selected_item
 
     def get_selected(self):
+        """Get the selected menu item
+
+        Returns:
+            str: The text of the currently selected menu item.
+        """
         return self.elements[self.selected_item]
 
     def init(self, elements, dest_surface):
+        """Initialize a new menu
+
+        Args:
+            elements (list): The list of menu items to initialize the menu with.
+            dest_surface (pygame.surface): The pygame surface to draw the menu on.
+        """
+
         self.set_elements(elements)
         self.dest_surface = dest_surface
 
     def draw(self, move=0):
+        """Draw the menu on the display.
+
+        Args:
+            move (int, optional): The element ID of the menu item being moved to in the list. Defaults to 0.
+
+        Returns:
+            int: The selected item ID.
+        """
         # Clear any old text (like from apinfo()), but don't overwrite button hint area above statusbar
         pygame.draw.rect(surface, colors['darkbg'], (0, 35, 320, 173))
 
         if len(self.elements) == 0:
-            return
+            return None
 
         self.selected_item = (self.selected_item + move) % len(self.elements)
 
@@ -1354,40 +1539,97 @@ class Menu:
         return self.selected_item
 
     def get_item_height(self, element):
+        """Determine the height of a given element
+
+        Args:
+            element: The element to get the height of.
+
+        Returns:
+            int: The element's height plus the corresponding spacing.
+        """
         render = self.font.render(element, 1, self.text_color)
         spacing = 5
         return render.get_rect().height + spacing * 2
 
     def get_item_width(self, element):
+        """Determine the width of a given element
+
+        Args:
+            element: The element to get the width of.
+
+        Returns:
+            int: The element's width plus the corresponding spacing.
+        """
         render = self.font.render(element, 1, self.text_color)
         spacing = 5
         return render.get_rect().width + spacing * 2
 
     def render_element(self, menu_surface, element, left, top):
+        """Render an element into the menu.
+
+        Args:
+            menu_surface (pygame.surface): The pygame surface to render the element into.
+            element (): The element to render.
+            left (int): The left position of the element.
+            top (int): The top position of the element.
+        """
         render = self.font.render(element, 1, self.text_color)
         spacing = 5
         menu_surface.blit(render, (int(round(left + spacing)), int(
             round(top + spacing)), render.get_rect().width, render.get_rect().height))
 
-# Draw a list of access points in a given Menu
-
 
 class NetworksMenu(Menu):
+    """Draw a list of access points in a given Menu
+
+    Args:
+        Menu (Menu): The menu to draw the list of access points into.
+    """
+
     def set_elements(self, elements):
+        """Define the access points to be displayed in the menu.
+
+        Args:
+            elements (list): The list of elements to be displayed.
+        """
         self.elements = elements
 
     def get_item_width(self, element):
+        """Determine the width of a given element
+
+        Args:
+            element: The element to get the width of.
+
+        Returns:
+            int: The element's width plus the corresponding spacing.
+        """
         the_ssid = element[0]
         render = self.font.render(the_ssid, 1, self.text_color)
         spacing = 15
         return render.get_rect().width + spacing * 2
 
     def get_item_height(self, element):
+        """Determine the height of a given element
+
+        Args:
+            element: The element to get the height of.
+
+        Returns:
+            int: The element's height plus the corresponding spacing.
+        """
         render = self.font.render(element[0], 1, self.text_color)
         spacing = 6
         return (render.get_rect().height + spacing * 2) + 5
 
     def render_element(self, menu_surface, element, left, top):
+        """Render an element into the menu.
+
+        Args:
+            menu_surface (pygame.surface): The pygame surface to render the element into.
+            element (): The element to render.
+            left (int): The left position of the element.
+            top (int): The top position of the element.
+        """
         the_ssid = element[0]
         # Wifi signal icons
         percent = element[1]
@@ -1432,6 +1674,14 @@ class NetworksMenu(Menu):
         pygame.display.update()
 
     def draw(self, move=0):
+        """Draw the menu on the display.
+
+        Args:
+            move (int, optional): The element ID of the menu item being moved to in the list. Defaults to 0.
+
+        Returns:
+            int: The selected item ID.
+        """
         if len(self.elements) == 0:
             return
 
@@ -1488,10 +1738,10 @@ wirelessmenu = None
 menu = Menu()
 menu.move_menu(3, 41)
 
-# Define items which appear in the main menu
-
 
 def mainMenu():
+    """Define items which appear in the main menu
+    """
     global wlan
     elems = ['Quit']
 
@@ -1502,7 +1752,7 @@ def mainMenu():
     else:
         elems = ['Create AP'] + elems
 
-    elems = ["Saved Networks", 'Scan for APs', "Manual Setup"] + elems
+    elems = ["Saved Networks", "Scan for APs", "Manual Setup"] + elems
 
     interface_status = checkInterfaceStatus()
     if interface_status == "Connected" or is_hosting_ap:
@@ -1511,10 +1761,16 @@ def mainMenu():
     menu.init(elems, surface)
     menu.draw()
 
-# Highlight the selected menu item
-
 
 def navigateToMenu(new_menu):
+    """Chooses which currently displayed menu or submenu to use for navigation.
+
+    Args:
+        new_menu (str): The menu being navigated to; generally "main", "ssid", or "saved".
+
+    Returns:
+        str: If successful, new menu.  Otherwise None if unsuccessful.
+    """
     global colors
     if new_menu == "main":
         menu.set_colors(colors['activetext'],
@@ -1522,25 +1778,28 @@ def navigateToMenu(new_menu):
         if wirelessmenu is not None:
             wirelessmenu.set_colors(
                 colors['inactivetext'], colors['inactiveselbg'], colors['darkbg'])
+        return new_menu
     elif new_menu == "ssid" or new_menu == "saved":
         menu.set_colors(colors['inactivetext'],
                         colors['inactiveselbg'], colors['darkbg'])
         wirelessmenu.set_colors(
             colors['activetext'], colors['activeselbg'], colors['darkbg'])
-    return new_menu
-
-# Create a menu for wireless networks
+        return new_menu
+    else:
+        return None
 
 
 def createWirelessMenu():
+    """Create a menu for wireless networks
+    """
     global wirelessmenu
     wirelessmenu = NetworksMenu()
     wirelessmenu.move_menu(116, 40)
 
-# Dispose of the menu for wireless networks
-
 
 def destroyWirelessMenu():
+    """Dispose of the menu for wireless networks
+    """
     global wirelessmenu
     wirelessmenu = None
 
@@ -1550,10 +1809,13 @@ def destroyWirelessMenu():
 #                                                                             #
 ###############################################################################
 
-# Return a list of all saved networks on disk
-
 
 def getSavedNetworks():
+    """Get a list of all configured networks which are saved on disk.
+
+    Returns:
+        dict: A dictionary of all network configurations which are saved on disk, including the SSID ("ESSID") and passphrase ("Key").
+    """
     saved_network = {}
     index = 0
     for confName in sorted(listdir(netconfdir), reverse=True):
@@ -1589,10 +1851,10 @@ def getSavedNetworks():
 
     return saved_network
 
-# Create a menu of all saved networks on disk
-
 
 def createSavedNetworksMenu():
+    """Create a menu of all saved networks on disk
+    """
     saved_networks = getSavedNetworks()
 
     if len(saved_networks) > 0:
