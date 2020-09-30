@@ -197,10 +197,9 @@ def ifUp():
     Returns:
         bool/str: Returns a string with the status of the connection, False if not connected
     """
-    try:
-        SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
-    except:
-        pass
+
+    SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
+
     status = checkInterfaceStatus()
     return status
 
@@ -217,13 +216,12 @@ def enableIface():
         return False
 
     modal("Enabling WiFi...")
-    try:
+    while True:
         if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'up'],
                     close_fds=True).wait() == 0:
-            sleep(0.1)
+            break
+        time.sleep(0.1)
 
-    except:
-        pass
     return True
 
 
@@ -233,12 +231,12 @@ def disableIface():
     """
 
     modal("Disabling WiFi...")
-    try:
+    while True:
         if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'down'],
                     close_fds=True).wait() == 0:
-            sleep(0.1)
-    except:
-        pass
+            break
+        time.sleep(0.1)
+
 
 
 def checkIfInterfaceIsDormant():
@@ -425,40 +423,39 @@ def scanForNetworks():
     interface_was_not_enabled = enableIface()
     modal("Scanning...")
 
-    try:
-        with open(os.devnull, "w") as fnull:
-            output = SU.Popen(['sudo', '/usr/sbin/wlan-scan', wlan],
-                              stdout=SU.PIPE, stderr=fnull,
-                              close_fds=True, encoding="utf-8").stdout.readlines()
 
-        aps = []
+    with open(os.devnull, "w") as fnull:
+        output = SU.Popen(['sudo', '/usr/sbin/wlan-scan', wlan],
+                            stdout=SU.PIPE, stderr=fnull,
+                            close_fds=True, encoding="utf-8").stdout.readlines()
 
-        for item in output:
-            if len(item) > 2:
-                try:
-                    item = item.strip()
-                    if item[-1] == ',':
-                        item = item[0:-1]
+    aps = []
 
-                # FIXME: for now, we're going to ignore hidden networks.
-                # In the future, we should probably display "<Hidden>" in the
-                # list, and use the BSSID instead of the ESSID in the
-                # configuration file.  I haven't looked into how to format that,
-                # though.
-                    if len(json.loads(item)['ssid'].strip()) != 0:
-                        aps.append(json.loads(item))
-                except:
-                    pass
-            else:
+    for item in output:
+        if len(item) > 2:
+            try:
+                item = item.strip()
+                if item[-1] == ',':
+                    item = item[0:-1]
+
+            # FIXME: for now, we're going to ignore hidden networks.
+            # In the future, we should probably display "<Hidden>" in the
+            # list, and use the BSSID instead of the ESSID in the
+            # configuration file.  I haven't looked into how to format that,
+            # though.
+                if len(json.loads(item)['ssid'].strip()) != 0:
+                    aps.append(json.loads(item))
+            except:
                 pass
+        else:
+            pass
 
-        # Sort by quality
-        final = sorted(aps, key=lambda x: x['quality'], reverse=True)
-        if interface_was_not_enabled:
-            ifDown()
-            disableIface()
-    except:
-        final = []
+    # Sort by quality
+    final = sorted(aps, key=lambda x: x['quality'], reverse=True)
+    if interface_was_not_enabled:
+        ifDown()
+        disableIface()
+
     return final
 
 
@@ -670,17 +667,16 @@ def isApStarted():
     Returns:
         bool: Return True if we are hosting an access point, otherwise return False
     """
-    try:
-        with open(os.devnull, "w") as fnull:
-            output = SU.Popen(['sudo', '/sbin/ap', '--status'],
-                              stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
-        for line in output:
-            if line.decode("utf-8").strip() == 'ap is running':
-                return True
-            else:
-                return False
-    except:
-        pass
+
+    with open(os.devnull, "w") as fnull:
+        output = SU.Popen(['sudo', '/sbin/ap', '--status'],
+                            stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+    for line in output:
+        if line.decode("utf-8").strip() == 'ap is running':
+            return True
+        else:
+            return False
+
 
 
 def startAp():
