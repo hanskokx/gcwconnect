@@ -100,6 +100,12 @@ surface.blit(scrim, (0, 0))
 
 # Fonts
 font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+try:
+    pygame.font.Font(font_path, 10)
+except:
+    font_path = os.environ['HOME'] + \
+        '\\AppData\\Local\\Microsoft\\Windows\\Fonts\\DejaVuSans.ttf'
+
 font_tiny = pygame.font.Font(font_path, 8)
 font_small = pygame.font.Font(font_path, 10)
 font_medium = pygame.font.Font(font_path, 12)
@@ -107,6 +113,11 @@ font_large = pygame.font.Font(font_path, 16)
 font_huge = pygame.font.Font(font_path, 48)
 
 font_mono_path = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'
+try:
+    pygame.font.Font(font_mono_path, 10)
+except:
+    font_mono_path = os.environ['HOME'] + \
+        '\\AppData\\Local\\Microsoft\\Windows\\Fonts\\DejaVuSansMono.ttf'
 font_mono_small = pygame.font.Font(font_mono_path, 11)
 
 ###############################################################################
@@ -186,7 +197,10 @@ def ifUp():
     Returns:
         bool/str: Returns a string with the status of the connection, False if not connected
     """
-    SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
+    try:
+        SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
+    except:
+        pass
     status = checkInterfaceStatus()
     return status
 
@@ -203,11 +217,13 @@ def enableIface():
         return False
 
     modal("Enabling WiFi...")
-    while True:
+    try:
         if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'up'],
                     close_fds=True).wait() == 0:
-            break
-        time.sleep(0.1)
+            sleep(0.1)
+
+    except:
+        pass
     return True
 
 
@@ -217,11 +233,12 @@ def disableIface():
     """
 
     modal("Disabling WiFi...")
-    while True:
+    try:
         if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'down'],
                     close_fds=True).wait() == 0:
-            break
-        time.sleep(0.1)
+            sleep(0.1)
+    except:
+        pass
 
 
 def checkIfInterfaceIsDormant():
@@ -279,17 +296,19 @@ def getIp():
         str: The IP address of the interface, or None if unavailable.
     """
     ip = None
-    with open(os.devnull, "w") as fnull:
-        output = SU.Popen(['/sbin/ip', '-4', 'a', 'show', wlan],
-                          stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+    try:
+        with open(os.devnull, "w") as fnull:
+            output = SU.Popen(['/sbin/ip', '-4', 'a', 'show', wlan],
+                              stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 
-    for line in output:
-        line = line.decode("utf-8").strip()
-        if line.startswith("inet"):
-            tmp = line.split()[1].split("/")[0]
-            if not tmp.startswith("169.254"):
-                ip = tmp
-
+        for line in output:
+            line = line.decode("utf-8").strip()
+            if line.startswith("inet"):
+                tmp = line.split()[1].split("/")[0]
+                if not tmp.startswith("169.254"):
+                    ip = tmp
+    except:
+        ip = None
     return ip
 
 
@@ -316,21 +335,26 @@ def getCurrentSSID():
     """
     ssid = None
     is_broadcasting_ap = isApStarted()
-    mac_address = getMacAddress().replace(":", "")
+    try:
+        mac_address = getMacAddress().replace(":", "")
+    except:
+        mac_address = ''
 
     if is_broadcasting_ap != False:
         ssid = "gcwzero-"+mac_address
 
     else:
-        with open(os.devnull, "w") as fnull:
+        try:
+            with open(os.devnull, "w") as fnull:
 
-            output = SU.Popen(['/sbin/iw', 'dev', wlan, 'link'],
-                              stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
-        if output is not None:
-            for line in output:
-                if line.decode("utf-8").strip().startswith('SSID'):
-                    ssid = line.decode("utf-8").split()[1]
-
+                output = SU.Popen(['/sbin/iw', 'dev', wlan, 'link'],
+                                  stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
+            if output is not None:
+                for line in output:
+                    if line.decode("utf-8").strip().startswith('SSID'):
+                        ssid = line.decode("utf-8").split()[1]
+        except:
+            ssid = None
     return ssid
 
 ###############################################################################
@@ -401,37 +425,40 @@ def scanForNetworks():
     interface_was_not_enabled = enableIface()
     modal("Scanning...")
 
-    with open(os.devnull, "w") as fnull:
-        output = SU.Popen(['sudo', '/usr/sbin/wlan-scan', wlan],
-                          stdout=SU.PIPE, stderr=fnull,
-                          close_fds=True, encoding="utf-8").stdout.readlines()
+    try:
+        with open(os.devnull, "w") as fnull:
+            output = SU.Popen(['sudo', '/usr/sbin/wlan-scan', wlan],
+                              stdout=SU.PIPE, stderr=fnull,
+                              close_fds=True, encoding="utf-8").stdout.readlines()
 
-    aps = []
+        aps = []
 
-    for item in output:
-        if len(item) > 2:
-            try:
-                item = item.strip()
-                if item[-1] == ',':
-                    item = item[0:-1]
+        for item in output:
+            if len(item) > 2:
+                try:
+                    item = item.strip()
+                    if item[-1] == ',':
+                        item = item[0:-1]
 
                 # FIXME: for now, we're going to ignore hidden networks.
                 # In the future, we should probably display "<Hidden>" in the
                 # list, and use the BSSID instead of the ESSID in the
                 # configuration file.  I haven't looked into how to format that,
                 # though.
-                if len(json.loads(item)['ssid'].strip()) != 0:
-                    aps.append(json.loads(item))
-            except:
+                    if len(json.loads(item)['ssid'].strip()) != 0:
+                        aps.append(json.loads(item))
+                except:
+                    pass
+            else:
                 pass
-        else:
-            pass
 
-    # Sort by quality
-    final = sorted(aps, key=lambda x: x['quality'], reverse=True)
-    if interface_was_not_enabled:
-        ifDown()
-        disableIface()
+        # Sort by quality
+        final = sorted(aps, key=lambda x: x['quality'], reverse=True)
+        if interface_was_not_enabled:
+            ifDown()
+            disableIface()
+    except:
+        final = None
     return final
 
 
@@ -643,14 +670,17 @@ def isApStarted():
     Returns:
         bool: Return True if we are hosting an access point, otherwise return False
     """
-    with open(os.devnull, "w") as fnull:
-        output = SU.Popen(['sudo', '/sbin/ap', '--status'],
-                          stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
-    for line in output:
-        if line.decode("utf-8").strip() == 'ap is running':
-            return True
-        else:
-            return False
+    try:
+        with open(os.devnull, "w") as fnull:
+            output = SU.Popen(['sudo', '/sbin/ap', '--status'],
+                              stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+        for line in output:
+            if line.decode("utf-8").strip() == 'ap is running':
+                return True
+            else:
+                return False
+    except:
+        pass
 
 
 def startAp():
@@ -754,7 +784,7 @@ def drawStatusBar():
     wlantext = font_mono_small.render(
         connected_to_network, True, colors['white'], colors['lightbg'])
     wlan_text = wlantext.get_rect()
-    wlan_text.topleft = (2, 225)
+    wlan_text.topleft = (2, screen_height - 16)
     surface.blit(wlantext, wlan_text)
 
 
@@ -818,8 +848,11 @@ def modal(text, wait=False, timeout=False, query=False):
     scrim.set_alpha(128)
     surface.blit(scrim, (0, 0))
 
-    dialog = pygame.draw.rect(surface, colors['lightbg'], (64, 88, 192, 72))
-    pygame.draw.rect(surface, colors['white'], (62, 86, 194, 74), 2)
+    # Left, top, width, height
+    dialog = pygame.draw.rect(surface, colors['lightbg'], (round((
+        screen_width - 192)/2), round((screen_height - 72)/2), 192, 72))
+    pygame.draw.rect(surface, colors['white'], (round((
+        screen_width - 194)/2 - 2), round((screen_height - 74)/2 - 2), 194, 74), 2)
 
     text = font_medium.render(text, True, colors['white'], colors['lightbg'])
     modal_text = text.get_rect()
@@ -829,14 +862,17 @@ def modal(text, wait=False, timeout=False, query=False):
     pygame.display.update()
 
     if wait:
-        abutton = hint("a", "Continue", 205, 145, colors['lightbg'])
+        abutton = hint("a", "Continue", round((screen_width - 192) /
+                                              2 + 66 + 74), round((screen_height - 72)/2 - 15+70), colors['lightbg'])
         pygame.display.update()
     elif timeout:
         time.sleep(2.5)
         redraw()
     elif query:
-        abutton = hint("a", "Confirm", 150, 145, colors['lightbg'])
-        bbutton = hint("b", "Cancel", 205, 145, colors['lightbg'])
+        abutton = hint("a", "Confirm", round((screen_width - 192)/2 + 66 + 74
+                                             ), round((screen_height - 72)/2 - 15 + 70), colors['lightbg'])
+        bbutton = hint("b", "Cancel", round((screen_width - 192)/2 + 11 + 74
+                                            ), round((screen_height - 72)/2 - 15 + 70), colors['lightbg'])
         pygame.display.update()
         while True:
             for event in pygame.event.get():
@@ -876,18 +912,18 @@ def redraw():
     mainMenu()
     if wirelessmenu is not None:
         wirelessmenu.draw()
-        pygame.draw.rect(surface, colors['darkbg'], (0, 208, 320, 16))
-        hint("select", "Edit", 4, 210)
-        hint("a", "Connect", 75, 210)
-        hint("b", "/", 130, 210)
-        hint("left", "Back", 145, 210)
+        pygame.draw.rect(surface, colors['darkbg'], (0, 208, screen_width, 16))
+        hint("select", "Edit", 4, screen_height - 30)
+        hint("a", "Connect", 75, screen_height - 30)
+        hint("b", "/", 130, screen_height - 30)
+        hint("left", "Back", 145, screen_height - 30)
     if active_menu == "main":
-        pygame.draw.rect(surface, colors['darkbg'], (0, 208, 320, 16))
-        hint("a", "Select", 8, 210)
+        pygame.draw.rect(surface, colors['darkbg'], (0, 208, screen_width, 16))
+        hint("a", "Select", 8, screen_height - 30)
     if active_menu == "saved":
-        hint("y", "Forget", 195, 210)
+        hint("y", "Forget", 195, screen_height - 30)
     if active_menu == "ssid":
-        hint("y", "Rescan", 195, 210)
+        hint("y", "Rescan", 195, screen_height - 30)
 
     drawStatusBar()
     drawInterfaceStatus()
@@ -1933,6 +1969,7 @@ if __name__ == "__main__":
     logoBar = LogoBar()
 
     redraw()
+
     while True:
         time.sleep(0.01)
         for event in pygame.event.get():
