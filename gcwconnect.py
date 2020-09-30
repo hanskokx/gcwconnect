@@ -458,7 +458,7 @@ def scanForNetworks():
             ifDown()
             disableIface()
     except:
-        final = None
+        final = []
     return final
 
 
@@ -2098,7 +2098,10 @@ if __name__ == "__main__":
 
                         elif menu.get_selected() == 'Quit':
                             pygame.display.quit()
-                            sys.exit()
+                            try:
+                                sys.exit()
+                            except:
+                                exit(0)
 
                     # SSID menu
                     elif active_menu == "ssid":
