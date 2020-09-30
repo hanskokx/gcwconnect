@@ -497,20 +497,57 @@ def writeConfigToDisk(ssid):
     """
     global passphrase
 
-    if passphrase:
-        if passphrase == "none":
-            passphrase = ""
-
     conf = netconfdir + parse.quote_plus(ssid) + ".conf"
 
     f = open(conf, "w")
-    f.write('WLAN_ESSID="'+ssid+'"\n')
-    if len(passphrase) > 0:
+    f.write('WLAN_ESSID="' + ssid + '"\n')
+
+    # FIXME: SSIDs with special characters should be converted to hex, per this example:
+    #
+    #    # Special characters in SSID, so use hex string. Default to WPA-PSK, WPA-EAP
+    #    # and all valid ciphers.
+    #    network={
+    #        ssid=00010203
+    #        psk=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+    #    }
+    #
+    # It looks like this should do the trick:
+    #
+    #   for character in string:
+    #       print(character, character.encode('utf-8').hex())
+
+    if len(passphrase) > 0 and passphrase != "none":
         f.write('WLAN_PASSPHRASE="'+passphrase+'"\n')
         f.write('WLAN_ENCRYPTION="wpa2"\n')  # Default to WPA2
-        # FIXME: People might want WPA-1 or WEP. Right now, we don't know of a way to determine the type of encryption on a given network. Ideally, we would have a way to determine the type of encryption, and write the configuration file in a way that is appropriate for that.
-    else:
-        f.write('WLAN_ENCRYPTION="none"\n')  # Default to WPA2
+
+        # FIXME: People might want WPA-1 or WEP. Right now, we don't know of a way to determine the type of encryption on a given network. Ideally, we would have a to determine the type of encryption, and write the configuration file in a way that is appropriate for that.  However, the following note may help if it is used to update `wlan-config`:
+
+        ############################################################################
+        #                                   NOTE                                   #
+        ############################################################################
+        #    https://w1.fi/cgit/hostap/plain/wpa_supplicant/wpa_supplicant.conf    #
+        #                                                                          #
+        # Catch all example that allows more or less all configuration modes       #
+        #        network = {                                                       #
+        #            ssid = "example"                                              #
+        #            scan_ssid = 1                                                 #
+        #            key_mgmt = WPA-EAP WPA-PSK IEEE8021X NONE                     #
+        #            pairwise = CCMP TKIP                                          #
+        #            group = CCMP TKIP WEP104 WEP40                                #
+        #            psk = "very secret passphrase"                                #
+        #            eap = TTLS PEAP TLS                                           #
+        #            identity = "user@example.com"                                 #
+        #            password = "foobar"                                           #
+        #            ca_cert = "/etc/cert/ca.pem"                                  #
+        #            client_cert = "/etc/cert/user.pem"                            #
+        #            private_key = "/etc/cert/user.prv"                            #
+        #            private_key_passwd = "password"                               #
+        #            phase1 = "peaplabel=0"                                        #
+        #        }                                                                 #
+        ############################################################################
+
+    elif len(passphrase) == 4 and passphrase == "none":   # Unencrypted network
+        f.write('WLAN_ENCRYPTION="none"\n')
     f.close()
 
 
