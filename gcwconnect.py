@@ -839,7 +839,7 @@ def modal(text, wait=False, timeout=False, query=False):
         bool: Returns True once the modal window has been closed.
     """
     global colors
-    redraw() # FIXME: this causes the screen to flash, but without it the scrim keeps getting darker.
+    redraw()
     scrim.set_alpha(128)
     surface.blit(scrim, (0, 0))
 
