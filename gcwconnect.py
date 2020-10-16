@@ -747,7 +747,7 @@ class UserInterface():
         """
         def __init__(self):
             self.mac_address = ''
-            self.surface = self.display.surface
+
 
         try:
             ssid = Network.ssid()
@@ -764,14 +764,14 @@ class UserInterface():
                 ssidlabelelement = renderedssidlabel.get_rect()
                 ssidlabelelement.right = 318
                 ssidlabelelement.top = 36
-                self.surface.blit(renderedssidlabel, ssidlabelelement)
+                pygame.display.surface.blit(renderedssidlabel, ssidlabelelement)
 
                 renderedssid = Font.font_mono_small.render(
                     ssid, True, colors["white"], colors["darkbg"])
                 ssidelement = renderedssid.get_rect()
                 ssidelement.right = 315
                 ssidelement.top = 98
-                self.surface.blit(renderedssid, ssidelement)
+                pygame.display.surface.blit(renderedssid, ssidelement)
 
                 enclabel = "Key"
                 renderedenclabel = Font.font_huge.render(
@@ -780,14 +780,14 @@ class UserInterface():
                 # Drawn a bit leftwards versus "SSID" text, so both right-align pixel-perfectly
                 enclabelelement.right = 314
                 enclabelelement.top = 116
-                self.surface.blit(renderedenclabel, enclabelelement)
+                pygame.display.surface.blit(renderedenclabel, enclabelelement)
 
                 renderedencp = Font.font_mono_small.render(
                     key, True, colors["white"], colors["darkbg"])
                 encpelement = renderedencp.get_rect()
                 encpelement.right = 315
                 encpelement.top = 182
-                self.surface.blit(renderedencp, encpelement)
+                pygame.display.surface.blit(renderedencp, encpelement)
 
         except:
             text = ":("
@@ -796,95 +796,95 @@ class UserInterface():
             textelement = renderedtext.get_rect()
             textelement.left = 192
             textelement.top = 98
-            self.display.surface.blit(renderedtext, textelement)
+            pygame.display.surface.blit(renderedtext, textelement)
             pygame.display.update()
 
-    class logo_bar(self):
+    class logo_bar():
         """
         Draw the application name at the top of the screen as a PNG image
         """
 
-        self.surface = pygame.image.load(
-            (os.path.join(self.configuration.datadir, 'gcwconnect.png'))).convert_alpha()
+        surface = pygame.image.load(
+            (os.path.join(Configuration.datadir, 'gcwconnect.png'))).convert_alpha()
 
         pygame.draw.rect(
-            self.surface, colors['lightbg'], (0, 0, screen_width, 34))
+            pygame.display.surface, colors['lightbg'], (0, 0, screen_width, 34))
         pygame.draw.line(
-            self.surface, colors['white'], (0, 34), (screen_width, 34))
+            pygame.display.surface, colors['white'], (0, 34), (screen_width, 34))
 
-        rect = self.surface.get_rect()
+        rect = pygame.display.surface.get_rect()
         rect.topleft = (8 + 5 + 1, 9)
-        self.surface.blit(self.surface, rect)
+        pygame.display.surface.blit(pygame.display.surface, rect)
 
-    class status_bar(self):
+    class status_bar():
         """
         Draw the status bar on the bottom of the screen
         """
-        connected_to_network = self.network.ssid()
+        connected_to_network = Network.ssid()
         if connected_to_network is None:
             connected_to_network = "Not connected"
         global colors
-        pygame.draw.rect(self.surface, colors['lightbg'],
+        pygame.draw.rect(pygame.display.surface, colors['lightbg'],
                             (0, screen_height - 16, screen_width, 16))
         pygame.draw.line(
-            self.surface, colors['white'], (0, screen_height - 17), (screen_width, screen_height - 17))
-        wlantext = self.font.font_mono_small.render(
+            pygame.display.surface, colors['white'], (0, screen_height - 17), (screen_width, screen_height - 17))
+        wlantext = Font.font_mono_small.render(
             connected_to_network, True, colors['white'], colors['lightbg'])
         wlan_text = wlantext.get_rect()
         wlan_text.topleft = (2, screen_height - 16)
-        self.surface.blit(wlantext, wlan_text)
+        pygame.display.surface.blit(wlantext, wlan_text)
 
-    class interface_status(self):
+    class interface_status():
         """
         Draw the status of the wlan interface on the status bar
         """
         global colors
-        wlanstatus = self.interface.status()
+        wlanstatus = Interface.status()
         if not wlanstatus:
             wlanstatus = wlan+" is off."
         else:
-            wlanstatus = self.network.ssid()
+            wlanstatus = Network.ssid()
 
-        wlantext = self.font.font_mono_small.render(
+        wlantext = Font.font_mono_small.render(
             wlanstatus, True, colors['white'], colors['lightbg'])
         wlan_text = wlantext.get_rect()
         wlan_text.topleft = (2, screen_height - 15)
-        self.surface.blit(wlantext, wlan_text)
+        pygame.display.surface.blit(wlantext, wlan_text)
 
         # Note that the leading space here is intentional, to more cleanly overdraw
         # any overly-long strings written to the screen beneath it (i.e. a very
         # long ESSID)
-        if self.interface.status():
-            ip_address = self.address.ip()
+        if Interface.status():
+            ip_address = Address.ip()
             if ip_address is None:
                 ip_address = ''
-            text = self.font.font_mono_small.render(
+            text = Font.font_mono_small.render(
                 " "+ip_address, True, colors['white'], colors['lightbg'])
             interfacestatus_text = text.get_rect()
             interfacestatus_text.topright = (
                 screen_width - 3, screen_height - 15)
-            self.surface.blit(text, interfacestatus_text)
+            pygame.display.surface.blit(text, interfacestatus_text)
         else:
             mac = mac_addresses.get(wlan)
             if mac is not None:
-                text = self.font.font_mono_small.render(
+                text = Font.font_mono_small.render(
                     " " + mac.decode("utf-8"),
                     True, colors['white'], colors['lightbg'])
                 interfacestatus_text = text.get_rect()
                 interfacestatus_text.topright = (
                     screen_width - 3, screen_height - 15)
-                self.surface.blit(text, interfacestatus_text)
+                pygame.display.surface.blit(text, interfacestatus_text)
 
-    class Menu(self):
+    class Menu():
         def main(self):
             return menu.Main(network=self.network, ap=self.ap, menu="main")
 
         def ssid():
             return menu.Networks()
 
-
-    def draw(self):
-        pass
+# TODO: This probably doesn't work
+    def draw(self, menu):
+        pygame.display.surface.blit(self, menu)
 
     def redraw(self):
         """
@@ -1279,7 +1279,7 @@ class Menu():
     class Saved():
         """Create a menu of all saved networks on disk
         """
-        saved_networks = configuration.get_saved_networks()
+        saved_networks = Configuration.get_saved_networks()
 
         if len(saved_networks) > 0:
             l = []
@@ -1287,18 +1287,18 @@ class Menu():
                                 key=lambda x: saved_networks[x]['ESSID']):
                 detail = saved_networks[item]
                 l.append([detail['ESSID'], detail['Key']])
-            createWirelessMenu()
-            wirelessmenu.init(l, surface)
-            wirelessmenu.draw()
+            # createWirelessMenu()
+            # wirelessmenu.init(l, surface)
+            # wirelessmenu.draw()
         else:
             text = 'empty'
-            renderedtext = font_huge.render(
+            renderedtext = Font.font_huge.render(
                 text, True, colors["lightbg"], colors["darkbg"])
             textelement = renderedtext.get_rect()
             textelement.left = 152
             textelement.top = 96
-            surface.blit(renderedtext, textelement)
-            ui.redraw()
+            # surface.blit(renderedtext, textelement)
+            # ui.redraw()
 
     def switch(self, to=""):
         """Chooses which currently displayed menu or submenu to use for navigation.
