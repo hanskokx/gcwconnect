@@ -70,6 +70,27 @@ colors = {
 ###############################################################################
 
 class App:
+    def __init__(self):
+        self.app = self
+        self.display = self.Display()
+        self.font = self.Font()
+        self.configuration = self.Configuration(app=self.app)
+        self.interface = self.Interface(app=self.app)
+        self.ui = self.UserInterface()
+
+        self.address = self.Address()
+        self.ap = self.AccessPoint()
+        self.network = self.Network(app=self.app)
+
+        self.menu = self.Menu(app=self.app)
+        self.main_menu = self.menu.Main(app=self.app)
+        self.main_menu.move_menu(3, 41)
+
+        self.wirelessmenu = self.menu.Saved(app=self.app)
+        self.wirelessmenu.move_menu(116, 40)
+
+        self.keyboard = self.Keyboard(app=self.app)
+
     class Address:
         def ip():
             """
@@ -107,7 +128,10 @@ class App:
             except IOError:
                 return False  # WiFi is disabled
 
-    class Network:           
+    class Network:
+        def __init__(self, app):
+            self.app = app
+
         def ssid(self):
             """
             Determine which SSID the device is currently associated with
@@ -116,7 +140,7 @@ class App:
                 str: Returns the SSID of the network currently associated with; otherwise returns None if no network is associated.
             """
             ssid = None
-            is_broadcasting_ap = app.ap.status
+            is_broadcasting_ap = self.app.ap.status
             try:
                 mac_address = self.address.mac().replace(":", "")
             except:
@@ -243,58 +267,57 @@ class App:
 
             return final
 
-    #TODO: I should probably use this code...
-        # def scanForAPs():
-            #     """Run when choosing the menu item "Scan for APs"; invokes the scan for nearby access points and builds a menu for wireless networks found in range.
+        def scanForAPs(self):
+                """Run when choosing the menu item "Scan for APs"; invokes the scan for nearby access points and builds a menu for wireless networks found in range.
 
-            #     Returns:
-            #         str: "ssid" if we were able to successfully scan for APs, otherwise "main"
-            #     """
-            #     global wirelessmenu
-            #     global active_menu
-            #     global access_points
+                Returns:
+                    str: "ssid" if we were able to successfully scan for APs, otherwise "main"
+                """
+                global wirelessmenu
+                global active_menu
+                global access_points
 
-            #     try:
-            #         access_points = scanForNetworks()
+                try:
+                    access_points = self.scanForNetworks()
 
-            #     # No access points found
-            #     except:
-            #         active_menu = "main"
+                # No access points found
+                except:
+                    active_menu = "main"
 
-            #         access_points = {}
-            #         text = ":("
-            #         renderedtext = font_huge.render(
-            #             text, True, colors["lightbg"],
-            #             colors["darkbg"])
-            #         textelement = renderedtext.get_rect()
-            #         textelement.left = 192
-            #         textelement.top = 96
-            #         surface.blit(renderedtext, textelement)
+                    access_points = {}
+                    text = ":("
+                    renderedtext = self.font.font_huge.render(
+                        text, True, colors["lightbg"],
+                        colors["darkbg"])
+                    textelement = renderedtext.get_rect()
+                    textelement.left = 192
+                    textelement.top = 96
+                    self.display.surface.blit(renderedtext, textelement)
 
-            #     l = []
-            #     if len(access_points) < 1:
-            #         active_menu = "main"
+                l = []
+                if len(access_points) < 1:
+                    active_menu = "main"
 
-            #         text = ":("
-            #         renderedtext = font_huge.render(
-            #             text, True, colors["lightbg"],
-            #             colors["darkbg"])
-            #         textelement = renderedtext.get_rect()
-            #         textelement.left = 192
-            #         textelement.top = 96
-            #         surface.blit(renderedtext, textelement)
-            #     else:
-            #         for network in access_points:
-            #             menuitem = [network['ssid'],
-            #                         network['quality']]
-            #             l.append(menuitem)
-            #         createWirelessMenu()
-            #         wirelessmenu.init(l, surface)
-            #         wirelessmenu.draw()
+                    text = ":("
+                    renderedtext = self.font.font_huge.render(
+                        text, True, colors["lightbg"],
+                        colors["darkbg"])
+                    textelement = renderedtext.get_rect()
+                    textelement.left = 192
+                    textelement.top = 96
+                    self.display.surface.blit(renderedtext, textelement)
+                else:
+                    for network in access_points:
+                        menuitem = [network['ssid'],
+                                    network['quality']]
+                        l.append(menuitem)
+                    self.createWirelessMenu()
+                    wirelessmenu.init(l, self.display.surface)
+                    wirelessmenu.draw()
 
-            #         active_menu = "ssid"
+                    active_menu = "ssid"
 
-            #     return active_menu
+                return active_menu
 
     class AccessPoint:
 
@@ -387,9 +410,8 @@ class App:
             except:
                 return False
 
-    # TODO: This probably doesn't work
         def draw(self, menu):
-            pygame.display.surface.blit(self, menu)
+            self.display.surface.blit(self, menu)
 
         def redraw(self):
             """
@@ -420,10 +442,8 @@ class App:
             self.display.update()
 
     class Menu:
-
-        def __init__(self):
-            super()
-            self.display = app.display
+        def __init__(self, app):
+            self.app = app
             self.menu = ""
             self.canvas_color = colors["darkbg"]
             self.elements = []
@@ -587,10 +607,9 @@ class App:
                 self.surface.display.blit(menu_surface, self.origin)
                 return self.selected_item
         class Main:
-            def __init__(self):
+            def __init__(self, app):
                 super()
-                self.network = app.network
-                self.surface = app.display.surface
+                self.app = app
                 self.canvas_color = colors["darkbg"]
                 self.set_elements([])
                 self.selected_item = 0
@@ -666,11 +685,9 @@ class App:
                 Returns:
                     int: The selected item ID.
                 """
-                def __init__(self):
-                    super()
-                    self.surface = self.display.surface
+
                 # Clear any old text (like from apinfo()), but don't overwrite button hint area above statusbar
-                pygame.draw.rect(self.surface, colors['darkbg'], (0, 35, 320, 173))
+                pygame.draw.rect(self.app.display.surface, colors['darkbg'], (0, 35, 320, 173))
                 self.elements = self.define_elements()
 
                 if len(self.elements) == 0:
@@ -714,14 +731,14 @@ class App:
 
                 # Clear any error elements
                 error_rect = (left+width+8, 35, 192, 172)
-                pygame.draw.rect(self.surface, colors['darkbg'], error_rect)
+                pygame.draw.rect(self.app.display.surface, colors['darkbg'], error_rect)
 
                 # Elements
                 top = 0
                 for i in range(len(visible_elements)):
                     self.render_element(menu_surface, visible_elements[i], 0, top)
                     top += heights[i]
-                app.display.surface.blit(menu_surface, self.origin)
+                self.app.display.surface.blit(menu_surface, self.origin)
                 return self.selected_item
 
             def get_item_height(self, element):
@@ -773,8 +790,8 @@ class App:
 
                 self.elems = ['Quit']
 
-                ap = app.network.ssid()
-                is_hosting_ap = app.ap.status
+                ap = self.app.network.ssid()
+                is_hosting_ap = self.app.ap.status
 
                 if ap is not None:
                     self.elems = ['AP info'] + self.elems
@@ -783,20 +800,19 @@ class App:
 
                 self.elems = ["Saved Networks", "Scan for APs", "Manual Setup"] + self.elems
 
-                interface_status = app.interface.status()
+                interface_status = self.app.interface.status()
                 if interface_status == "Connected" or is_hosting_ap:
                     self.elems = ['Disconnect'] + self.elems
 
                 return self.elems
 
-    # TODO: This is known to be broken.
         class Saved:
             """Create a menu of all saved networks on disk
             """
-            def __init__(self):
+            def __init__(self, app):
                 super()
-                
-                self.saved_networks = app.configuration.get_saved_networks()
+                self.app = app
+                self.saved_networks = self.app.configuration.get_saved_networks()
 
                 if len(self.saved_networks) > 0:
                     l = []
@@ -804,17 +820,39 @@ class App:
                                         key=lambda x: self.saved_networks[x]['ESSID']):
                         detail = self.saved_networks[item]
                         l.append([detail['ESSID'], detail['Key']])
-                    self.createWirelessMenu()
-                    wirelessmenu.init(l, self.surface)
-                    wirelessmenu.draw()
+                    # ! TODO: Broken
+                    self.createWirelessMenu() 
+                    self.wirelessmenu.init(l, self.app.display.surface)
+                    self.wirelessmenu.draw()
                 else:
                     text = 'empty'
-                    renderedtext = app.font.font_medium.render(
+                    renderedtext = self.app.font.font_medium.render(
                         text, True, colors["lightbg"], colors["darkbg"])
                     textelement = renderedtext.get_rect()
                     textelement.left = 152
                     textelement.top = 96
-                    app.display.surface.blit(renderedtext, textelement)
+                    self.app.display.surface.blit(renderedtext, textelement)
+
+            def move_menu(self, top, left):
+                """Move the menu to a given position on the display, e.g. for a submenu
+
+                Args:
+                    top (int): The position of the top of the menu.
+                    left (int): The position of the left of the menu.
+                """
+                self.origin = (top, left)
+
+            def init(self, elements, dest_surface):
+                """Initialize a new menu
+
+                Args:
+                    elements (list): The list of menu items to initialize the menu with.
+                    dest_surface (pygame.surface): The pygame surface to draw the menu on.
+                """
+
+                self.set_elements(elements)
+                self.dest_surface = dest_surface
+
 
         def switch(self, to=""):
             """Chooses which currently displayed menu or submenu to use for navigation.
@@ -1099,9 +1137,10 @@ class App:
             self.surface.blit(text, label)
 
     class Keyboard:
-        def __init__(self, board=None):
+        def __init__(self, board=None, direction=None, app=None):
             self.board = board
-
+            self.direction = direction
+            self.app = app
             if self.board is None:
                 self.board = 'qwertyNormal'
 
@@ -1423,10 +1462,10 @@ class App:
         font_mono_small = pygame.font.Font(font_mono_path, 11)
 
     class Configuration:
-        def __init__(self):
+        def __init__(self, app):
             """Define and create configuration paths, then convert "old style" configuration files into "new style" configuration files.
             """
-            
+            self.app = app
             self.ssid = None
             self.password = None
             self.confdir = os.environ['HOME'] + "/.local/share/gcwconnect/"
@@ -1554,7 +1593,7 @@ class App:
             """
             saved_network = {}
             index = 0
-            for confName in sorted(listdir(app.configuration.netconfdir), reverse=True):
+            for confName in sorted(listdir(self.app.configuration.netconfdir), reverse=True):
                 if not confName.endswith('.conf'):
                     continue
                 ssid = parse.unquote_plus(confName[:-5])
@@ -1587,6 +1626,8 @@ class App:
 
             return saved_network
     class Interface:
+        def __init__(self, app):
+            self.app = app
 
         def stop(self):
             """
@@ -1681,9 +1722,9 @@ class App:
             interface_status = False
 
             interface_is_up = self.check_if_dormant
-            connected_to_network = app.network.ssid()
-            ip_address = app.address.ip
-            ap_is_broadcasting = app.ap.status
+            connected_to_network = self.app.network.ssid()
+            ip_address = self.app.address.ip
+            ap_is_broadcasting = self.app.ap.status
 
             if ap_is_broadcasting:
                 interface_status = "Broacasting"
@@ -1881,25 +1922,7 @@ class App:
 
 if __name__ == "__main__":
     app = App()
-    app.display = app.Display()
-    app.font = app.Font()
-    app.configuration = app.Configuration()
-    app.interface = app.Interface()
-    app.ui = app.UserInterface()
 
-    app.address = app.Address()
-    app.ap = app.AccessPoint()
-    app.network = app.Network()
-
-    app.menu = app.Menu()
-    main_menu = app.menu.Main()
-    main_menu.move_menu(3, 41)
-
-    # wirelessmenu = app.menu.Saved()
-    # wirelessmenu.move_menu(116, 40)
-
-    app.ui = app.UserInterface()
-    app.keyboard = app.Keyboard()
     # Persistent variables
     access_points = {}
 
@@ -1921,7 +1944,7 @@ if __name__ == "__main__":
 
             if event.type == QUIT:
                 pygame.display.quit()
-                sys.exit()
+                sys.exit(0)
 
             elif event.type == KEYDOWN:
                 if event.key == K_PAUSE: 		# Power down
@@ -1934,26 +1957,26 @@ if __name__ == "__main__":
                     pass
                 elif event.key == K_UP: 		# Arrow up the menu
                     if app.menu.get_active() == "main":
-                        main_menu.draw(-1)
+                        app.main_menu.draw(-1)
                     elif app.menu.get_active() == "ssid" or app.menu.get_active() == "saved":
-                        wirelessmenu.draw(-1)
+                        app.wirelessmenu.draw(-1)
                 elif event.key == K_DOWN: 		# Arrow down the menu
                     if app.menu.get_active() == "main":
-                        main_menu.draw(1)
+                        app.main_menu.draw(1)
                     elif app.menu.get_active() == "ssid" or app.menu.get_active() == "saved":
-                        wirelessmenu.draw(1)
+                        app.wirelessmenu.draw(1)
                 elif event.key == K_RIGHT:
-                    if wirelessmenu is not None and app.menu.get_active() == "main":
+                    if app.wirelessmenu is not None and app.menu.get_active() == "main":
                         app.menu.switch("ssid")
                         app.ui.redraw()
                 elif event.key == K_LALT or event.key == K_LEFT:
                     if app.menu.get_active() == "ssid" or app.menu.get_active() == "saved":
-                        wirelessmenu.remove()
+                        app.wirelessmenu.remove()
                         app.menu.switch("main")
                         app.ui.redraw()
                     elif event.key == K_LALT:
                         pygame.display.quit()
-                        sys.exit()
+                        sys.exit(0)
 
                 # Y key pressed
                 elif event.key == K_SPACE:
@@ -1962,15 +1985,15 @@ if __name__ == "__main__":
                         if confirm:
                             os.remove(
                                 app.configuration.netconfdir+parse.quote_plus(str(
-                                    wirelessmenu.get_selected()[0]))+".conf")
-                        wirelessmenu = app.menu.Saved()
-                        wirelessmenu.show()
+                                    app.wirelessmenu.get_selected()[0]))+".conf")
+                        app.wirelessmenu = app.menu.Saved()
+                        app.wirelessmenu.show()
                         app.ui.redraw()
                         try:
                             if len(access_points) < 1:
-                                wirelessmenu.remove()
+                                app.wirelessmenu.remove()
                         except NameError:
-                            wirelessmenu.remove()
+                            app.wirelessmenu.remove()
 
                         app.menu.switch("main")
 
@@ -2006,8 +2029,8 @@ if __name__ == "__main__":
                                 app.ap.connect(ssid)
 
                         elif app.menu.get_selected() == 'Saved Networks':
-                            wirelessmenu = app.menu.Saved()
-                            wirelessmenu.draw()
+                            app.wirelessmenu = app.menu.Saved()
+                            app.wirelessmenu.draw()
                             try:
                                 app.menu.switch("saved")
                             except:
@@ -2039,7 +2062,7 @@ if __name__ == "__main__":
                                 app.ap.connect(ssid)
                             else:
                                 position = int(
-                                    wirelessmenu.get_position())
+                                    app.wirelessmenu.get_position())
                                 ssid = access_points[position]['ssid']
                                 conf = app.configuration.netconfdir + \
                                     parse.quote_plus(ssid) + ".conf"
@@ -2058,7 +2081,7 @@ if __name__ == "__main__":
                         saved_networks = app.configuration.get_saved_networks()
                         for network in saved_networks:
                             position = int(
-                                wirelessmenu.get_position())
+                                app.wirelessmenu.get_position())
                             ssid = saved_networks[position]['ESSID']
                             shutil.copy2(app.configuration.netconfdir + parse.quote_plus(ssid) +
                                         ".conf", app.configuration.sysconfdir+"config-"+wlan+".conf")
@@ -2072,7 +2095,7 @@ if __name__ == "__main__":
                         ssid = ""
                         access_points = app.ap.scan()
                         for network in access_points:
-                            position = int(wirelessmenu.get_position())
+                            position = int(app.wirelessmenu.get_position())
                             ssid = access_points[position]['ESSID']
                             passphrase = ''
                             securitykey = ''
@@ -2084,7 +2107,7 @@ if __name__ == "__main__":
                     # Allow us to edit the existing key
                     if app.menu.get_active() == "saved":
                         saved_networks = app.configuration.get_saved_networks()
-                        position = int(wirelessmenu.get_position())
+                        position = int(app.wirelessmenu.get_position())
                         ssid = saved_networks[position]['ESSID']
                         passphrase = saved_networks[position]['Key']
                         securitykey = ''
