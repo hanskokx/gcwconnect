@@ -76,20 +76,18 @@ class App:
         self.app.font = self.Font()
         self.app.configuration = self.Configuration(app=self.app)
         self.app.interface = self.Interface(app=self.app)
-        self.app.ui = self.UserInterface(app=self.app)
-
         self.app.address = self.Address()
         self.app.ap = self.AccessPoint()
         self.app.network = self.Network(app=self.app)
 
-        self.app.menu = self.Menu(app=self.app)
-        self.app.main_menu = self.app.menu.Main(app=self.app)
-        self.app.main_menu.move_menu(3, 41)
-
-        # self.wirelessmenu = self.menu.Saved(app=self.app)
-        # self.wirelessmenu.move_menu(116, 40)
+        # self.app.wirelessmenu = self.menu.Saved(app=self.app)
 
         self.app.keyboard = self.Keyboard(app=self.app)
+
+        self.app.ui = self.UserInterface(app=self.app)
+        self.app.menu = self.Menu(app=self.app)
+        self.app.main_menu = self.app.menu.Main(app=self.app)
+
 
     class Address:
         def ip():
@@ -445,21 +443,27 @@ class App:
     class Menu:
         def __init__(self, app):
             self.app = app
-            self.menu = ""
+            self.name = ""
             self.canvas_color = colors["darkbg"]
             self.elements = []
 
         class Networks:
             """Draw a list of access points in a given Menu
             """
-            def __init__(self):
+
+            def __init__(self, app):
+                super()
+                self.app = app
+                self.canvas_color = colors["darkbg"]
                 self.set_elements([])
                 self.selected_item = 0
-                self.origin = (0, 0)
+                self.origin = (116, 40)
                 self.menu_width = 0
                 self.menu_height = 0
                 self.selection_color = colors["activeselbg"]
                 self.text_color = colors["activetext"]
+                self.font_size = 13
+                self.draw()
 
             def set_elements(self, elements):
                 """Define the access points to be displayed in the menu.
@@ -548,6 +552,18 @@ class App:
                 menu_surface.blit(qual_img, (qual_x, qual_y))
                 pygame.display.update()
 
+            def set_colors(self, text, selection, background):
+                """Define the colors to draw the menu with.
+
+                Args:
+                    text (0-255, 0-255, 0-255): The color to use for the menu item text.
+                    selection (0-255, 0-255, 0-255): The color to use for the selected menu item background.
+                    background (0-255, 0-255, 0-255): The color to use for the unselected menu items.
+                """
+                self.text_color = text
+                self.selection_color = selection
+                self.background = background
+
             def draw(self, move=0):
                 """Draw the menu on the display.
 
@@ -614,7 +630,7 @@ class App:
                 self.canvas_color = colors["darkbg"]
                 self.set_elements([])
                 self.selected_item = 0
-                self.origin = (0, 0)
+                self.origin = (3, 41)
                 self.menu_width = 0
                 self.menu_height = 0
                 self.selection_color = colors["activeselbg"]
@@ -674,7 +690,6 @@ class App:
                     elements (list): The list of menu items to initialize the menu with.
                     dest_surface (pygame.surface): The pygame surface to draw the menu on.
                 """
-
                 self.set_elements(elements)
                 self.dest_surface = dest_surface
 
@@ -817,13 +832,13 @@ class App:
                 self.app = app
                 self.set_elements([])
                 self.selected_item = 0
-                self.origin = (0, 0)
+                self.origin = (116, 40)
                 self.menu_width = 0
                 self.menu_height = 0
                 self.selection_color = colors["activeselbg"]
                 self.text_color = colors["activetext"]
                 self.canvas_color = colors["darkbg"]
-                self.saved_networks = self.app.configuration.get_saved_networks()
+                self.saved_networks = self.app.Configuration.get_saved_networks(self)
 
                 if len(self.saved_networks) > 0:
                     l = []
@@ -843,6 +858,17 @@ class App:
                     textelement.top = 96
                     self.app.display.surface.blit(renderedtext, textelement)
 
+            def set_colors(self, text, selection, background):
+                """Define the colors to draw the menu with.
+
+                Args:
+                    text (0-255, 0-255, 0-255): The color to use for the menu item text.
+                    selection (0-255, 0-255, 0-255): The color to use for the selected menu item background.
+                    background (0-255, 0-255, 0-255): The color to use for the unselected menu items.
+                """
+                self.text_color = text
+                self.selection_color = selection
+                self.background = background
 
             def move_menu(self, top, left):
                 """Move the menu to a given position on the display, e.g. for a submenu
@@ -988,22 +1014,23 @@ class App:
             """
 
             if to == "main":
-                self.menu.set_colors(colors['activetext'],
+                self.app.main_menu.set_colors(colors['activetext'],
                                 colors['activeselbg'], colors['darkbg'])
-                if self.wirelessmenu is not None:
-                    self.wirelessmenu.set_colors(
-                        colors['inactivetext'], colors['inactiveselbg'], colors['darkbg'])
+                if self.app.wirelessmenu is not None:
+                    # self.app.wirelessmenu.remove
+                    self.app.wirelessmenu.set_colors(colors['inactivetext'], colors['inactiveselbg'], colors['darkbg'])
             elif to == "ssid" or to == "saved":
-                self.menu.set_colors(colors['inactivetext'],
-                                colors['inactiveselbg'], colors['darkbg'])
-                self.wirelessmenu.set_colors(
-                    colors['activetext'], colors['activeselbg'], colors['darkbg'])
-            self.menu = to
-            self.display.redraw()
-            return self.menu
+                self.app.wirelessmenu.draw()
+                self.app.main_menu.set_colors(colors['inactivetext'], colors['inactiveselbg'], colors['darkbg'])
+                self.app.wirelessmenu.set_colors(colors['activetext'], colors['activeselbg'], colors['darkbg'])
+            self.name = to
+            self.app.display.update
+            return self.name
 
         def get_active(self):
-            return self.menu
+            if not self.name:
+                self.name = "main"
+            return self.name
 
     class Modal:
         """
@@ -2110,6 +2137,7 @@ if __name__ == "__main__":
                         app.main_menu.draw(-1)
                     elif app.menu.get_active() == "ssid" or app.menu.get_active() == "saved":
                         app.wirelessmenu.draw(-1)
+
                 elif event.key == K_DOWN: 		# Arrow down the menu
                     if app.menu.get_active() == "main":
                         app.main_menu.draw(1)
@@ -2158,12 +2186,15 @@ if __name__ == "__main__":
                 elif event.key == K_LCTRL or event.key == K_RETURN:
                     # Main menu
                     if app.menu.get_active() == "main":
-                        if app.menu.get_selected() == 'Disconnect':
+                        this = app.main_menu
+                        if this.get_selected() == 'Disconnect':
                             app.ap.disconnect()
                             app.ui.redraw()
-                        elif app.menu.get_selected() == 'Scan for APs':
+                        elif this.get_selected() == 'Scan for APs':
+                            app.wirelessmenu = app.menu.Networks(app=app)
+                            app.wirelessmenu.draw()
                             app.menu.switch("ssid")
-                        elif app.menu.get_selected() == 'Manual Setup':
+                        elif this.get_selected() == 'Manual Setup':
                             ssid = ''
                             passphrase = ''
                             securitykey = ''
@@ -2178,8 +2209,8 @@ if __name__ == "__main__":
                                 app.configuration.write(ssid, passphrase)
                                 app.ap.connect(ssid)
 
-                        elif app.menu.get_selected() == 'Saved Networks':
-                            app.wirelessmenu = app.menu.Saved()
+                        elif this.get_selected() == 'Saved Networks':
+                            app.wirelessmenu = app.menu.Saved(app=app)
                             app.wirelessmenu.draw()
                             try:
                                 app.menu.switch("saved")
