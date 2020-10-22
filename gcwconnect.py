@@ -72,24 +72,24 @@ colors = {
 class App:
     def __init__(self):
         self.app = self
-        self.display = self.Display()
-        self.font = self.Font()
-        self.configuration = self.Configuration(app=self.app)
-        self.interface = self.Interface(app=self.app)
-        self.ui = self.UserInterface()
+        self.app.display = self.Display()
+        self.app.font = self.Font()
+        self.app.configuration = self.Configuration(app=self.app)
+        self.app.interface = self.Interface(app=self.app)
+        self.app.ui = self.UserInterface(app=self.app)
 
-        self.address = self.Address()
-        self.ap = self.AccessPoint()
-        self.network = self.Network(app=self.app)
+        self.app.address = self.Address()
+        self.app.ap = self.AccessPoint()
+        self.app.network = self.Network(app=self.app)
 
-        self.menu = self.Menu(app=self.app)
-        self.main_menu = self.menu.Main(app=self.app)
-        self.main_menu.move_menu(3, 41)
+        self.app.menu = self.Menu(app=self.app)
+        self.app.main_menu = self.app.menu.Main(app=self.app)
+        self.app.main_menu.move_menu(3, 41)
 
-        self.wirelessmenu = self.menu.Saved(app=self.app)
-        self.wirelessmenu.move_menu(116, 40)
+        # self.wirelessmenu = self.menu.Saved(app=self.app)
+        # self.wirelessmenu.move_menu(116, 40)
 
-        self.keyboard = self.Keyboard(app=self.app)
+        self.app.keyboard = self.Keyboard(app=self.app)
 
     class Address:
         def ip():
@@ -130,6 +130,7 @@ class App:
 
     class Network:
         def __init__(self, app):
+            super()
             self.app = app
 
         def ssid(self):
@@ -140,7 +141,7 @@ class App:
                 str: Returns the SSID of the network currently associated with; otherwise returns None if no network is associated.
             """
             ssid = None
-            is_broadcasting_ap = self.app.ap.status
+            is_broadcasting_ap = self.app.AccessPoint.status()
             try:
                 mac_address = self.address.mac().replace(":", "")
             except:
@@ -267,7 +268,7 @@ class App:
 
             return final
 
-        def scanForAPs(self):
+        def scan_for_access_points(self):
                 """Run when choosing the menu item "Scan for APs"; invokes the scan for nearby access points and builds a menu for wireless networks found in range.
 
                 Returns:
@@ -278,7 +279,7 @@ class App:
                 global access_points
 
                 try:
-                    access_points = self.scanForNetworks()
+                    access_points = self.scan()
 
                 # No access points found
                 except:
@@ -311,9 +312,9 @@ class App:
                         menuitem = [network['ssid'],
                                     network['quality']]
                         l.append(menuitem)
-                    self.createWirelessMenu()
-                    wirelessmenu.init(l, self.display.surface)
-                    wirelessmenu.draw()
+                    self.wirelessmenu = self.menu.Networks()
+                    self.wirelessmenu.init(l, self.display.surface)
+                    self.wirelessmenu.draw()
 
                     active_menu = "ssid"
 
@@ -618,6 +619,7 @@ class App:
                 self.menu_height = 0
                 self.selection_color = colors["activeselbg"]
                 self.text_color = colors["activetext"]
+                self.font_size = 13
                 self.draw()
 
             def move_menu(self, top, left):
@@ -750,7 +752,7 @@ class App:
                 Returns:
                     int: The element's height plus the corresponding spacing.
                 """
-                render = self.font.render(element, 1, self.text_color)
+                render = self.font.render(element, self.font_size, self.text_color)
                 spacing = 5
                 return render.get_rect().height + spacing * 2
 
@@ -763,8 +765,8 @@ class App:
                 Returns:
                     int: The element's width plus the corresponding spacing.
                 """
-                self.font = pygame.font.SysFont(None,10)
-                render = self.font.render(element, 1, self.text_color)
+                self.font = self.app.font.font_medium
+                render = self.font.render(element, self.font_size, self.text_color)
                 spacing = 5
                 return render.get_rect().width + spacing * 2
 
@@ -809,9 +811,18 @@ class App:
         class Saved:
             """Create a menu of all saved networks on disk
             """
+
             def __init__(self, app):
                 super()
                 self.app = app
+                self.set_elements([])
+                self.selected_item = 0
+                self.origin = (0, 0)
+                self.menu_width = 0
+                self.menu_height = 0
+                self.selection_color = colors["activeselbg"]
+                self.text_color = colors["activetext"]
+                self.canvas_color = colors["darkbg"]
                 self.saved_networks = self.app.configuration.get_saved_networks()
 
                 if len(self.saved_networks) > 0:
@@ -821,9 +832,8 @@ class App:
                         detail = self.saved_networks[item]
                         l.append([detail['ESSID'], detail['Key']])
                     # ! TODO: Broken
-                    self.createWirelessMenu() 
-                    self.wirelessmenu.init(l, self.app.display.surface)
-                    self.wirelessmenu.draw()
+                    self.init(l, self.app.display.surface)
+                    self.draw()
                 else:
                     text = 'empty'
                     renderedtext = self.app.font.font_medium.render(
@@ -832,6 +842,7 @@ class App:
                     textelement.left = 152
                     textelement.top = 96
                     self.app.display.surface.blit(renderedtext, textelement)
+
 
             def move_menu(self, top, left):
                 """Move the menu to a given position on the display, e.g. for a submenu
@@ -853,6 +864,124 @@ class App:
                 self.set_elements(elements)
                 self.dest_surface = dest_surface
 
+            def set_elements(self, elements):
+                """Define the access points to be displayed in the menu.
+
+                Args:
+                    elements (list): The list of elements to be displayed.
+                """
+                self.elements = elements
+
+            def get_item_width(self, element):
+                """Determine the width of a given element
+
+                Args:
+                    element: The element to get the width of.
+
+                Returns:
+                    int: The element's width plus the corresponding spacing.
+                """
+                the_ssid = element[0]
+                render = self.app.font.render(the_ssid, 1, self.text_color)
+                spacing = 15
+                return render.get_rect().width + spacing * 2
+
+            def get_item_height(self, element):
+                """Determine the height of a given element
+
+                Args:
+                    element: The element to get the height of.
+
+                Returns:
+                    int: The element's height plus the corresponding spacing.
+                """
+                font = self.app.font.font_mono_small
+                render = font.render(element[0], 1, self.text_color)
+                spacing = 6
+                return (render.get_rect().height + spacing * 2) + 5
+
+            def render_element(self, menu_surface, element, left, top):
+                """Render an element into the menu.
+
+                Args:
+                    menu_surface (pygame.surface): The pygame surface to render the element into.
+                    element (): The element to render.
+                    left (int): The left position of the element.
+                    top (int): The top position of the element.
+                """
+                the_ssid = element[0]
+
+                ssid = self.app.font.font_mono_small.render(the_ssid, 1, self.text_color)
+
+                spacing = 2
+
+                menu_surface.blit(ssid, (int(round(left + spacing)), int(round(top))))
+                # menu_surface.blit(enc, (int(round(left + enc_img.get_rect().width + 12)), int(round(top + 18))))
+                # menu_surface.blit(enc_img, (int(round(left + 8)), int(round((top + 24) -
+                # (enc_img.get_rect().height / 2)))))
+
+                pygame.display.update()
+
+            def draw(self, move=0):
+                """Draw the menu on the display.
+
+                Args:
+                    move (int, optional): The element ID of the menu item being moved to in the list. Defaults to 0.
+
+                Returns:
+                    int: The selected item ID.
+                """
+
+                if len(self.elements) == 0:
+                    return
+                
+                if move != 0:
+                    self.selected_item += move
+                    if self.selected_item < 0:
+                        self.selected_item = 0
+                    elif self.selected_item >= len(self.elements):
+                        self.selected_item = len(self.elements) - 1
+
+                # Which items are to be shown?
+                if self.selected_item <= 2:  # We're at the top
+                    visible_elements = self.elements[0:5]
+                    selected_within_visible = self.selected_item
+                # We're at the bottom
+                elif self.selected_item >= len(self.elements) - 3:
+                    visible_elements = self.elements[-5:]
+                    selected_within_visible = self.selected_item - \
+                        (len(self.elements) - len(visible_elements))
+                else:  # The list is larger than 5 elements, and we're in the middle
+                    visible_elements = self.elements[self.selected_item -
+                                                    2:self.selected_item + 3]
+                    selected_within_visible = 2
+
+                max_width = 320 - self.origin[0] - 3
+
+                # And now the height
+                heights = [self.get_item_height(visible_element)
+                        for visible_element in visible_elements]
+                total_height = sum(heights)
+
+                # Background
+                menu_surface = pygame.Surface((max_width, total_height))
+                menu_surface.fill(self.canvas_color)
+
+                # Selection
+                left = 0
+                top = sum(heights[0:selected_within_visible])
+                width = max_width
+                height = heights[selected_within_visible]
+                selection_rect = (left, top, width, height)
+                pygame.draw.rect(menu_surface, self.selection_color, selection_rect)
+
+                # Elements
+                top = 0
+                for i in range(len(visible_elements)):
+                    self.render_element(menu_surface, visible_elements[i], 0, top)
+                    top += heights[i]
+                self.app.display.surface.blit(menu_surface, self.origin)
+                return self.selected_item
 
         def switch(self, to=""):
             """Chooses which currently displayed menu or submenu to use for navigation.
@@ -1603,7 +1732,7 @@ class App:
                     'Key': ''
                 }
                 try:
-                    with open(self.configuration.netconfdir + confName) as f:
+                    with open(self.app.configuration.netconfdir + confName) as f:
                         for line in f:
                             key, value = line.split('=', 1)
                             key = key.strip()
@@ -1721,10 +1850,10 @@ class App:
             """
             interface_status = False
 
-            interface_is_up = self.check_if_dormant
-            connected_to_network = self.app.network.ssid()
-            ip_address = self.app.address.ip
-            ap_is_broadcasting = self.app.ap.status
+            interface_is_up = self.app.Interface.check_if_dormant()
+            connected_to_network = self.app.Network.ssid(self)
+            ip_address = self.app.Address.ip()
+            ap_is_broadcasting = self.app.AccessPoint.status()
 
             if ap_is_broadcasting:
                 interface_status = "Broacasting"
@@ -1738,6 +1867,21 @@ class App:
             return interface_status
 
     class UserInterface:
+        def __init__(self, app):
+            super()
+            self.app = app
+            self.access_point = self.AccessPoint()
+            self.logo = self.LogoBar(app=self.app)
+            self.status_bar = self.StatusBar(app=self.app)
+            self.interface_status = self.InterfaceStatus(app=self.app)
+            self.menu = self.Menu()
+
+            self.draw(self.access_point)
+            self.draw(self.logo)
+            self.draw(self.status_bar)
+            self.draw(self.interface_status)
+            self.draw(self.menu)
+
         class AccessPoint:
             """
             Draw information about the currently associated access point to the display
@@ -1808,73 +1952,79 @@ class App:
             Draw the application name at the top of the screen as a PNG image
             """
 
-            def __init__(self):
-                self.surface = self.Display.surface
-                self.configuration = self.Configuration
-                self.main(self)
+            def __init__(self, app):
+                super()
+                self.app = app
+                self.surface = self.app.display.surface
+                self.main()
 
             def main(self):
                 pygame.image.load(
-                    (os.path.join(self.configuration.datadir, 'gcwconnect.png'))).convert_alpha()
+                    (os.path.join(self.app.configuration.datadir, 'gcwconnect.png'))).convert_alpha()
 
                 pygame.draw.rect(
-                    pygame.display.surface, colors['lightbg'], (0, 0, screen_width, 34))
+                    self.surface, colors['lightbg'], (0, 0, screen_width, 34))
                 pygame.draw.line(
-                    pygame.display.surface, colors['white'], (0, 34), (screen_width, 34))
+                    self.surface, colors['white'], (0, 34), (screen_width, 34))
 
-                rect = pygame.display.surface.get_rect()
+                rect = self.surface.get_rect()
                 rect.topleft = (8 + 5 + 1, 9)
-                pygame.display.surface.blit(
-                    pygame.display.surface, rect)
+                self.surface.blit(
+                    self.surface, rect)
 
         class StatusBar:
             """
             Draw the status bar on the bottom of the screen
             """
 
-            def __init__(self):
-                self.main(self)
+            def __init__(self, app):
+                super()
+                self.app = app
+                self.surface = self.app.display.surface
+                self.main()
 
             def main(self):
-                connected_to_network = self.network.ssid()
+                connected_to_network = self.app.Network.ssid(self)
                 if connected_to_network is None:
                     connected_to_network = "Not connected"
 
-                pygame.draw.rect(pygame.display.surface, colors['lightbg'],
+                pygame.draw.rect(self.surface, colors['lightbg'],
                                     (0, screen_height - 16, screen_width, 16))
                 pygame.draw.line(
-                    pygame.display.surface, colors['white'], (0, screen_height - 17), (screen_width, screen_height - 17))
-                wlantext = self.font.font_mono_small.render(
+                    self.surface, colors['white'], (0, screen_height - 17), (screen_width, screen_height - 17))
+                wlantext = self.app.font.font_mono_small.render(
                     connected_to_network, True, colors['white'], colors['lightbg'])
                 wlan_text = wlantext.get_rect()
                 wlan_text.topleft = (2, screen_height - 16)
-                pygame.display.surface.blit(wlantext, wlan_text)
+                self.surface.blit(wlantext, wlan_text)
 
         class InterfaceStatus:
             """
             Draw the status of the wlan interface on the status bar
             """
 
-            def __init__(self):
+            def __init__(self, app):
                 super()
+                self.app = app
+                self.surface = self.app.display.surface
 
-                wlanstatus = self.interface.status()
+                wlanstatus = self.app.Interface.status(self)
                 if not wlanstatus:
                     wlanstatus = wlan+" is off."
                 else:
-                    wlanstatus = self.Network.ssid()
+                    wlanstatus = self.app.Network.ssid()
 
-                wlantext = self.font.font_mono_small.render(
+                wlantext = self.app.Font.font_mono_small.render(
                     wlanstatus, True, colors['white'], colors['lightbg'])
                 wlan_text = wlantext.get_rect()
                 wlan_text.topleft = (2, screen_height - 15)
-                pygame.display.surface.blit(wlantext, wlan_text)
+                self.surface.blit(wlantext, wlan_text)
 
                 # Note that the leading space here is intentional, to more cleanly overdraw
                 # any overly-long strings written to the screen beneath it (i.e. a very
                 # long ESSID)
-                if self.interface.status(self):
-                    ip_address = self.Address.ip()
+                if self.app.Interface.status(self):
+                    ip_address = self.app.Address.ip()
                     if ip_address is None:
                         ip_address = ''
                     text = self.font.font_mono_small.render(
@@ -1882,18 +2032,18 @@ class App:
                     interfacestatus_text = text.get_rect()
                     interfacestatus_text.topright = (
                         screen_width - 3, screen_height - 15)
-                    pygame.display.surface.blit(
+                    self.surface.blit(
                         text, interfacestatus_text)
                 else:
-                    mac = self.mac_addresses.get(wlan)
+                    mac = self.app.Address.mac()
                     if mac is not None:
-                        text = self.font.font_mono_small.render(
-                            " " + mac.decode("utf-8"),
+                        text = self.app.Font.font_mono_small.render(
+                            " " + mac,
                             True, colors['white'], colors['lightbg'])
                         interfacestatus_text = text.get_rect()
                         interfacestatus_text.topright = (
                             screen_width - 3, screen_height - 15)
-                        pygame.display.surface.blit(
+                        self.surface.blit(
                             text, interfacestatus_text)
 
         class Menu():
