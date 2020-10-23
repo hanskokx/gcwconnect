@@ -26,6 +26,7 @@ import sys
 import time
 from os import listdir
 from urllib import parse
+import re
 
 import pygame
 import pygame.gfxdraw
@@ -90,41 +91,52 @@ class App:
 
 
     class Address:
-        def ip():
+        def ip(ip=None):
             """
             Determine the IP address of the wlan interface. Ignores 169.254.x.x addresses.
 
             Returns:
                 str: The IP address of the interface, or None if unavailable.
             """
-            ip = None
+
+            # MRegex for valid IPs
+            regex = "^(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?).(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?).(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?).(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)$"
+
             try:
                 with open(os.devnull, "w") as fnull:
                     output = SU.Popen(['/sbin/ip', '-4', 'a', 'show', wlan],
                                     stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+                    for line in output:
+                        line = line.decode("utf-8").strip()
+                        if line.startswith("inet"):
+                            tmp = line.split()[1].split("/")[0]
+                            if not tmp.startswith("169.254"):
+                                ip = tmp
+            except IOError:
+                pass
 
-                for line in output:
-                    line = line.decode("utf-8").strip()
-                    if line.startswith("inet"):
-                        tmp = line.split()[1].split("/")[0]
-                        if not tmp.startswith("169.254"):
-                            ip = tmp
-            except:
-                ip = None
-            return ip
+            if(re.search(regex, str(ip))):
+                return ip
+            else:
+                return None
 
-        def mac():
+        def mac(mac=None):
             """
             Acquire the wlan MAC address
-
-            Returns:
-                bool/str: Returns the wlan MAC address, or False if the interface is disabled
             """
-            try:
-                with open("/sys/class/net/" + wlan + "/address", "rb") as mac_file:
-                    return mac_file.readline(17).decode("utf-8").strip()
-            except IOError:
-                return False  # WiFi is disabled
+            regex = "^[a-fA-F0-9]{2}(:[a-fA-F0-9]{2}){5}$"
+
+            if mac == None:
+                try:
+                    with open("/sys/class/net/" + wlan + "/address", "rb") as mac_file:
+                        mac = mac_file.readline(17).decode("utf-8").strip()
+                except IOError:
+                    return False  # WiFi is disabled
+
+            if(re.search(regex, str(mac))):
+                return mac
+            else:
+                return False
 
     class Network:
         def __init__(self, app):
@@ -327,10 +339,12 @@ class App:
             Returns:
                 bool: Return True if we are hosting an access point, otherwise return False
             """
+            try:
+                with open(os.devnull, "w") as fnull:
+                    output = SU.Popen(['sudo', '/sbin/ap', '--status'], stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+            except IOError:
+                output = ""
 
-            with open(os.devnull, "w") as fnull:
-                output = SU.Popen(['sudo', '/sbin/ap', '--status'],
-                                stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
             for line in output:
                 if line.decode("utf-8").strip() == 'ap is running':
                     return True
@@ -1598,8 +1612,11 @@ class App:
         try:
             pygame.font.Font(font_path, 10)
         except:
-            font_path = os.environ['HOME'] + \
-                '\\AppData\\Local\\Microsoft\\Windows\\Fonts\\DejaVuSans.ttf'
+            try:
+                font_path = os.environ['HOME'] + \
+                    '\\AppData\\Local\\Microsoft\\Windows\\Fonts\\DejaVuSans.ttf'
+            except KeyError:
+                font_path = 'test\\DejaVuSans.ttf'
 
         font_tiny = pygame.font.Font(font_path, 8)
         
@@ -1613,8 +1630,11 @@ class App:
         try:
             pygame.font.Font(font_mono_path, 10)
         except:
-            font_mono_path = os.environ['HOME'] + \
-                '\\AppData\\Local\\Microsoft\\Windows\\Fonts\\DejaVuSansMono.ttf'
+            try:
+                font_mono_path = os.environ['HOME'] + \
+                    '\\AppData\\Local\\Microsoft\\Windows\\Fonts\\DejaVuSansMono.ttf'
+            except KeyError:
+                font_mono_path = 'test\\DejaVuSansMono.ttf'
         font_mono_small = pygame.font.Font(font_mono_path, 11)
 
     class Configuration:
@@ -1624,7 +1644,12 @@ class App:
             self.app = app
             self.ssid = None
             self.password = None
-            self.confdir = os.environ['HOME'] + "/.local/share/gcwconnect/"
+
+            try:
+                home = os.environ['HOME']
+            except KeyError:
+                home = "."
+            self.confdir = home + "/.local/share/gcwconnect/"
             self.netconfdir = self.confdir+"networks/"
             self.sysconfdir = "/usr/local/etc/network/"
             self.datadir = "/usr/share/gcwconnect/"
@@ -2063,7 +2088,7 @@ class App:
                         text, interfacestatus_text)
                 else:
                     mac = self.app.Address.mac()
-                    if mac is not None:
+                    if mac is not None and mac is str:
                         text = self.app.Font.font_mono_small.render(
                             " " + mac,
                             True, colors['white'], colors['lightbg'])
