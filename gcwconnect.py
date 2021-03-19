@@ -79,7 +79,7 @@ class App:
         self.app.interface = self.Interface(app=self.app)
         self.app.address = self.Address()
         self.app.ap = self.AccessPoint()
-        self.app.network = self.Network(app=self.app)
+        self.app.network = self.Network()
 
         # self.app.wirelessmenu = self.menu.Saved(app=self.app)
 
@@ -99,7 +99,7 @@ class App:
                 str: The IP address of the interface, or None if unavailable.
             """
 
-            # MRegex for valid IPs
+            # Regex for valid IPv4 Addresses
             regex = "^(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?).(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?).(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?).(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)$"
 
             try:
@@ -139,21 +139,17 @@ class App:
                 return False
 
     class Network:
-        def __init__(self, app):
-            super()
-            self.app = app
 
-        def ssid(self):
+        def ssid(app, debug):
             """
             Determine which SSID the device is currently associated with
 
             Returns:
                 str: Returns the SSID of the network currently associated with; otherwise returns None if no network is associated.
             """
-            ssid = None
-            is_broadcasting_ap = self.app.AccessPoint.status()
+            is_broadcasting_ap = app.AccessPoint.status()
             try:
-                mac_address = self.address.mac().replace(":", "")
+                mac_address = app.address.mac().replace(":", "")
             except:
                 mac_address = ''
 

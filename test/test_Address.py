@@ -39,3 +39,14 @@ def test_mac_is_malformed():
   mac = "definitely:not:a:mac"
   test = app.Address.mac(mac=mac)
   assert(test) is False
+
+def test_mac_is_malformed_with_missing_semicolons():
+  mac = "0e-43-16-c1-05-5c"
+  test = app.Address.mac(mac=mac)
+  assert(test) is False
+
+
+def test_mac_is_malformed_with_incorrect_separator():
+  mac = "0e43.16c1.055c"
+  test = app.Address.mac(mac=mac)
+  assert(test) is False
