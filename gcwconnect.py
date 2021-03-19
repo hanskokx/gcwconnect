@@ -4,7 +4,7 @@
 #
 #	Requires: pygame, urllib, json
 #
-#	Copyright (c) 2013-2020 Hans Kokx
+#	Copyright (c) 2013-2021 Hans Kokx
 #
 #	Licensed under the GNU General Public License, Version 3.0 (the "License");
 #	you may not use this file except in compliance with the License.
@@ -33,10 +33,6 @@ from pygame.locals import *
 
 # What is our wireless interface?
 wlan = "wlan0"
-
-# What is our screen resolution?
-screen_width = 320
-screen_height = 240
 
 ###############################################################################
 #                                                                             #
@@ -74,6 +70,10 @@ if not os.path.exists(datadir):
 
 mac_addresses = {}
 
+dev_os = "win32"
+if sys.platform == dev_os:
+    DEBUG = True
+
 ###############################################################################
 #                                                                             #
 #                       Application initialization                            #
@@ -81,7 +81,13 @@ mac_addresses = {}
 ###############################################################################
 
 # Initialize the display, for pygame
-surface = pygame.display.set_mode((screen_width, screen_height))
+pygame.init()
+infoObject = pygame.display.Info()
+surface = pygame.display.set_mode((infoObject.current_w, infoObject.current_h))
+
+# What is our screen resolution?
+screen_width = infoObject.current_w
+screen_height = infoObject.current_h
 
 if not pygame.display.get_init():
     pygame.display.init()
@@ -176,6 +182,9 @@ def ifDown():
     Returns:
         bool/str: Returns a string with the status of the connection, False if not connected
     """
+    if DEBUG:
+        return
+
     try:
         SU.Popen(['sudo', '/sbin/ap', '--stop'], close_fds=True).wait()
     except:
@@ -197,6 +206,8 @@ def ifUp():
     Returns:
         bool/str: Returns a string with the status of the connection, False if not connected
     """
+    if DEBUG:
+        return
 
     SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
 
@@ -216,6 +227,8 @@ def enableIface():
         return False
 
     modal("Enabling WiFi...")
+    if DEBUG:
+        return
     while True:
         if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'up'],
                     close_fds=True).wait() == 0:
@@ -231,12 +244,13 @@ def disableIface():
     """
 
     modal("Disabling WiFi...")
+    if DEBUG:
+        return
     while True:
         if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'down'],
                     close_fds=True).wait() == 0:
             break
         time.sleep(0.1)
-
 
 
 def checkIfInterfaceIsDormant():
@@ -247,6 +261,8 @@ def checkIfInterfaceIsDormant():
         bool: False if the interface is dormant, otherwise True.
     """
     operstate = False
+    if DEBUG:
+        return
     try:
         with open("/sys/class/net/" + wlan + "/dormant", "rb") as state:
             return state.readline().decode("utf-8").strip()
@@ -293,6 +309,9 @@ def getIp():
     Returns:
         str: The IP address of the interface, or None if unavailable.
     """
+    if DEBUG:
+        return "Debug Environment"
+
     ip = None
     try:
         with open(os.devnull, "w") as fnull:
@@ -317,6 +336,8 @@ def getMacAddress():
     Returns:
         bool/str: Returns the wlan MAC address, or False if the interface is disabled
     """
+    if DEBUG:
+        return
     try:
         with open("/sys/class/net/" + wlan + "/address", "rb") as mac_file:
             return mac_file.readline(17).decode("utf-8").strip()
@@ -331,6 +352,8 @@ def getCurrentSSID():
     Returns:
         str: Returns the SSID of the network currently associated with; otherwise returns None if no network is associated.
     """
+    if DEBUG:
+        return
     ssid = None
     is_broadcasting_ap = isApStarted()
     try:
@@ -423,11 +446,13 @@ def scanForNetworks():
     interface_was_not_enabled = enableIface()
     modal("Scanning...")
 
+    if DEBUG:
+        return
 
     with open(os.devnull, "w") as fnull:
         output = SU.Popen(['sudo', '/usr/sbin/wlan-scan', wlan],
-                            stdout=SU.PIPE, stderr=fnull,
-                            close_fds=True, encoding="utf-8").stdout.readlines()
+                          stdout=SU.PIPE, stderr=fnull,
+                          close_fds=True, encoding="utf-8").stdout.readlines()
 
     aps = []
 
@@ -667,16 +692,17 @@ def isApStarted():
     Returns:
         bool: Return True if we are hosting an access point, otherwise return False
     """
+    if DEBUG:
+        return False
 
     with open(os.devnull, "w") as fnull:
         output = SU.Popen(['sudo', '/sbin/ap', '--status'],
-                            stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+                          stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
     for line in output:
         if line.decode("utf-8").strip() == 'ap is running':
             return True
         else:
             return False
-
 
 
 def startAp():
@@ -694,7 +720,8 @@ def startAp():
         enableIface()
 
     modal("Creating AP...")
-
+    if DEBUG:
+        return
     if SU.Popen(['sudo', '/sbin/ap', '--start'], close_fds=True).wait() == 0:
         if isApStarted() == True:
             modal('AP created!', timeout=True)
@@ -717,6 +744,8 @@ def stopAp():
     Returns:
         bool: True if able to tear down the AP, False otherwise
     """
+    if DEBUG:
+        return
     try:
         if isApStarted():
             modal("Stopping AP...")
@@ -734,7 +763,6 @@ def stopAp():
                 modal('Failed to stop AP...', wait=True)
                 redraw()
                 return False
-            return True
         else:
             return False
     except:
@@ -1184,8 +1212,8 @@ class key:
         key_width = 16
         key_height = 16
 
-        top = 136 + self.row * 20
-        left = 32 + self.column * 20
+        top = screen_height - 104 + self.row * 20
+        left = (screen_width / 2) - 128 + self.column * 20
 
         if len(self.key) > 1:
             key_width = 36
@@ -1208,19 +1236,24 @@ def drawKeyboard(board):
     global colors
 
     # Draw keyboard background
-    pygame.draw.rect(surface, colors['darkbg'], (0, 134, 320, 106))
+    pygame.draw.rect(
+        surface, colors['darkbg'], (0, 124, screen_width, screen_height - 124))
 
     # Draw bottom background
-    pygame.draw.rect(surface, colors['lightbg'], (0, 224, 320, 16))
-    pygame.draw.line(surface, colors['white'],      (0, 223), (320, 223))
+    pygame.draw.rect(surface, colors['lightbg'],
+                     (0, screen_height - 16, screen_width, 16))
+    pygame.draw.line(surface, colors['white'],
+                     (0, screen_height - 17), (screen_width, screen_height - 17))
 
-    #    Button		Label		x-pos	y-pos	Background color
-    hint("select", 	"Cancel", 	4, 		227, 	colors['lightbg'])
-    hint("start", 	"Finish", 	75, 	227, 	colors['lightbg'])
-    hint("x", 		"Delete",	155, 	227, 	colors['lightbg'])
-    hint("y", 		"Shift", 	200, 	227, 	colors['lightbg'])
-    hint("b", 		"Space", 	240, 	227, 	colors['lightbg'])
-    hint("a", 		"Enter", 	285, 	227, 	colors['lightbg'])
+    hint_y = screen_height - 13
+
+    #    Button		Label		x-pos	y-pos	    Background color
+    hint("select", 	"Cancel", 	4, 		hint_y, 	colors['lightbg'])
+    hint("start", 	"Finish", 	75, 	hint_y, 	colors['lightbg'])
+    hint("x", 		"Delete",	155, 	hint_y, 	colors['lightbg'])
+    hint("y", 		"Shift", 	200, 	hint_y, 	colors['lightbg'])
+    hint("b", 		"Space", 	240, 	hint_y, 	colors['lightbg'])
+    hint("a", 		"Enter", 	285, 	hint_y, 	colors['lightbg'])
 
     # Draw the keys
     z = key()
@@ -1329,7 +1362,7 @@ def softKeyInput(keyboard, kind, ssid):
                 return False
 
 
-def displayInputLabel(kind, size=24):
+def displayInputLabel(kind):
     """
     Display text entered using the soft keyboard on the display.
 
@@ -1340,9 +1373,9 @@ def displayInputLabel(kind, size=24):
     global colors
 
     if kind == "ssid":
-        pygame.draw.rect(surface, colors['darkbg'], (0, 100, 320, 34))
+        pygame.draw.rect(surface, colors['darkbg'], (0, 100, screen_width, 34))
         labelblock = pygame.draw.rect(
-            surface, colors['white'], (0, 35, 320, 20))
+            surface, colors['white'], (0, 35, screen_width, 20))
         labeltext = font_large.render(
             "Enter new SSID", True, colors['lightbg'], colors['white'])
         label = labeltext.get_rect()
@@ -1351,17 +1384,19 @@ def displayInputLabel(kind, size=24):
 
     elif kind == "key":
         labelblock = pygame.draw.rect(
-            surface, colors['white'], (0, 35, 320, 20))
+            surface, colors['white'], (0, 35, screen_width, 20))
         labeltext = font_large.render(
             "Enter network key", True, colors['lightbg'], colors['white'])
         label = labeltext.get_rect()
         label.center = labelblock.center
         surface.blit(labeltext, label)
 
-    hintblock = pygame.draw.rect(surface, colors['darkbg'], (0, 100, 320, 34))
+    # Hint block
+    pygame.draw.rect(
+        surface, colors['darkbg'], (0, 100, screen_width, 34))
 
     # Input area
-    bg = pygame.draw.rect(surface, colors['white'], (0, 55, 320, 45))
+    bg = pygame.draw.rect(surface, colors['white'], (0, 55, screen_width, 45))
     text = "[ "
     text += passphrase
     text += " ]"
@@ -1385,8 +1420,8 @@ def selectKey(keyboard, kind, direction=""):
         drawKeyboard(keyboard)
         pygame.display.update()
 
-        left_margin = 32
-        top_margin = 136
+        left_margin = (screen_width / 2) - 128
+        top_margin = screen_height - 104
 
         if pos[0] > left_margin:
             x = left_margin + (16 * (pos[0]))
@@ -1405,7 +1440,9 @@ def selectKey(keyboard, kind, direction=""):
             (x, y + 16),
             (x, y)
         ]
-        lines = pygame.draw.lines(surface, (255, 255, 255), True, pointlist, 1)
+
+        # Lines
+        pygame.draw.lines(surface, (255, 255, 255), True, pointlist, 1)
         pygame.display.update()
 
     global selected_key
