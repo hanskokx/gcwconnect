@@ -34,7 +34,7 @@ import pygame
 from pygame.locals import *
 import pygame.gfxdraw
 from os import listdir
-from urllib import quote_plus, unquote_plus
+from urllib.parse import quote_plus, unquote_plus
 
 # What is our wireless interface?
 wlan = "wlan0"
@@ -46,8 +46,6 @@ sysconfdir = "/usr/local/etc/network/"
 datadir = "/usr/share/gcwconnect/"
 if not os.path.exists(datadir):
 	datadir = "data/"
-
-surface = pygame.display.set_mode((320,240))
 selected_key = ''
 passphrase = ''
 active_menu = ''
@@ -74,26 +72,49 @@ colors = {
 
 mac_addresses = {}
 
+dev_os = "win32"
+if sys.platform == dev_os:
+    DEBUG = True
 
-## Initialize the display, for pygame
+pygame.init()
+infoObject = pygame.display.Info()
+surface = pygame.display.set_mode((infoObject.current_w, infoObject.current_h))
+
+# What is our screen resolution?
+screen_width = infoObject.current_w
+screen_height = infoObject.current_h
+
 if not pygame.display.get_init():
-	pygame.display.init()
+    pygame.display.init()
 if not pygame.font.get_init():
-	pygame.font.init()
+    pygame.font.init()
 
 surface.fill(colors["darkbg"])
 pygame.mouse.set_visible(False)
 pygame.key.set_repeat(199,69) #(delay,interval)
 
-## Fonts
-font_path   = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+# Fonts
+font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+try:
+    pygame.font.Font(font_path, 10)
+except:
+    font_path = os.environ['HOME'] + \
+        '\\AppData\\Local\\Microsoft\\Windows\\Fonts\\DejaVuSans.ttf'
 font_tiny   = pygame.font.Font(font_path, 8)
 font_small  = pygame.font.Font(font_path, 10)
 font_medium = pygame.font.Font(font_path, 12)
 font_large  = pygame.font.Font(font_path, 16)
 font_huge   = pygame.font.Font(font_path, 48)
-gcw_font        = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
-font_mono_small = pygame.font.Font(os.path.join(datadir, 'Inconsolata.otf'), 11)
+
+font_mono_path = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'
+try:
+    pygame.font.Font(font_mono_path, 10)
+except:
+    font_mono_path = os.environ['HOME'] + \
+        '\\AppData\\Local\\Microsoft\\Windows\\Fonts\\DejaVuSansMono.ttf'
+font_mono_small = pygame.font.Font(font_mono_path, 11)
+
+gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
 
 ## File management
 def createpaths(): # Create paths, if necessary
@@ -106,8 +127,11 @@ def createpaths(): # Create paths, if necessary
 
 ## Interface management
 def ifdown(iface):
-	SU.Popen(['ifdown', iface], close_fds=True).wait()
-	SU.Popen(['ap', '--stop'], close_fds=True).wait()
+    if DEBUG:
+        return
+    else:
+        SU.Popen(['ifdown', iface], close_fds=True).wait()
+        SU.Popen(['ap', '--stop'], close_fds=True).wait()
 
 def ifup(iface):
 	return SU.Popen(['ifup', iface], close_fds=True).wait() == 0
@@ -132,26 +156,36 @@ def enableiface(iface):
 	mac_addresses[iface] = getmac(iface)
 	return True
 
-def disableiface(iface):
-	SU.Popen(['rfkill', 'block', 'wlan'], close_fds=True).wait()
+
+def disableiface():
+    if DEBUG:
+        return
+    else:
+        SU.Popen(['rfkill', 'block', 'wlan'], close_fds=True).wait()
 
 def getip(iface):
-	with open(os.devnull, "w") as fnull:
-		output = SU.Popen(['/sbin/ifconfig', iface],
-				stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
+    if DEBUG:
+        return "Debug IP"
+    else:
+        with open(os.devnull, "w") as fnull:
+            output = SU.Popen(['/sbin/ifconfig', iface],
+                    stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
 
-	for line in output:
-		if line.strip().startswith("inet addr"):
-			return str.strip(
-					line[line.find('inet addr')+len('inet addr"') :
-					line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
+    for line in output:
+        if line.strip().startswith("inet addr"):
+            return str.strip(
+                    line[line.find('inet addr')+len('inet addr"') :
+                    line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
 
 def getmac(iface):
-	try:
-		with open("/sys/class/net/" + iface + "/address", "rb") as mac_file:
-			return mac_file.readline(17)
-	except IOError:
-		return None  # WiFi is disabled
+    if DEBUG:
+        return "Debug MAC"
+    else:
+        try:
+            with open("/sys/class/net/" + iface + "/address", "rb") as mac_file:
+                return mac_file.readline(17)
+        except IOError:
+            return None  # WiFi is disabled
 
 def getcurrentssid(iface): # What network are we connected to?
 	if not checkinterfacestatus(iface):
@@ -374,8 +408,8 @@ class LogoBar(object):
 		self.text2 = gcw_font.render('CONNECT', True, colors['logoconnect'], colors['lightbg'])
 
 	def draw(self):
-		pygame.draw.rect(surface, colors['lightbg'], (0,0,320,34))
-		pygame.draw.line(surface, colors['white'], (0, 34), (320, 34))
+		pygame.draw.rect(surface, colors['lightbg'], (0, 0, screen_width, 34))
+		pygame.draw.line(surface, colors['white'], (0, 34), (screen_width, 34))
 
 		rect1 = self.text1.get_rect()
 		rect1.topleft = (8 + 5 + 1, 5)
@@ -387,11 +421,14 @@ class LogoBar(object):
 
 def drawstatusbar(): # Set up the status bar
 	global colors
-	pygame.draw.rect(surface, colors['lightbg'], (0,224,320,16))
-	pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
-	wlantext = font_mono_small.render("...", True, colors['white'], colors['lightbg'])
+	pygame.draw.rect(surface, colors['lightbg'],
+	                 (0, screen_height - 16, screen_width, 16))
+	pygame.draw.line(
+		surface, colors['white'], (0, screen_height - 17), (screen_width, screen_height - 17))
+	wlantext = font_mono_small.render(
+		"...", True, colors['white'], colors['lightbg'])
 	wlan_text = wlantext.get_rect()
-	wlan_text.topleft = (2, 225)
+	wlan_text.topleft = (2, screen_height - 16)
 	surface.blit(wlantext, wlan_text)
 
 def drawinterfacestatus(): # Interface status badge
@@ -404,7 +441,7 @@ def drawinterfacestatus(): # Interface status badge
 
 	wlantext = font_mono_small.render(wlanstatus, True, colors['white'], colors['lightbg'])
 	wlan_text = wlantext.get_rect()
-	wlan_text.topleft = (2, 225)
+	wlan_text.topleft = (2, screen_height - 15)
 	surface.blit(wlantext, wlan_text)
 
 	# Note that the leading space here is intentional, to more cleanly overdraw any overly-long
@@ -412,14 +449,14 @@ def drawinterfacestatus(): # Interface status badge
 	if checkinterfacestatus(wlan):
 		text = font_mono_small.render(" "+getip(wlan), True, colors['white'], colors['lightbg'])
 		interfacestatus_text = text.get_rect()
-		interfacestatus_text.topright = (317, 225)
+		interfacestatus_text.topright = (screen_width - 3, screen_height - 15)
 		surface.blit(text, interfacestatus_text)
 	else:
 		mac = mac_addresses.get(wlan)  # grabbed by enableiface()
 		if mac is not None:
 			text = font_mono_small.render(" "+mac, True, colors['white'], colors['lightbg'])
 			interfacestatus_text = text.get_rect()
-			interfacestatus_text.topright = (317, 225)
+			interfacestatus_text.topright = (screen_width - 3, screen_height - 15)
 			surface.blit(text, interfacestatus_text)
 
 def redraw():
@@ -429,16 +466,16 @@ def redraw():
 	mainmenu()
 	if wirelessmenu is not None:
 		wirelessmenu.draw()
-		pygame.draw.rect(surface, colors['darkbg'], (0, 208, 320, 16))
-		hint("select", "Edit", 4, 210)
-		hint("a", "Connect", 75, 210)
-		hint("b", "/", 130, 210)
-		hint("left", "Back", 145, 210)
+		pygame.draw.rect(surface, colors['darkbg'], (0, 208, screen_width, 16))
+		hint("select", "Edit", 4, screen_height - 30)
+		hint("a", "Connect", 75, screen_height - 30)
+		hint("b", "/", 130, screen_height - 30)
+		hint("left", "Back", 145, screen_height - 30)
 	if active_menu == "main":
-		pygame.draw.rect(surface, colors['darkbg'], (0, 208, 320, 16))
-		hint("a", "Select", 8, 210)
+		pygame.draw.rect(surface, colors['darkbg'], (0, 208, screen_width, 16))
+		hint("a", "Select", 8, screen_height - 30)
 	if active_menu == "saved":
-		hint("y", "Forget", 195, 210)
+		hint("y", "Forget", 195, screen_height - 30)
 
 	drawstatusbar()
 	drawinterfacestatus()
@@ -560,68 +597,101 @@ def nextKeyboard(board):
 			(keyboardCycleOrder.index(board) + 1) % len(keyboardCycleOrder)
 			]
 
+
 class key:
-	global colors
-	def __init__(self):
-		self.key = []
-		self.selection_color = colors['activeselbg']
-		self.text_color = colors['activetext']
-		self.selection_position = (0,0)
-		self.selected_item = 0
+    """
+    Draw a single key on the keyboard
+    """
+    global colors
 
-	def init(self, key, row, column):
-		self.key = key
-		self.row = row
-		self.column = column
-		self.drawkey()
+    def __init__(self):
+        self.key = []
+        self.selection_color = colors['activeselbg']
+        self.text_color = colors['activetext']
+        self.selection_position = (0, 0)
+        self.selected_item = 0
 
-	def drawkey(self):
-		key_width = 16
-		key_height = 16
+    def init(self, key, row, column):
+        self.key = key
+        self.row = row
+        self.column = column
+        self.drawkey()
 
-		top = 136 + self.row * 20
-		left = 32 + self.column * 20
+    def drawkey(self):
+        key_width = 16
+        key_height = 16
 
-		if len(self.key) > 1:
-			key_width = 36
-		keybox = pygame.draw.rect(surface, colors['lightbg'], (left,top,key_width,key_height))
-		text = font_medium.render(self.key, True, colors['white'], colors['lightbg'])
-		label = text.get_rect()
-		label.center = keybox.center
-		label.y -= 1
-		surface.blit(text, label)
+        top = screen_height - 104 + self.row * 20
+        left = (screen_width / 2) - 128 + self.column * 20
+
+        if len(self.key) > 1:
+            key_width = 36
+        keybox = pygame.draw.rect(
+            surface, colors['lightbg'], (left, top, key_width, key_height))
+        text = font_medium.render(
+            self.key, True, colors['white'], colors['lightbg'])
+        label = text.get_rect()
+        label.center = keybox.center
+        label.y -= 1
+        surface.blit(text, label)
+
+
+def aaFilledCircle(color, center, radius):
+    """
+    Helper function to draw anti-aliased circles using an interface similar
+    to pygame.draw.circle.
+
+    Args:
+        color (0-255, 0-255, 0-255): The color used to draw the circle.
+        center (int,int): The coordinates of the center of the circle.
+        radius (int): The distance to the center of the circle to the edge.
+
+    Returns:
+        [type]: [description]
+    """
+
+    x, y = center
+    pygame.gfxdraw.aacircle(surface, x, y, radius, color)
+    pygame.gfxdraw.filled_circle(surface, x, y, radius, color)
+    return Rect(x - radius, y - radius, radius * 2 + 1, radius * 2 + 1)
+
 
 class radio:
-	global colors
-	def __init__(self):
-		self.key = []
-		self.selection_color = colors['activeselbg']
-		self.text_color = colors['activetext']
-		self.selection_position = (0,0)
-		self.selected_item = 0
+    """
+    Draw a standard radio button
+    """
+    global colors
 
-	def init(self, key, row, column):
-		self.key = key
-		self.row = row
-		self.column = column
-		self.drawkey()
+    def __init__(self):
+        self.key = []
+        self.selection_color = colors['activeselbg']
+        self.text_color = colors['activetext']
+        self.selection_position = (0, 0)
+        self.selected_item = 0
 
-	def drawkey(self):
-		key_width = 64
-		key_height = 16
+    def init(self, key, row, column):
+        self.key = key
+        self.row = row
+        self.column = column
+        self.drawkey()
 
-		top = 136 + self.row * 20
-		left = 32 + self.column * 64
+    def drawkey(self):
+        key_width = 64
+        key_height = 16
 
-		if len(self.key) > 1:
-			key_width = 64
-		radiobutton = aafilledcircle(surface, colors['white'], (left, top), 8)
-		aafilledcircle(surface, colors['darkbg'], (left, top), 6)
-		text = font_medium.render(self.key, True, (255, 255, 255), colors['darkbg'])
-		label = text.get_rect()
-		label.left = radiobutton.right + 8
-		label.top = radiobutton.top + 4
-		surface.blit(text, label)
+        top = 136 + self.row * 20
+        left = 32 + self.column * 64
+
+        if len(self.key) > 1:
+            key_width = 64
+        radiobutton = aaFilledCircle(colors['white'], (left, top), 8)
+        aaFilledCircle(colors['darkbg'], (left, top), 6)
+        text = font_medium.render(
+            self.key, True, (255, 255, 255), colors['darkbg'])
+        label = text.get_rect()
+        label.left = radiobutton.right + 8
+        label.top = radiobutton.top + 4
+        surface.blit(text, label)
 
 def getSSID():
 	global passphrase
@@ -632,14 +702,15 @@ def getSSID():
 	passphrase = ''
 	return ssid
 
+
 def drawEncryptionType():
 	global colors
 	# Draw top background
-	pygame.draw.rect(surface, colors['darkbg'], (0,40,320,200))
+	pygame.draw.rect(surface, colors['darkbg'], (0, 40, screen_width, 200))
 
 	# Draw footer
-	pygame.draw.rect(surface, colors['lightbg'], (0,224,320,16))
-	pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
+	pygame.draw.rect(surface, colors['lightbg'], (0, 224, screen_width, 16))
+	pygame.draw.line(surface, colors['white'], (0, 223), (screen_width, 223))
 	hint("select", "Cancel", 4, 227, colors['lightbg'])
 	hint("a", "Enter", 285, 227, colors['lightbg'])
 
@@ -663,7 +734,7 @@ def displayencryptionhint():
 
 	try:
 		if encryption:
-			pygame.draw.rect(surface, colors['darkbg'], (0,100,320,34))
+			pygame.draw.rect(surface, colors['darkbg'], (0,100,screen_width,34))
 			hint("l", "L", 16, 113)
 			hint("r", "R", 289, 113)
 
@@ -751,23 +822,30 @@ def drawkeyboard(board):
 	global colors
 
 	# Draw keyboard background
-	pygame.draw.rect(surface, colors['darkbg'], (0,134,320,106))
+	pygame.draw.rect(surface, colors['darkbg'],
+	                 (0, 124, screen_width, screen_height - 124))
 
 	# Draw bottom background
-	pygame.draw.rect(surface, colors['lightbg'], (0,224,320,16))
-	pygame.draw.line(surface, colors['white'], (0, 223), (320, 223))
+	pygame.draw.rect(surface, colors['lightbg'],
+	                 (0, screen_height - 16, screen_width, 16))
+	pygame.draw.line(surface, colors['white'],
+                  (0, screen_height - 17), (screen_width, screen_height - 17))
 
-	hint("select", "Cancel", 4, 227, colors['lightbg'])
-	hint("start", "Finish", 75, 227, colors['lightbg'])
-	hint("x", "Delete", 155, 227, colors['lightbg'])
+	hint_y = screen_height - 13
+
+	#    Button		Label		x-pos		y-pos	    Background color
+	hint("select", 	"Cancel", 	4, 			hint_y, 	colors['lightbg'])
+	hint("start", 	"Finish", 	75, 		hint_y, 	colors['lightbg'])
+	hint("x", 		"Delete",	155, 		hint_y, 	colors['lightbg'])
+
 	if not board == "wep":
-		hint("y", "Shift", 200, 227, colors['lightbg'])
-		hint("b", "Space", 240, 227, colors['lightbg'])
+		hint("y", "Shift", 200, hint_y, colors['lightbg'])
+		hint("b", "Space", 240, hint_y, colors['lightbg'])
 
 	else:
-		hint("y", "Full KB", 200, 227, colors['lightbg'])
+		hint("y", "Full KB", 200, hint_y, colors['lightbg'])
 
-	hint("a", "Enter", 285, 227, colors['lightbg'])
+	hint("a", "Enter", 285, hint_y, colors['lightbg'])
 
 	# Draw the keys
 	z = key()
@@ -855,8 +933,8 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 
 	if kind == "ssid":
 		# Draw SSID and encryption type labels
-		pygame.draw.rect(surface, colors['darkbg'], (0,100,320,34))
-		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,320,20))
+		pygame.draw.rect(surface, colors['darkbg'], (0,100,screen_width,34))
+		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,screen_width,20))
 		labeltext = font_large.render("Enter new SSID", True, colors['lightbg'], colors['white'])
 		label = labeltext.get_rect()
 		label.center = labelblock.center
@@ -865,7 +943,7 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 	elif kind == "key":
 		displayencryptionhint()
 		# Draw SSID and encryption type labels
-		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,320,20))
+		labelblock = pygame.draw.rect(surface, colors['white'], (0,35,screen_width,20))
 		labeltext = font_large.render("Enter "+encryption+" key", True, colors['lightbg'], colors['white'])
 		label = labeltext.get_rect()
 		label.center = labelblock.center
@@ -873,7 +951,7 @@ def displayinputlabel(kind, size=24): # Display passphrase on screen
 		update()
 
 	# Input area
-	bg = pygame.draw.rect(surface, colors['white'], (0, 55, 320, 45))
+	bg = pygame.draw.rect(surface, colors['white'], (0, 55, screen_width, 45))
 	text = "[ "
 	text += passphrase
 	text += " ]"
@@ -888,8 +966,8 @@ def selectkey(keyboard, kind, direction=""):
 		drawkeyboard(keyboard)
 		pygame.display.update()
 
-		left_margin = 32
-		top_margin = 136
+		left_margin = (screen_width / 2) - 128
+		top_margin = screen_height - 104
 
 		if pos[0] > left_margin:
 			x = left_margin + (16 * (pos[0]))
@@ -1044,7 +1122,7 @@ class Menu:
 
 		# Elements
 		top = 0
-		for i in xrange(len(visible_elements)):
+		for i in range(len(visible_elements)):
 			self.render_element(menu_surface, visible_elements[i], 0, top)
 			top += heights[i]
 		self.dest_surface.blit(menu_surface,self.origin)
@@ -1179,7 +1257,7 @@ class NetworksMenu(Menu):
 
 		# Elements
 		top = 0
-		for i in xrange(len(visible_elements)):
+		for i in range(len(visible_elements)):
 			self.render_element(menu_surface, visible_elements[i], 0, top)
 			top += heights[i]
 		self.dest_surface.blit(menu_surface,self.origin)
@@ -1311,9 +1389,9 @@ def create_saved_networks_menu():
 						# TODO: fix for 128-bit wep
 						detail['Key'] = value
 		except IOError as ex:
-			print 'Error reading conf:', ex
+			print('Error reading conf:', ex)
 		except ValueError as ex:
-			print 'Error parsing conf line:', line.strip()
+			print('Error parsing conf line:', line.strip())
 		else:
 			uniqssids[ssid] = detail
 			menu += 1
@@ -1342,7 +1420,7 @@ def convert_file_names():
 	try:
 		confNames = listdir(netconfdir)
 	except IOError as ex:
-		print "Failed to list files in '%s': %s" (netconfdir, ex)
+		print("Failed to list files in '%s': %s" (netconfdir, ex))
 	else:
 		for confName in confNames:
 			if not confName.endswith('.conf'):
@@ -1352,7 +1430,7 @@ def convert_file_names():
 				try:
 					os.rename(os.path.join(netconfdir, old), os.path.join(netconfdir, new))
 				except IOError as ex:
-					print "Failed to rename old-style network configuration file '%s' to '%s': %s" % (os.path.join(netconfdir, old), new, ex)
+					print("Failed to rename old-style network configuration file '%s' to '%s': %s" % (os.path.join(netconfdir, old), new, ex))
 
 if __name__ == "__main__":
 	# Persistent variables
