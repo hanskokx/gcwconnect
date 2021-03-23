@@ -37,7 +37,7 @@ import pygame
 from pygame.locals import *
 import pygame.gfxdraw
 from os import listdir
-from urllib.parse import quote_plus, unquote_plus
+from urllib import quote_plus, unquote_plus
 
 # What is our wireless interface?
 wlan = "wlan0"
