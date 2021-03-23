@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-#	wificonfig.py
+#	gcwconnect.py
 #
 #	Requires: pygame
 #
-#	Copyright (c) 2013 Hans Kokx
+#	Copyright (c) 2013-2021 Hans Kokx
 #
 #	Licensed under the GNU General Public License, Version 3.0 (the "License");
 #	you may not use this file except in compliance with the License.
@@ -29,7 +29,10 @@ TODO:
 
 
 import subprocess as SU
-import sys, time, os, shutil
+import sys
+import time
+import os
+import shutil
 import pygame
 from pygame.locals import *
 import pygame.gfxdraw
@@ -39,7 +42,7 @@ from urllib.parse import quote_plus, unquote_plus
 # What is our wireless interface?
 wlan = "wlan0"
 
-## That's it for options. Everything else below shouldn't be edited.
+# That's it for options. Everything else below shouldn't be edited.
 confdir = os.environ['HOME'] + "/.local/share/gcwconnect/"
 netconfdir = confdir+"networks/"
 sysconfdir = "/usr/local/etc/network/"
@@ -49,7 +52,7 @@ if not os.path.exists(datadir):
 selected_key = ''
 passphrase = ''
 active_menu = ''
-encryptiontypes = ("WEP-40","WEP-128","WPA", "WPA2")
+encryptiontypes = ("WEP-40", "WEP-128", "WPA", "WPA2")
 encryptionLabels = ('None', 'WEP', 'WPA', 'WPA2')
 colors = {
 		"darkbg": (41, 41, 41),
@@ -58,10 +61,10 @@ colors = {
 		"inactiveselbg": (84, 84, 84),
 		"activetext": (255, 255, 255),
 		"inactivetext": (128, 128, 128),
-		"lightgrey": (200,200,200),
+		"lightgrey": (200, 200, 200),
 		'logogcw': (255, 255, 255),
 		'logoconnect': (216, 32, 32),
-		"color": (255,255,255),
+		"color": (255, 255, 255),
 		"yellow": (128, 128, 0),
 		"blue": (0, 0, 128),
 		"red": (128, 0, 0),
@@ -116,8 +119,7 @@ font_mono_small = pygame.font.Font(font_mono_path, 11)
 
 gcw_font = pygame.font.Font(os.path.join(datadir, 'gcwzero.ttf'), 25)
 
-## File management
-def createpaths(): # Create paths, if necessary
+def createpaths():  # Create paths, if necessary
 	if not os.path.exists(confdir):
 		os.makedirs(confdir)
 	if not os.path.exists(netconfdir):
@@ -125,7 +127,9 @@ def createpaths(): # Create paths, if necessary
 	if not os.path.exists(sysconfdir):
 		os.makedirs(sysconfdir)
 
-## Interface management
+# Interface management
+
+
 def ifdown(iface):
     if DEBUG:
         return
@@ -133,10 +137,15 @@ def ifdown(iface):
         SU.Popen(['ifdown', iface], close_fds=True).wait()
         SU.Popen(['ap', '--stop'], close_fds=True).wait()
 
+
 def ifup(iface):
+	if DEBUG:
+		return
 	return SU.Popen(['ifup', iface], close_fds=True).wait() == 0
 
 # Returns False if the interface was previously enabled
+
+
 def enableiface(iface):
 	check = checkinterfacestatus(iface)
 	if check:
@@ -145,7 +154,8 @@ def enableiface(iface):
 	modal("Enabling WiFi...")
 	drawinterfacestatus()
 	pygame.display.update()
-
+	if DEBUG:
+		return
 	SU.Popen(['rfkill', 'unblock', 'wlan'], close_fds=True).wait()
 	while True:
 		if SU.Popen(['/sbin/ifconfig', iface, 'up'], close_fds=True).wait() == 0:
@@ -177,6 +187,7 @@ def getip(iface):
                     line[line.find('inet addr')+len('inet addr"') :
                     line.find('Bcast')+len('Bcast')].rstrip('Bcast'))
 
+
 def getmac(iface):
     if DEBUG:
         return "Debug MAC"
@@ -187,7 +198,10 @@ def getmac(iface):
         except IOError:
             return None  # WiFi is disabled
 
-def getcurrentssid(iface): # What network are we connected to?
+
+def getcurrentssid(iface):  # What network are we connected to?
+	if DEBUG:
+		return "Debug"
 	if not checkinterfacestatus(iface):
 		return None
 
@@ -196,13 +210,16 @@ def getcurrentssid(iface): # What network are we connected to?
 				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
 	for line in output:
 		if line.strip().startswith(iface):
-			ssid = str.strip(line[line.find('ESSID')+len('ESSID:"'):line.find('Nickname:')+len('Nickname:')].rstrip(' Nickname:').rstrip('"'))
+			ssid = str.strip(line[line.find('ESSID')+len('ESSID:"'):line.find(
+			    'Nickname:')+len('Nickname:')].rstrip(' Nickname:').rstrip('"'))
 	return ssid
+
 
 def checkinterfacestatus(iface):
 	return getip(iface) != None
 
-def connect(iface): # Connect to a network
+
+def connect(iface):  # Connect to a network
 	saved_file = netconfdir + quote_plus(ssid) + ".conf"
 	if os.path.exists(saved_file):
 		shutil.copy2(saved_file, sysconfdir+"config-"+iface+".conf")
@@ -221,15 +238,18 @@ def connect(iface): # Connect to a network
 	drawinterfacestatus()
 	return True
 
+
 def disconnect(iface):
 	if checkinterfacestatus(iface):
 		modal("Disconnecting...")
 		ifdown(iface)
 
-def getnetworks(iface): # Run iwlist to get a list of networks in range
+
+def getnetworks(iface):  # Run iwlist to get a list of networks in range
 	wasnotenabled = enableiface(iface)
 	modal("Scanning...")
-
+	if DEBUG:
+		return
 	with open(os.devnull, "w") as fnull:
 		output = SU.Popen(['iwlist', iface, 'scan'],
 				stdout=SU.PIPE, stderr=fnull, close_fds=True).stdout.readlines()
@@ -253,6 +273,7 @@ def getnetworks(iface): # Run iwlist to get a list of networks in range
 		disableiface(iface)
 	return networks
 
+
 def listuniqssids():
 	menuposition = 0
 	uniqssid = {}
@@ -266,20 +287,27 @@ def listuniqssids():
 			menuposition += 1
 	return uniqssids
 
-## Parsing iwlist output for various components
+# Parsing iwlist output for various components
+
+
 def parsemac(macin):
-	mac = str.strip(macin[macin.find("Address:")+len("Address: "):macin.find("\n")+len("\n")])
+	mac = str.strip(macin[macin.find("Address:") +
+	                len("Address: "):macin.find("\n")+len("\n")])
 	return mac
+
 
 def parseessid(essid):
 	essid = str.strip(essid[essid.find('ESSID:"')+len('ESSID:"'):essid.find('"\n')+len('"\n')].rstrip('"\n'))
 	return essid
 
+
 def parsequality(quality):
-	quality = quality[quality.find("Quality=")+len("Quality="):quality.find(" S")+len(" S")].rstrip(" S")
+	quality = quality[quality.find(
+	    "Quality=")+len("Quality="):quality.find(" S")+len(" S")].rstrip(" S")
 	if len(quality) < 1:
 		quality = '0/100'
 	return quality
+
 
 def parseencryption(encryption):
 	encryption = str.strip(encryption)
@@ -296,6 +324,7 @@ def parseencryption(encryption):
 		encryption = "Encrypted (unknown)"
 	return encryption
 
+
 def aafilledcircle(surface, color, center, radius):
 	'''Helper function to draw anti-aliased circles using an interface similar
 	to pygame.draw.circle.
@@ -305,9 +334,12 @@ def aafilledcircle(surface, color, center, radius):
 	pygame.gfxdraw.filled_circle(surface, x, y, radius, color)
 	return Rect(x - radius, y - radius, radius * 2 + 1, radius * 2 + 1)
 
-## Draw interface elements
+# Draw interface elements
+
+
 class hint:
 	global colors
+
 	def __init__(self, button, text, x, y, bg=colors["darkbg"]):
 		self.button = button
 		self.text = text
@@ -322,13 +354,14 @@ class hint:
 				aafilledcircle(surface, colors["black"], (self.x, self.y+5), 5)
 				pygame.draw.rect(surface, colors["black"], (self.x-5, self.y+6, 10, 5))
 
-
 			if self.button == 'r':
 				aafilledcircle(surface, colors["black"], (self.x+15, self.y+5), 5)
 				pygame.draw.rect(surface, colors["black"], (self.x+11, self.y+6, 10, 5))
 
-			button = pygame.draw.rect(surface, colors["black"], (self.x, self.y, 15, 11))
-			text = font_tiny.render(self.button.upper(), True, colors["white"], colors["black"])
+			button = pygame.draw.rect(
+			    surface, colors["black"], (self.x, self.y, 15, 11))
+			text = font_tiny.render(self.button.upper(), True,
+			                        colors["white"], colors["black"])
 			buttontext = text.get_rect()
 			buttontext.center = button.center
 			surface.blit(text, buttontext)
@@ -343,17 +376,19 @@ class hint:
 			straightbox.height = (straightbox.height + 1) / 2
 			pygame.draw.rect(surface, colors["black"], straightbox)
 
-			roundedbox = Rect(lbox.midtop, (rbox.midtop[0] - lbox.midtop[0], lbox.height - straightbox.height))
+			roundedbox = Rect(
+			    lbox.midtop, (rbox.midtop[0] - lbox.midtop[0], lbox.height - straightbox.height))
 			if self.button == 'start':
 				roundedbox.bottomleft = lbox.midbottom
 			pygame.draw.rect(surface, colors["black"], roundedbox)
-			text = font_tiny.render(self.button.upper(), True, colors["white"], colors["black"])
+			text = font_tiny.render(self.button.upper(), True,
+			                        colors["white"], colors["black"])
 			buttontext = text.get_rect()
 			buttontext.center = buttoncenter
 			buttontext.move_ip(0, 1)
 			surface.blit(text, buttontext)
 
-			labelblock = pygame.draw.rect(surface, self.bg, (self.x+40,self.y,25,14))
+			labelblock = pygame.draw.rect(surface, self.bg, (self.x+40, self.y, 25, 14))
 			labeltext = font_tiny.render(self.text, True, colors["white"], self.bg)
 			surface.blit(labeltext, labelblock)
 
@@ -367,11 +402,11 @@ class hint:
 			elif self.button == "y":
 				color = colors["yellow"]
 
-			labelblock = pygame.draw.rect(surface, self.bg, (self.x+10,self.y,35,14))
+			labelblock = pygame.draw.rect(surface, self.bg, (self.x+10, self.y, 35, 14))
 			labeltext = font_tiny.render(self.text, True, colors["white"], self.bg)
 			surface.blit(labeltext, labelblock)
 
-			button = aafilledcircle(surface, color, (self.x,self.y+5), 6) # (x, y)
+			button = aafilledcircle(surface, color, (self.x, self.y+5), 6)  # (x, y)
 			text = font_tiny.render(self.button.upper(), True, colors["white"], color)
 			buttontext = text.get_rect()
 			buttontext.center = button.center
@@ -396,16 +431,19 @@ class hint:
 			elif self.button == "down":
 				pygame.draw.rect(surface, colors["white"], (self.x+6, self.y+7, 2, 3))
 
-			labelblock = pygame.draw.rect(surface, self.bg, (self.x+20,self.y,35,14))
+			labelblock = pygame.draw.rect(surface, self.bg, (self.x+20, self.y, 35, 14))
 			labeltext = font_tiny.render(self.text, True, (255, 255, 255), self.bg)
 			surface.blit(labeltext, labelblock)
+
 
 class LogoBar(object):
 	'''The logo area at the top of the screen.'''
 
 	def __init__(self):
-		self.text1 = gcw_font.render('GCW', True, colors['logogcw'], colors['lightbg'])
-		self.text2 = gcw_font.render('CONNECT', True, colors['logoconnect'], colors['lightbg'])
+		self.text1 = gcw_font.render(
+		    'GCW', True, colors['logogcw'], colors['lightbg'])
+		self.text2 = gcw_font.render(
+		    'CONNECT', True, colors['logoconnect'], colors['lightbg'])
 
 	def draw(self):
 		pygame.draw.rect(surface, colors['lightbg'], (0, 0, screen_width, 34))
@@ -419,7 +457,8 @@ class LogoBar(object):
 		rect2.topleft = rect1.topright
 		surface.blit(self.text2, rect2)
 
-def drawstatusbar(): # Set up the status bar
+
+def drawstatusbar():  # Set up the status bar
 	global colors
 	pygame.draw.rect(surface, colors['lightbg'],
 	                 (0, screen_height - 16, screen_width, 16))
@@ -520,7 +559,7 @@ def modal(text, wait=False, timeout=False, query=False):
 				redraw()
 				return
 
-## Connect to a network
+# Connect to a network
 def writeconfig(): # Write wireless configuration to disk
 	global passphrase
 	global encryption
@@ -555,7 +594,7 @@ def writeconfig(): # Write wireless configuration to disk
 	f.write('WLAN_DHCP_RETRIES=20\n')
 	f.close()
 
-## HostAP
+# HostAP
 def startap():
 	global wlan
 	if checkinterfacestatus(wlan):
@@ -569,7 +608,7 @@ def startap():
 	redraw()
 	return True
 
-## Input methods
+# Input methods
 
 keyLayouts = {
 	'qwertyNormal': (
@@ -820,7 +859,7 @@ def getEncryptionType():
 
 def drawkeyboard(board):
 	global colors
-
+	
 	# Draw keyboard background
 	pygame.draw.rect(surface, colors['darkbg'],
 	                 (0, 124, screen_width, screen_height - 124))
@@ -1166,7 +1205,7 @@ class NetworksMenu(Menu):
 			if percent > 100:
 				percent = 100
 			return int(percent)
-		## Wifi signal icons
+		# Wifi signal icons
 		percent = qualityPercent(element[1])
 
 		if percent >= 6 and percent <= 24:
@@ -1180,7 +1219,7 @@ class NetworksMenu(Menu):
 		else:
 			signal_icon = 'transparent.png'
 
-		## Encryption information
+		# Encryption information
 		enc_type = element[2]
 		if enc_type == "NONE" or enc_type == '':
 			enc_icon = "open.png"
@@ -1202,8 +1241,8 @@ class NetworksMenu(Menu):
 
 		ssid = font_mono_small.render(the_ssid, 1, self.text_color)
 		enc = font_small.render(enc_type, 1, colors["lightgrey"])
-		#strength = font_small.render(str(str(percent) + "%").rjust(4), 1, colors["lightgrey"])
-		#qual = font_small.render(element[1], 1, colors["lightgrey"])
+		# strength = font_small.render(str(str(percent) + "%").rjust(4), 1, colors["lightgrey"])
+		# qual = font_small.render(element[1], 1, colors["lightgrey"])
 		spacing = 2
 
 		menu_surface.blit(ssid, (left + spacing, top))
@@ -1451,7 +1490,7 @@ if __name__ == "__main__":
 	while True:
 		time.sleep(0.01)
 		for event in pygame.event.get():
-			## GCW-Zero keycodes:
+			# GCW-Zero keycodes:
 			# A = K_LCTRL
 			# B = K_LALT
 			# X = K_LSHIFT
