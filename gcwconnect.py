@@ -921,9 +921,6 @@ def modal(text, wait=False, timeout=False, query=False):
                 redraw()
                 return True
 
-    scrim.set_alpha(256)
-    pygame.display.update()
-
 
 def redraw():
     """
@@ -1134,6 +1131,7 @@ class radio:
 
         if len(self.key) > 1:
             key_width = 64
+
         radiobutton = aaFilledCircle(colors['white'], (left, top), 8)
         aaFilledCircle(colors['darkbg'], (left, top), 6)
         text = font_medium.render(
