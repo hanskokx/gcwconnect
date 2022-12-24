@@ -70,10 +70,6 @@ if not os.path.exists(datadir):
 
 mac_addresses = {}
 
-dev_os = "win32"
-if sys.platform == dev_os:
-    DEBUG = True
-
 ###############################################################################
 #                                                                             #
 #                       Application initialization                            #
@@ -182,9 +178,6 @@ def ifDown():
     Returns:
         bool/str: Returns a string with the status of the connection, False if not connected
     """
-    if DEBUG:
-        return
-
     try:
         SU.Popen(['sudo', '/sbin/ap', '--stop'], close_fds=True).wait()
     except:
@@ -206,9 +199,6 @@ def ifUp():
     Returns:
         bool/str: Returns a string with the status of the connection, False if not connected
     """
-    if DEBUG:
-        return
-
     SU.Popen(['sudo', '/sbin/ifup', wlan], close_fds=True).wait() == 0
 
     status = checkInterfaceStatus()
@@ -227,8 +217,6 @@ def enableIface():
         return False
 
     modal("Enabling WiFi...")
-    if DEBUG:
-        return
     while True:
         if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'up'],
                     close_fds=True).wait() == 0:
@@ -244,8 +232,6 @@ def disableIface():
     """
 
     modal("Disabling WiFi...")
-    if DEBUG:
-        return
     while True:
         if SU.Popen(['sudo', '/sbin/ip', 'link', 'set', wlan, 'down'],
                     close_fds=True).wait() == 0:
@@ -261,8 +247,6 @@ def checkIfInterfaceIsDormant():
         bool: False if the interface is dormant, otherwise True.
     """
     operstate = False
-    if DEBUG:
-        return
     try:
         with open("/sys/class/net/" + wlan + "/dormant", "rb") as state:
             return state.readline().decode("utf-8").strip()
@@ -309,9 +293,6 @@ def getIp():
     Returns:
         str: The IP address of the interface, or None if unavailable.
     """
-    if DEBUG:
-        return "Debug Environment"
-
     ip = None
     try:
         with open(os.devnull, "w") as fnull:
@@ -336,8 +317,6 @@ def getMacAddress():
     Returns:
         bool/str: Returns the wlan MAC address, or False if the interface is disabled
     """
-    if DEBUG:
-        return
     try:
         with open("/sys/class/net/" + wlan + "/address", "rb") as mac_file:
             return mac_file.readline(17).decode("utf-8").strip()
@@ -352,8 +331,6 @@ def getCurrentSSID():
     Returns:
         str: Returns the SSID of the network currently associated with; otherwise returns None if no network is associated.
     """
-    if DEBUG:
-        return
     ssid = None
     is_broadcasting_ap = isApStarted()
     try:
@@ -445,9 +422,6 @@ def scanForNetworks():
     """
     interface_was_not_enabled = enableIface()
     modal("Scanning...")
-
-    if DEBUG:
-        return
 
     with open(os.devnull, "w") as fnull:
         output = SU.Popen(['sudo', '/usr/sbin/wlan-scan', wlan],
@@ -692,9 +666,6 @@ def isApStarted():
     Returns:
         bool: Return True if we are hosting an access point, otherwise return False
     """
-    if DEBUG:
-        return False
-
     with open(os.devnull, "w") as fnull:
         output = SU.Popen(['sudo', '/sbin/ap', '--status'],
                           stderr=fnull, stdout=SU.PIPE, close_fds=True).stdout.readlines()
@@ -720,8 +691,6 @@ def startAp():
         enableIface()
 
     modal("Creating AP...")
-    if DEBUG:
-        return
     if SU.Popen(['sudo', '/sbin/ap', '--start'], close_fds=True).wait() == 0:
         if isApStarted() == True:
             modal('AP created!', timeout=True)
@@ -744,8 +713,6 @@ def stopAp():
     Returns:
         bool: True if able to tear down the AP, False otherwise
     """
-    if DEBUG:
-        return
     try:
         if isApStarted():
             modal("Stopping AP...")
