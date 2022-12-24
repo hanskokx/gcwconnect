@@ -1180,7 +1180,7 @@ class key:
         key_height = 16
 
         top = screen_height - 104 + self.row * 20
-        left = (screen_width / 2) - 128 + self.column * 20
+        left = (screen_width // 2) - 128 + self.column * 20
 
         if len(self.key) > 1:
             key_width = 36
@@ -1387,7 +1387,7 @@ def selectKey(keyboard, kind, direction=""):
         drawKeyboard(keyboard)
         pygame.display.update()
 
-        left_margin = (screen_width / 2) - 128
+        left_margin = (screen_width // 2) - 128
         top_margin = screen_height - 104
 
         if pos[0] > left_margin:
